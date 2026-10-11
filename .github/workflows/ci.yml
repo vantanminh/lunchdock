@@ -50,6 +50,12 @@ jobs:
           DATABASE_URL: postgres://rudder:rudder@localhost:5432/rudder
         run: cargo test --workspace
 
+      - name: OpenAPI document is current
+        run: cargo run -q -p rudder-server -- openapi | diff -u web/openapi.json -
+
+      - name: Install scripts parse
+        run: for f in deploy/*.sh deploy/release/*.sh; do sh -n "$f"; done
+
   frontend:
     name: frontend
     runs-on: ubuntu-latest

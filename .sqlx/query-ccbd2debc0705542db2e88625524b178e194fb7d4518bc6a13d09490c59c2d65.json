@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE panel_settings\n        SET update_checked_at = $1, update_last_check = $2, updated_at = now()\n        WHERE id = TRUE\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ccbd2debc0705542db2e88625524b178e194fb7d4518bc6a13d09490c59c2d65"
+}

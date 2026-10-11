@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT jsonb_build_object(\n            'panel_settings', (SELECT to_jsonb(p) FROM panel_settings p),\n            'users', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM users t),\n            'api_tokens', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM api_tokens t),\n            'servers', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM servers t),\n            'projects', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM projects t),\n            'environments', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM environments t),\n            'services', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM services t),\n            'env_vars', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM env_vars t),\n            'domains', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM domains t),\n            'certificates', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM certificates t),\n            'registries', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM registries t),\n            'git_providers', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM git_providers t),\n            'deploy_keys', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM deploy_keys t),\n            's3_destinations', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM s3_destinations t),\n            'backup_jobs', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM backup_jobs t),\n            'cache_policies', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM cache_policies t),\n            'cache_rules', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM cache_rules t),\n            'alerts', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM alerts t),\n            'notification_channels', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM notification_channels t),\n            'retention_settings', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM retention_settings t),\n            'cleanup_schedules', (SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) FROM cleanup_schedules t)\n        ) AS \"export!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "export!",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9ad012a1f17f81b49f46157e42eef4d80f60c06e28e9a93f2c0b1997ddbc2be4"
+}

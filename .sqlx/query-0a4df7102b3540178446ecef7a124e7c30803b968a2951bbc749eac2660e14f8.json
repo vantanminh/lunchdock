@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT max(logged_at)\n        FROM log_entries\n        WHERE logged_at > now() - make_interval(secs => $3)\n          AND server_id = $1 AND fields->>'container_id' = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "max",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0a4df7102b3540178446ecef7a124e7c30803b968a2951bbc749eac2660e14f8"
+}

@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE servers\n        SET client_cert_pem = $2, client_cert_fingerprint = $3, join_token_hash = NULL,\n            join_token_expires_at = NULL, enrolled_at = $4, hostname = NULLIF($5, ''),\n            status = 'offline', updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f333ad8f1e238ce865ddcdffe3f00944b716a1be1152391eb69b95b24a692b74"
+}

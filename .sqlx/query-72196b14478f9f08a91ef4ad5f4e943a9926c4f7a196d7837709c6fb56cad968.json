@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO metrics_rollups (\n                bucket_start, resolution, server_id, service_id, source, metric,\n                avg_value, min_value, max_value, sample_count\n            )\n            SELECT bucket, '1m', server_id, service_id, 'proxy', metric, n, n, n, 1\n            FROM (\n                SELECT date_trunc('minute', logged_at) AS bucket, server_id, service_id,\n                       count(*)::float8 AS requests,\n                       count(*) FILTER (WHERE http_status >= 500)::float8 AS errors\n                FROM log_entries\n                WHERE source = 'proxy' AND service_id IS NOT NULL\n                  AND logged_at >= $1 AND logged_at < $2\n                GROUP BY 1, server_id, service_id\n            ) counted\n            CROSS JOIN LATERAL (VALUES ('requests', requests), ('http_5xx', errors)) AS m(metric, n)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "72196b14478f9f08a91ef4ad5f4e943a9926c4f7a196d7837709c6fb56cad968"
+}

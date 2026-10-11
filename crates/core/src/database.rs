@@ -183,7 +183,9 @@ pub fn connection_string(
         Engine::Mysql | Engine::Mariadb => {
             format!("mysql://{username}:{password}@{host}:{port}/{database}")
         }
-        Engine::Mongo => format!("mongodb://{username}:{password}@{host}:{port}/{database}"),
+        Engine::Mongo => {
+            format!("mongodb://{username}:{password}@{host}:{port}/{database}?authSource=admin")
+        }
         Engine::Redis => format!("redis://:{password}@{host}:{port}/0"),
     };
     Ok(value)

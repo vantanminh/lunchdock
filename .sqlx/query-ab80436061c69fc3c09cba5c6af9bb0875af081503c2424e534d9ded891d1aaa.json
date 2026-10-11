@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO metrics_samples (sampled_at, server_id, service_id, source, metric, value)\n        SELECT $1, * FROM UNNEST($2::uuid[], $3::uuid[], $4::text[], $5::text[], $6::float8[])\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "UuidArray",
+        "UuidArray",
+        "TextArray",
+        "TextArray",
+        "Float8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ab80436061c69fc3c09cba5c6af9bb0875af081503c2424e534d9ded891d1aaa"
+}

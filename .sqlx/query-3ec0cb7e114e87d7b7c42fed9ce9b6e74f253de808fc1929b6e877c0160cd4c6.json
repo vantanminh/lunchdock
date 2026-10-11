@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE alerts\n        SET name = $2, kind = $3, target_spec = $4, threshold = $5, duration_secs = $6,\n            channel_ids = $7, enabled = $8, updated_at = now(),\n            state = CASE WHEN kind = $3 AND target_spec = $4 THEN state ELSE 'ok' END,\n            state_since = CASE WHEN kind = $3 AND target_spec = $4 THEN state_since ELSE now() END\n        WHERE id = $1\n        RETURNING id, name, kind, target_spec, threshold, duration_secs, channel_ids, enabled,\n                  state, state_since, last_value, last_fired_at, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "target_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "threshold",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "duration_secs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "channel_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 7,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "state_since",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_value",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_fired_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Float8",
+        "Int4",
+        "UuidArray",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "3ec0cb7e114e87d7b7c42fed9ce9b6e74f253de808fc1929b6e877c0160cd4c6"
+}

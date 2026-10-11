@@ -3,12 +3,15 @@
 use crate::{validate_name, Error};
 
 /// What `docker compose` should do to a stack.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ComposeAction {
     Up,
     Down,
     Restart,
     Pull,
+    /// `down --volumes --remove-orphans`: removes containers and named volumes.
+    Destroy,
 }
 
 /// Build the argv for `docker compose`, excluding the `docker` binary itself.
@@ -32,11 +35,20 @@ pub fn compose_args(
             ComposeAction::Down => "down",
             ComposeAction::Restart => "restart",
             ComposeAction::Pull => "pull",
+            ComposeAction::Destroy => "down",
         }
         .to_owned(),
     ];
-    if action == ComposeAction::Up {
-        args.push("-d".to_owned());
+    match action {
+        ComposeAction::Up => {
+            args.push("-d".to_owned());
+            args.push("--remove-orphans".to_owned());
+        }
+        ComposeAction::Destroy => {
+            args.push("--volumes".to_owned());
+            args.push("--remove-orphans".to_owned());
+        }
+        _ => {}
     }
     Ok(args)
 }
@@ -63,6 +75,7 @@ mod tests {
                 "/var/lib/rudder/stacks/blog/compose.yml",
                 "up",
                 "-d",
+                "--remove-orphans",
             ]
         );
     }
@@ -73,5 +86,7 @@ mod tests {
         assert!(compose_args("blog", "compose.yml\n-f", ComposeAction::Pull).is_err());
         let pull = compose_args("blog", "compose.yml", ComposeAction::Pull).unwrap();
         assert_eq!(pull.last().map(String::as_str), Some("pull"));
+        let destroy = compose_args("blog", "compose.yml", ComposeAction::Destroy).unwrap();
+        assert_eq!(&destroy[5..], ["down", "--volumes", "--remove-orphans"]);
     }
 }

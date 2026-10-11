@@ -125,10 +125,10 @@ pub async fn deploy_service(
     .await
     .map_err(ApiError::database)?
     .ok_or_else(|| not_found("server not found"))?;
-    if server_kind != "local" {
+    if server_kind != "local" && state.agents.session(service.server_id).is_none() {
         return Err(conflict(
             "remote_unavailable",
-            "remote servers deploy after the agent is connected",
+            "the agent for this server is not connected",
         ));
     }
     sqlx::query!(
@@ -239,41 +239,49 @@ pub async fn deploy_service(
         deployment_id,
         watch_tag: params.watch_tag,
     };
+    let driver = match crate::nodes::driver_for(state, service.server_id).await {
+        Ok(driver) => driver,
+        Err(error) => {
+            mark_failed(
+                state,
+                service.id,
+                Some(deployment_id),
+                &error.public_message(),
+            )
+            .await;
+            return Err(error);
+        }
+    };
     let switch_state = state.clone();
-    let outcome = rollout(
-        state.local_driver.as_ref(),
-        &plan,
-        previous_id.as_deref(),
-        |started| {
-            let container_id = started.id.clone();
-            let state = switch_state.clone();
-            let mut saved = switch_saved.clone();
-            let previous_id = previous_id.clone();
-            let previous_image = previous_image.clone();
-            let previous_status = previous_status.clone();
-            let server_id = service.server_id;
-            let service_id = service.id;
-            async move {
-                saved.container_id = container_id.clone();
-                record_running(&state, service_id, &saved)
-                    .await
-                    .map_err(|error| rudder_core::Error::Node(error.public_message()))?;
-                if let Err(error) = publish_server(&state, server_id).await {
-                    restore_previous(
-                        &state,
-                        service_id,
-                        previous_id.as_deref(),
-                        previous_image.as_deref(),
-                        &previous_status,
-                        &container_id,
-                    )
-                    .await;
-                    return Err(rudder_core::Error::Node(error.public_message()));
-                }
-                Ok(())
+    let outcome = rollout(driver.as_ref(), &plan, previous_id.as_deref(), |started| {
+        let container_id = started.id.clone();
+        let state = switch_state.clone();
+        let mut saved = switch_saved.clone();
+        let previous_id = previous_id.clone();
+        let previous_image = previous_image.clone();
+        let previous_status = previous_status.clone();
+        let server_id = service.server_id;
+        let service_id = service.id;
+        async move {
+            saved.container_id = container_id.clone();
+            record_running(&state, service_id, &saved)
+                .await
+                .map_err(|error| rudder_core::Error::Node(error.public_message()))?;
+            if let Err(error) = publish_server(&state, server_id).await {
+                restore_previous(
+                    &state,
+                    service_id,
+                    previous_id.as_deref(),
+                    previous_image.as_deref(),
+                    &previous_status,
+                    &container_id,
+                )
+                .await;
+                return Err(rudder_core::Error::Node(error.public_message()));
             }
-        },
-    )
+            Ok(())
+        }
+    })
     .await;
 
     match outcome {
@@ -290,7 +298,7 @@ pub async fn deploy_service(
             } else if previous_id.is_some() {
                 logs.push_str("previous container stopped\n");
             }
-            if let Ok(digest) = state.local_driver.image_digest(&image).await {
+            if let Ok(digest) = driver.image_digest(&image).await {
                 let _ = sqlx::query!(
                     r#"UPDATE services SET current_digest = $2, updated_at = now() WHERE id = $1"#,
                     service.id,
@@ -460,41 +468,58 @@ pub(crate) async fn roll_built_image(state: &AppState, roll: BuiltRollout) -> Re
         deployment_id: roll.deployment_id,
         watch_tag: None,
     };
+    let driver = match crate::nodes::driver_for(state, service.server_id).await {
+        Ok(driver) => driver,
+        Err(error) => {
+            mark_failed(
+                state,
+                service.id,
+                Some(roll.deployment_id),
+                &error.public_message(),
+            )
+            .await;
+            return Err(error);
+        }
+    };
+    if state.agents.session(service.server_id).is_some() {
+        if let Err(error) =
+            copy_image(state.local_driver.as_ref(), driver.as_ref(), &roll.image).await
+        {
+            let message = format!("could not copy the image to the server: {error}");
+            mark_failed(state, service.id, Some(roll.deployment_id), &message).await;
+            return Err(core_error(error));
+        }
+    }
     let switch_state = state.clone();
-    let outcome = rollout(
-        state.local_driver.as_ref(),
-        &plan,
-        previous_id.as_deref(),
-        |started| {
-            let container_id = started.id.clone();
-            let state = switch_state.clone();
-            let mut saved = switch_saved.clone();
-            let previous_id = previous_id.clone();
-            let previous_image = previous_image.clone();
-            let previous_status = previous_status.clone();
-            let server_id = service.server_id;
-            let service_id = service.id;
-            async move {
-                saved.container_id = container_id.clone();
-                record_running(&state, service_id, &saved)
-                    .await
-                    .map_err(|error| rudder_core::Error::Node(error.public_message()))?;
-                if let Err(error) = publish_server(&state, server_id).await {
-                    restore_previous(
-                        &state,
-                        service_id,
-                        previous_id.as_deref(),
-                        previous_image.as_deref(),
-                        &previous_status,
-                        &container_id,
-                    )
-                    .await;
-                    return Err(rudder_core::Error::Node(error.public_message()));
-                }
-                Ok(())
+    let outcome = rollout(driver.as_ref(), &plan, previous_id.as_deref(), |started| {
+        let container_id = started.id.clone();
+        let state = switch_state.clone();
+        let mut saved = switch_saved.clone();
+        let previous_id = previous_id.clone();
+        let previous_image = previous_image.clone();
+        let previous_status = previous_status.clone();
+        let server_id = service.server_id;
+        let service_id = service.id;
+        async move {
+            saved.container_id = container_id.clone();
+            record_running(&state, service_id, &saved)
+                .await
+                .map_err(|error| rudder_core::Error::Node(error.public_message()))?;
+            if let Err(error) = publish_server(&state, server_id).await {
+                restore_previous(
+                    &state,
+                    service_id,
+                    previous_id.as_deref(),
+                    previous_image.as_deref(),
+                    &previous_status,
+                    &container_id,
+                )
+                .await;
+                return Err(rudder_core::Error::Node(error.public_message()));
             }
-        },
-    )
+            Ok(())
+        }
+    })
     .await;
     match outcome {
         Ok(output) => {
@@ -607,6 +632,16 @@ pub async fn rollback_image(
     .await
 }
 
+/// Built images exist on the panel host; stream them to a remote server's engine.
+async fn copy_image(
+    from: &dyn NodeDriver,
+    to: &dyn NodeDriver,
+    image: &str,
+) -> Result<(), rudder_core::Error> {
+    let tar = from.save_image(image).await?;
+    to.load_image(tar).await
+}
+
 pub fn health_from_request(
     kind: Option<&str>,
     path: Option<&str>,
@@ -642,7 +677,7 @@ pub fn health_from_request(
 pub async fn watch_once(state: &AppState) -> Result<(), sqlx::Error> {
     let rows = sqlx::query!(
         r#"
-        SELECT id, current_image AS "current_image!", current_digest
+        SELECT id, server_id, current_image AS "current_image!", current_digest
         FROM services
         WHERE kind = 'application'
           AND COALESCE(spec->>'watch_tag', 'false') = 'true'
@@ -653,7 +688,10 @@ pub async fn watch_once(state: &AppState) -> Result<(), sqlx::Error> {
     .fetch_all(&state.pool)
     .await?;
     for row in rows {
-        let digest = match state.local_driver.image_digest(&row.current_image).await {
+        let Ok(driver) = crate::nodes::driver_for(state, row.server_id).await else {
+            continue;
+        };
+        let digest = match driver.image_digest(&row.current_image).await {
             Ok(digest) => digest,
             Err(error) => {
                 tracing::debug!(%error, service_id = %row.id, "image digest check skipped");
@@ -1103,20 +1141,40 @@ async fn finish_deployment(
     error: Option<&str>,
     logs: &str,
 ) -> Result<(), ApiError> {
-    sqlx::query!(
+    let service_id = sqlx::query_scalar!(
         r#"
         UPDATE deployments
         SET status = $2, error = $3, logs = $4, finished_at = now()
         WHERE id = $1
+        RETURNING service_id
         "#,
         deployment_id,
         status,
         error,
         logs
     )
-    .execute(&state.pool)
+    .fetch_optional(&state.pool)
     .await
     .map_err(ApiError::database)?;
+    if let Some(service_id) = service_id {
+        let event = match status {
+            "succeeded" => Some(crate::events::Event::info(
+                "deploy.succeeded",
+                "Deployment succeeded",
+            )),
+            "failed" => Some(
+                crate::events::Event::warning("deploy.failed", "Deployment failed")
+                    .message(error.unwrap_or_default()),
+            ),
+            _ => None,
+        };
+        if let Some(event) = event {
+            let event = event
+                .service(service_id)
+                .payload(serde_json::json!({ "deployment_id": deployment_id }));
+            crate::events::record(&state.pool, event).await;
+        }
+    }
     Ok(())
 }
 
@@ -1144,7 +1202,10 @@ async fn mark_failed(
     }
 }
 
-async fn load_deployment(state: &AppState, id: Uuid) -> Result<DeploymentView, ApiError> {
+pub(crate) async fn load_deployment(
+    state: &AppState,
+    id: Uuid,
+) -> Result<DeploymentView, ApiError> {
     let row = sqlx::query_as!(
         DeploymentRow,
         r#"

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM metrics_rollups WHERE resolution = $1 AND bucket_start < now() - make_interval(days => $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0abfe0a30c22177cc189d8b0cc0eb85da33d22758251526105d3a282d5c6883a"
+}

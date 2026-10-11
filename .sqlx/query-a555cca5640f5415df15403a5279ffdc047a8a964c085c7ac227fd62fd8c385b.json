@@ -1,0 +1,130 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO servers (\n            name, kind, status, public_ip, description, join_token_hash, join_token_expires_at\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,\n                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,\n                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "public_ip",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "agent_version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "docker_version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "os_info",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "cpu_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "memory_bytes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_heartbeat_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "auto_prune",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "last_pruned_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "hostname",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "enrolled_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "telemetry_dropped",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "a555cca5640f5415df15403a5279ffdc047a8a964c085c7ac227fd62fd8c385b"
+}

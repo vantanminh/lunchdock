@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT s.id, e.project_id\n            FROM services s JOIN environments e ON e.id = s.environment_id\n            WHERE s.kind = 'compose' AND s.spec->>'project' = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "a9122d25f870e2d7754c6768982257a698b52f35f2fec747538eb45084c21fbc"
+}

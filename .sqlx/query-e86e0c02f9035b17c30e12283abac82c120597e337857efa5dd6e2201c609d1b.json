@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id FROM servers\n        WHERE auto_prune AND (last_pruned_at IS NULL OR last_pruned_at < now() - INTERVAL '1 day')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e86e0c02f9035b17c30e12283abac82c120597e337857efa5dd6e2201c609d1b"
+}

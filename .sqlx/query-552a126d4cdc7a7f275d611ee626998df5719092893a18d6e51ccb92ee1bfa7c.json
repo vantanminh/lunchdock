@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE backup_runs\n                SET status = 'succeeded', finished_at = now(), logs = $2\n                WHERE id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "552a126d4cdc7a7f275d611ee626998df5719092893a18d6e51ccb92ee1bfa7c"
+}

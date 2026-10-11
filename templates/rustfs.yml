@@ -1,0 +1,33 @@
+slug: rustfs
+name: RustFS
+description: S3-compatible object storage written in Rust, a lightweight MinIO alternative.
+category: Storage
+tags: [s3, object-storage, backups, rust]
+website: https://rustfs.com
+main_service: rustfs
+port: 9000
+notes: Create buckets with any S3 client, then add the domain as an S3 destination with path-style addressing.
+variables:
+  - name: DOMAIN
+    label: S3 API domain
+    kind: domain
+  - name: ACCESS_KEY
+    label: Access key
+    kind: string
+    default: rudder
+  - name: SECRET_KEY
+    label: Secret key
+    kind: secret
+    length: 40
+compose: |
+  services:
+    rustfs:
+      image: rustfs/rustfs:1.0.1
+      restart: unless-stopped
+      environment:
+        RUSTFS_ACCESS_KEY: ${ACCESS_KEY}
+        RUSTFS_SECRET_KEY: ${SECRET_KEY}
+      volumes:
+        - rustfs_data:/data
+  volumes:
+    rustfs_data: {}

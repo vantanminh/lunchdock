@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { api, setCsrf } from "../api";
 import { useAuth } from "../auth";
@@ -8,12 +8,20 @@ const links = [
   ["/", "Dashboard"],
   ["/servers", "Servers"],
   ["/projects", "Projects"],
+  ["/templates", "Templates"],
+  ["/monitoring", "Monitoring"],
+  ["/alerts", "Alerts"],
+  ["/logs", "Logs"],
+  ["/backups", "Backups"],
+  ["/s3-destinations", "S3 destinations"],
+  ["/cache", "Cache"],
   ["/certificates", "Certificates"],
   ["/registries", "Registries"],
   ["/git", "Git providers"],
   ["/users", "Users"],
   ["/tokens", "API tokens"],
   ["/audit", "Audit log"],
+  ["/system", "System"],
   ["/account", "Account"],
 ] as const;
 
@@ -58,7 +66,9 @@ export function Shell() {
           <ThemeToggle />
         </header>
         <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
-          <Outlet />
+          <Suspense fallback={<p className="text-sm text-muted">Loading…</p>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

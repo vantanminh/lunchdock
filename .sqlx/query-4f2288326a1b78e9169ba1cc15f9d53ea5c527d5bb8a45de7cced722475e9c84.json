@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO alerts (name, kind, target_spec, threshold, duration_secs, channel_ids, enabled)\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id, name, kind, target_spec, threshold, duration_secs, channel_ids, enabled,\n                  state, state_since, last_value, last_fired_at, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "target_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "threshold",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "duration_secs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "channel_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 7,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "state_since",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_value",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_fired_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Jsonb",
+        "Float8",
+        "Int4",
+        "UuidArray",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "4f2288326a1b78e9169ba1cc15f9d53ea5c527d5bb8a45de7cced722475e9c84"
+}

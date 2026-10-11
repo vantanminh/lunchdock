@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO env_vars (service_id, key, value_enc, is_build_secret)\n            VALUES ($1, $2, $3, FALSE)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6011d18570b4f87220d9a990676c36b63ddb2e0fa8bf213c9b38a17ce6fbb446"
+}

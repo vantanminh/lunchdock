@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT compose_service AS \"service!\"\n        FROM domains\n        WHERE service_id = $1 AND compose_service IS NOT NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "service!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "358f8ebfc3271f32ea1a8e8b832b5e514982f5bb898064f92bbd6a559ee46c01"
+}

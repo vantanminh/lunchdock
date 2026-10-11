@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM log_entries WHERE source = $1 AND logged_at < now() - make_interval(days => $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "49ab876c2dfe78dac9e108274054ed2279857c16fab3ccf1152f71c4bef5544f"
+}

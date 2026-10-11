@@ -1,0 +1,130 @@
+import { FitAddon } from "@xterm/addon-fit";
+import { Terminal } from "@xterm/xterm";
+import "@xterm/xterm/css/xterm.css";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../auth";
+import { Button, Empty, Select } from "./ui";
+
+type Status = "idle" | "connecting" | "open" | "closed";
+
+/** Interactive shell in a service container, over the panel's terminal WebSocket. */
+export function TerminalPanel({
+  serviceId,
+  containers,
+}: {
+  serviceId: string;
+  /** Compose service names; empty for single-container services. */
+  containers: string[];
+}) {
+  const { user } = useAuth();
+  const host = useRef<HTMLDivElement | null>(null);
+  const [container, setContainer] = useState("");
+  const [status, setStatus] = useState<Status>("idle");
+  const [note, setNote] = useState<string | null>(null);
+  const [session, setSession] = useState(0);
+
+  useEffect(() => {
+    if (session === 0 || !host.current) return;
+    const term = new Terminal({
+      cursorBlink: true,
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+      fontSize: 13,
+      theme: { background: "#0b0d10" },
+    });
+    const fit = new FitAddon();
+    term.loadAddon(fit);
+    term.open(host.current);
+    fit.fit();
+    const params = new URLSearchParams({ cols: String(term.cols), rows: String(term.rows) });
+    if (container) params.set("container", container);
+    const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(
+      `${scheme}://${window.location.host}/api/v1/services/${serviceId}/terminal?${params}`,
+    );
+    ws.binaryType = "arraybuffer";
+    setStatus("connecting");
+    setNote(null);
+    ws.onopen = () => {
+      setStatus("open");
+      term.focus();
+    };
+    ws.onmessage = (event) => {
+      if (event.data instanceof ArrayBuffer) {
+        term.write(new Uint8Array(event.data));
+        return;
+      }
+      const message = JSON.parse(String(event.data)) as { type: string; message?: string };
+      if (message.type === "exit") setNote("The shell exited.");
+      if (message.type === "error") setNote(message.message ?? "Terminal error");
+    };
+    ws.onclose = () => setStatus("closed");
+    ws.onerror = () => setNote("Could not open a terminal. Is the container running?");
+    const input = term.onData((data) => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "input", data }));
+    });
+    const resize = term.onResize(({ cols, rows }) => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "resize", cols, rows }));
+    });
+    const observer = new ResizeObserver(() => fit.fit());
+    observer.observe(host.current);
+    return () => {
+      observer.disconnect();
+      input.dispose();
+      resize.dispose();
+      ws.close();
+      term.dispose();
+    };
+  }, [session, serviceId, container]);
+
+  if (user?.role !== "admin") {
+    return <Empty>Only admins can open a terminal.</Empty>;
+  }
+  const needsContainer = containers.length > 0 && !container;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {containers.length > 0 ? (
+          <Select
+            className="w-56"
+            value={container}
+            aria-label="Compose service"
+            onChange={(event) => {
+              setContainer(event.target.value);
+              setSession(0);
+              setStatus("idle");
+            }}
+          >
+            <option value="">Choose a service</option>
+            {containers.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+        <Button disabled={needsContainer} onClick={() => setSession((value) => value + 1)}>
+          {status === "open" || status === "connecting" ? "Reconnect" : "Open shell"}
+        </Button>
+        {status === "open" ? (
+          <Button quiet onClick={() => setSession(0)}>
+            Disconnect
+          </Button>
+        ) : null}
+        <span className="text-sm text-muted">
+          {status === "open" ? "Connected" : status === "connecting" ? "Connecting…" : ""}
+          {status === "closed" ? "Disconnected" : ""}
+        </span>
+      </div>
+      {note ? <p className="text-sm text-muted">{note}</p> : null}
+      <p className="text-xs text-muted">
+        Sessions run the container's bash or sh as its default user and are recorded in the audit
+        log.
+      </p>
+      <div
+        ref={host}
+        className={`h-[28rem] overflow-hidden rounded-lg bg-[#0b0d10] p-2 ${session === 0 ? "hidden" : ""}`}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE backup_jobs SET\n            name = $2, server_id = $3, service_id = $4, target_kind = $5, target_spec = $6,\n            schedule_cron = $7, timezone = $8, destination_ids = $9, path_prefix = $10,\n            filename_template = $11, retention_spec = $12, compression = $13,\n            compression_level = $14,\n            encryption_passphrase_enc = CASE WHEN $15 THEN $16 ELSE encryption_passphrase_enc END,\n            tool_options = $17, consistency_spec = $18, timeout_secs = $19, retries = $20,\n            bandwidth_limit_bps = $21, verify_after_upload = $22, notify_on_success = $23,\n            enabled = $24, updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text",
+        "UuidArray",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Int4",
+        "Bool",
+        "Bytea",
+        "Jsonb",
+        "Jsonb",
+        "Int4",
+        "Int4",
+        "Int8",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b14d87d7230898ea09e3cc12c7a9a3d71aba8cc27dcc8794031f16e98c886a49"
+}

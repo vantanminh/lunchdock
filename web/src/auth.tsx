@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, type ReactNode } from "react";
 import { api, ApiError, setCsrf } from "./api";
-import type { SessionResponse, User } from "./types";
+import type { Schemas, SessionResponse, User } from "./types";
 
 interface AuthState {
   user: User | null;
@@ -16,7 +16,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const setup = useQuery({
     queryKey: ["setup-status"],
-    queryFn: () => api<{ needs_setup: boolean }>("/api/v1/setup/status"),
+    queryFn: () => api<Schemas["SetupStatus"]>("/api/v1/setup/status"),
   });
   const session = useQuery({
     queryKey: ["session"],

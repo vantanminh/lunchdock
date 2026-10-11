@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT cache_policy_id AS \"id!\", COUNT(*) AS \"count!\"\n        FROM domains\n        WHERE cache_policy_id = ANY($1)\n        GROUP BY cache_policy_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      true,
+      null
+    ]
+  },
+  "hash": "562ab559375f913db7caf2bca31d959fcddec4c68029c72aac5149eb33317b06"
+}

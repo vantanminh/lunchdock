@@ -1,0 +1,42 @@
+slug: metabase
+name: Metabase
+description: Business intelligence dashboards and questions on top of your databases.
+category: Analytics
+tags: [bi, dashboards, sql, reporting]
+website: https://www.metabase.com
+main_service: metabase
+port: 3000
+notes: First start takes a minute while Metabase migrates its database. It needs about 1 GiB of RAM.
+variables:
+  - name: DOMAIN
+    label: Domain
+    kind: domain
+  - name: DB_PASSWORD
+    label: Database password
+    kind: secret
+compose: |
+  services:
+    metabase:
+      image: metabase/metabase:v0.56.x
+      restart: unless-stopped
+      environment:
+        MB_DB_TYPE: postgres
+        MB_DB_DBNAME: metabase
+        MB_DB_PORT: "5432"
+        MB_DB_USER: metabase
+        MB_DB_PASS: ${DB_PASSWORD}
+        MB_DB_HOST: db
+        MB_SITE_URL: https://${DOMAIN}
+      depends_on:
+        - db
+    db:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        POSTGRES_USER: metabase
+        POSTGRES_PASSWORD: ${DB_PASSWORD}
+        POSTGRES_DB: metabase
+      volumes:
+        - metabase_db:/var/lib/postgresql/data
+  volumes:
+    metabase_db: {}

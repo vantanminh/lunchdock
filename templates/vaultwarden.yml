@@ -1,0 +1,34 @@
+slug: vaultwarden
+name: Vaultwarden
+description: Bitwarden-compatible password manager server written in Rust.
+category: Security
+tags: [passwords, bitwarden, vault, security]
+website: https://github.com/dani-garcia/vaultwarden
+main_service: vaultwarden
+port: 80
+notes: The admin panel is at /admin and uses ADMIN_TOKEN. Turn signups off after creating your accounts.
+variables:
+  - name: DOMAIN
+    label: Domain
+    kind: domain
+  - name: ADMIN_TOKEN
+    label: Admin token
+    kind: secret
+    length: 48
+  - name: SIGNUPS_ALLOWED
+    label: Allow signups
+    kind: boolean
+    default: "true"
+compose: |
+  services:
+    vaultwarden:
+      image: vaultwarden/server:1.34.3
+      restart: unless-stopped
+      environment:
+        DOMAIN: https://${DOMAIN}
+        ADMIN_TOKEN: ${ADMIN_TOKEN}
+        SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED}
+      volumes:
+        - vw_data:/data
+  volumes:
+    vw_data: {}

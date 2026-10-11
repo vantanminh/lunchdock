@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
@@ -6,10 +7,17 @@ use governor::middleware::NoOpMiddleware;
 use governor::state::keyed::DefaultKeyedStateStore;
 use governor::{Quota, RateLimiter};
 use sqlx::PgPool;
+use tokio::sync::{Mutex, Semaphore};
+use uuid::Uuid;
 
+use crate::agent::AgentRegistry;
 use crate::driver::LocalDriver;
+use crate::logs::LogHub;
 use crate::Config;
 use rudder_core::Cipher;
+
+/// Per-server backup concurrency limit and its semaphore.
+pub type BackupSlots = Mutex<HashMap<Uuid, (usize, Arc<Semaphore>)>>;
 
 pub type LoginLimiter =
     RateLimiter<String, DefaultKeyedStateStore<String>, DefaultClock, NoOpMiddleware>;
@@ -22,6 +30,10 @@ pub struct AppState {
     pub cipher: Arc<Cipher>,
     pub login_limiter: Arc<LoginLimiter>,
     pub local_driver: Arc<LocalDriver>,
+    pub agents: Arc<AgentRegistry>,
+    pub backup_slots: Arc<BackupSlots>,
+    pub logs: Arc<LogHub>,
+    pub updates: Arc<crate::update::Updates>,
 }
 
 impl AppState {
@@ -29,13 +41,21 @@ impl AppState {
         let cipher = Arc::new(Cipher::new(*config.master_key()));
         let per_minute = NonZeroU32::new(10).expect("login quota");
         let login_limiter = Arc::new(RateLimiter::keyed(Quota::per_minute(per_minute)));
-        let local_driver = Arc::new(LocalDriver::connect(&config.data_dir));
+        let local_driver = Arc::new(
+            LocalDriver::connect(&config.data_dir, config.docker_socket.as_deref())
+                .with_cache_admin(&config.cache_admin_url)
+                .with_host_proc(&config.host_proc),
+        );
         Self {
             pool,
             config: Arc::new(config),
             cipher,
             login_limiter,
             local_driver,
+            agents: Arc::new(AgentRegistry::default()),
+            backup_slots: Arc::new(Mutex::new(HashMap::new())),
+            logs: Arc::new(LogHub::default()),
+            updates: Arc::default(),
         }
     }
 }

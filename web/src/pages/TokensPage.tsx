@@ -30,7 +30,8 @@ export function TokensPage() {
       toast.success("Token created. Copy it now; it is not shown again.");
       await queryClient.invalidateQueries({ queryKey: ["tokens"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not create token"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not create token"),
   });
 
   const remove = useMutation({
@@ -38,7 +39,8 @@ export function TokensPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["tokens"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not revoke token"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not revoke token"),
   });
 
   function onSubmit(event: FormEvent) {
@@ -55,7 +57,11 @@ export function TokensPage() {
             <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
           <label className="flex items-end gap-2 pb-2 text-sm">
-            <input type="checkbox" checked={write} onChange={(event) => setWrite(event.target.checked)} />
+            <input
+              type="checkbox"
+              checked={write}
+              onChange={(event) => setWrite(event.target.checked)}
+            />
             write scope
           </label>
           <div className="flex items-end">

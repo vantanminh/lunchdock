@@ -10,6 +10,13 @@ use sqlx::PgPool;
 
 use crate::Config;
 
+pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+
+/// Highest schema migration this binary carries.
+pub fn known_migration() -> i64 {
+    MIGRATOR.iter().map(|m| m.version).max().unwrap_or(0)
+}
+
 pub async fn connect(config: &Config) -> anyhow::Result<PgPool> {
     PgPoolOptions::new()
         .max_connections(20)
@@ -91,6 +98,17 @@ pub async fn recover_interrupted(pool: &PgPool) -> Result<(), sqlx::Error> {
         UPDATE build_queue
         SET status = 'failed'
         WHERE status = 'running'
+        "#
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query!(
+        r#"
+        UPDATE backup_runs
+        SET status = 'failed',
+            error = 'interrupted by process restart',
+            finished_at = COALESCE(finished_at, now())
+        WHERE status IN ('queued', 'running')
         "#
     )
     .execute(pool)

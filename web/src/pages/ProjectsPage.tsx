@@ -3,32 +3,17 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
+import { CreateStackFields } from "../components/stacks";
 import { Button, Card, Field, TextInput } from "../components/ui";
+import type { Schemas } from "../types";
 
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-}
+type Project = Schemas["ProjectView"];
 
-interface Environment {
-  id: string;
-  project_id: string;
-  name: string;
-}
+type Environment = Schemas["EnvironmentView"];
 
-interface Service {
-  id: string;
-  name: string;
-  kind: string;
-  status: string;
-  server_id: string;
-}
+type Service = Schemas["ServiceView"];
 
-interface Server {
-  id: string;
-  name: string;
-}
+type Server = Schemas["ServerView"];
 
 export function ProjectsPage() {
   const queryClient = useQueryClient();
@@ -47,6 +32,28 @@ export function ProjectsPage() {
   const [kind, setKind] = useState("application");
   const [serverId, setServerId] = useState("");
   const [image, setImage] = useState("");
+  const [engine, setEngine] = useState("postgres");
+  const [version, setVersion] = useState("");
+  const [stackSource, setStackSource] = useState("inline");
+  const [stackYaml, setStackYaml] = useState("");
+  const [stackGit, setStackGit] = useState<Schemas["StackGit"]>({
+    provider_id: "",
+    repo: "",
+    branch: "main",
+    compose_file: "docker-compose.yml",
+  });
+  const [mainService, setMainService] = useState("");
+  const providers = useQuery({
+    queryKey: ["git-providers"],
+    queryFn: () => api<Schemas["GitProviderView"][]>("/api/v1/git-providers"),
+    enabled: kind === "compose",
+  });
+  const engines = useQuery({
+    queryKey: ["database-engines"],
+    queryFn: () => api<Schemas["DatabaseEngineView"][]>("/api/v1/database-engines"),
+    enabled: kind === "database",
+  });
+  const engineVersions = engines.data?.find((item) => item.engine === engine)?.versions ?? [];
 
   const environments = useQuery({
     queryKey: ["environments", selected],
@@ -71,7 +78,8 @@ export function ProjectsPage() {
       setSelected(project.id);
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not create project"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not create project"),
   });
 
   const createEnvironment = useMutation({
@@ -90,21 +98,52 @@ export function ProjectsPage() {
 
   const createService = useMutation({
     mutationFn: () =>
-      api(`/api/v1/environments/${environmentId}/services`, {
-        method: "POST",
-        body: JSON.stringify({
-          name: serviceName,
-          kind,
-          server_id: serverId || servers.data?.[0]?.id,
-          spec: image ? { image } : {},
-        }),
-      }),
+      kind === "database"
+        ? api(`/api/v1/environments/${environmentId}/databases`, {
+            method: "POST",
+            body: JSON.stringify({
+              name: serviceName,
+              engine,
+              version: version || engineVersions[0],
+              server_id: serverId || servers.data?.[0]?.id,
+            }),
+          })
+        : kind === "compose"
+          ? api(`/api/v1/environments/${environmentId}/stacks`, {
+              method: "POST",
+              body: JSON.stringify({
+                name: serviceName,
+                server_id: serverId || servers.data?.[0]?.id,
+                source: stackSource,
+                compose_yaml: stackSource === "inline" ? stackYaml : undefined,
+                git: stackSource === "git" ? stackGit : undefined,
+                main_service: mainService || undefined,
+              }),
+            })
+          : api(`/api/v1/environments/${environmentId}/services`, {
+              method: "POST",
+              body: JSON.stringify({
+                name: serviceName,
+                kind,
+                server_id: serverId || servers.data?.[0]?.id,
+                spec: image ? { image } : {},
+              }),
+            }),
     onSuccess: async () => {
       setServiceName("");
-      toast.success("Service created");
+      toast.success(
+        kind === "database"
+          ? "Database created with a generated password"
+          : kind === "compose"
+            ? "Stack saved; deploy it from its page"
+            : "Service created",
+      );
       await queryClient.invalidateQueries({ queryKey: ["services", environmentId] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not create service"),
+    onError: async (error) => {
+      toast.error(error instanceof ApiError ? error.message : "Could not create service");
+      await queryClient.invalidateQueries({ queryKey: ["services", environmentId] });
+    },
   });
 
   function onProject(event: FormEvent) {
@@ -159,7 +198,8 @@ export function ProjectsPage() {
                 <Button type="submit">Add environment</Button>
               </form>
               <p className="mt-3 text-sm text-muted">
-                {(environments.data ?? []).map((environment) => environment.name).join(", ") || "None yet"}
+                {(environments.data ?? []).map((environment) => environment.name).join(", ") ||
+                  "None yet"}
               </p>
             </Card>
             <Card title="Service">
@@ -185,7 +225,7 @@ export function ProjectsPage() {
                   >
                     <option value="application">application</option>
                     <option value="database">database</option>
-                    <option value="compose">compose</option>
+                    <option value="compose">compose stack</option>
                   </select>
                 </Field>
                 <Field label="Server">
@@ -202,13 +242,73 @@ export function ProjectsPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Image">
-                  <TextInput value={image} onChange={(event) => setImage(event.target.value)} />
-                </Field>
+                {kind === "database" ? (
+                  <>
+                    <Field label="Engine">
+                      <select
+                        className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
+                        value={engine}
+                        onChange={(event) => {
+                          setEngine(event.target.value);
+                          setVersion("");
+                        }}
+                      >
+                        {(engines.data ?? []).map((item) => (
+                          <option key={item.engine} value={item.engine}>
+                            {item.engine}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Version">
+                      <select
+                        className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
+                        value={version || engineVersions[0] || ""}
+                        onChange={(event) => setVersion(event.target.value)}
+                      >
+                        {engineVersions.map((item) => (
+                          <option key={item} value={item}>
+                            {item}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </>
+                ) : kind === "compose" ? (
+                  <>
+                    <Field label="Main service (receives domains)">
+                      <TextInput
+                        value={mainService}
+                        placeholder="web"
+                        onChange={(event) => setMainService(event.target.value)}
+                      />
+                    </Field>
+                    <CreateStackFields
+                      source={stackSource}
+                      yaml={stackYaml}
+                      git={stackGit}
+                      providers={providers.data ?? []}
+                      onSource={setStackSource}
+                      onYaml={setStackYaml}
+                      onGit={setStackGit}
+                    />
+                  </>
+                ) : (
+                  <Field label="Image">
+                    <TextInput value={image} onChange={(event) => setImage(event.target.value)} />
+                  </Field>
+                )}
                 <Button type="submit" disabled={!environmentId}>
                   Add service
                 </Button>
               </form>
+              <p className="mt-3 text-sm text-muted">
+                Or start from a ready-made app in{" "}
+                <Link className="text-accent" to="/templates">
+                  Templates
+                </Link>
+                .
+              </p>
               <ul className="mt-4 divide-y divide-line text-sm">
                 {(services.data ?? []).map((service) => (
                   <li key={service.id} className="py-2">

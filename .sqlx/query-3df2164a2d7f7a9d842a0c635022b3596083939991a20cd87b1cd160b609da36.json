@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE servers SET status = 'offline', updated_at = now() WHERE id = $1 AND status = 'online'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3df2164a2d7f7a9d842a0c635022b3596083939991a20cd87b1cd160b609da36"
+}

@@ -3,36 +3,61 @@
 //! The binary in `main.rs` loads configuration, initializes tracing, and calls
 //! [`run`]. Tests construct an [`AppState`] and the [`router`] directly.
 
+mod agent;
 mod audit;
 mod auth;
+mod backup;
 mod build_queue;
+mod cache;
 mod config;
 mod db;
 mod deploy;
 mod driver;
 mod embed;
 mod error;
+mod events;
 mod gitkey;
+mod logs;
+mod monitor;
+mod nodes;
 mod openapi;
+mod panel;
 mod publish;
 mod routes;
+mod s3;
+mod stacks;
 mod state;
 pub mod telemetry;
+mod templates;
+mod update;
 
 use anyhow::Context;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 
+pub use agent::serve as serve_agents;
 pub use build_queue::build_once;
 pub use config::{Config, ConfigError, LogFormat};
 pub use db::ensure_partitions;
 pub use error::ApiError;
+pub use logs::retention::run_once as apply_log_retention;
+pub use monitor::notify::{deliver_once as deliver_notifications, sign as sign_webhook};
+pub use monitor::rollup::{
+    retention_once as apply_metrics_retention, rollup_once as rollup_metrics,
+};
+pub use monitor::{evaluate_alerts, insert_samples, Sample};
+pub use nodes::driver_for as node_driver;
+pub use panel::{Manifest as PanelManifest, RestoreOptions, RestoreReport};
 pub use state::AppState;
+pub use update::{
+    apply_panel, check as check_for_update, run_updater, update_components, UpdaterArgs,
+};
 
 /// Bind the HTTP server, run migrations, and serve until shutdown.
 pub async fn run(config: Config) -> anyhow::Result<()> {
+    agent::install_crypto_provider();
     let pool = db::connect(&config).await?;
-    sqlx::migrate!("./migrations")
+    db::MIGRATOR
         .run(&pool)
         .await
         .context("apply database migrations")?;
@@ -55,7 +80,52 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
 
     let addr = config.bind;
     let state = AppState::new(pool, config);
+    logs::layer::install(state.logs.sender());
+    start_log_pipeline(&state);
+    let retention_pool = state.pool.clone();
+    tokio::spawn(async move {
+        loop {
+            match logs::retention::run_once(&retention_pool).await {
+                Ok(report) if report.deleted_rows > 0 || !report.dropped_partitions.is_empty() => {
+                    tracing::info!(
+                        deleted = report.deleted_rows,
+                        dropped = ?report.dropped_partitions,
+                        "log retention applied"
+                    )
+                }
+                Ok(_) => {}
+                Err(error) => tracing::warn!(%error, "log retention failed"),
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+        }
+    });
+    start_monitoring(&state);
+    let publish_state = state.clone();
+    tokio::spawn(async move {
+        let local = sqlx::query_scalar!(r#"SELECT id FROM servers WHERE kind = 'local' LIMIT 1"#)
+            .fetch_optional(&publish_state.pool)
+            .await;
+        if let Ok(Some(id)) = local {
+            if let Err(error) = routes::catalog::probe(&publish_state, id).await {
+                tracing::warn!(message = %error.public_message(), "local Docker probe failed");
+            }
+            if let Err(error) = publish::publish_server(&publish_state, id).await {
+                tracing::warn!(message = %error.public_message(), "startup publish failed");
+            }
+        }
+    });
     let watch_state = state.clone();
+    let backup_state = state.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            match backup::schedule_once(&backup_state).await {
+                Ok(0) => {}
+                Ok(started) => tracing::info!(started, "scheduled backups started"),
+                Err(error) => tracing::warn!(%error, "backup scheduler query failed"),
+            }
+        }
+    });
     let build_state = state.clone();
     tokio::spawn(async move {
         loop {
@@ -77,6 +147,18 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             }
         }
     });
+    if let Some(agent_addr) = state.config.agent_bind {
+        let agent_listener = TcpListener::bind(agent_addr)
+            .await
+            .with_context(|| format!("bind agent listener {agent_addr}"))?;
+        let agent_state = state.clone();
+        tokio::spawn(async move {
+            if let Err(error) = agent::serve(agent_state, agent_listener).await {
+                tracing::error!(error = %format!("{error:#}"), "agent listener stopped");
+            }
+        });
+    }
+    update::spawn_background(state.clone());
     let app = router(state);
     let listener = TcpListener::bind(addr)
         .await
@@ -95,6 +177,99 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Start the log writer and the local container log collector.
+pub fn start_log_pipeline(state: &AppState) {
+    tokio::spawn(state.logs.clone().run_writer(state.pool.clone()));
+    tokio::spawn(logs::collector::run(state.clone()));
+}
+
+/// Start metrics sampling, alert evaluation, rollups, and notification delivery.
+pub fn start_monitoring(state: &AppState) {
+    tokio::spawn(monitor::run(state.clone()));
+    tokio::spawn(monitor::notify::run(
+        state.pool.clone(),
+        state.cipher.clone(),
+    ));
+    let pool = state.pool.clone();
+    tokio::spawn(async move {
+        let mut last_retention: Option<std::time::Instant> = None;
+        loop {
+            if let Err(error) = monitor::rollup::rollup_once(&pool, chrono::Utc::now()).await {
+                tracing::warn!(%error, "metrics rollup failed");
+            }
+            if last_retention.is_none_or(|at| at.elapsed() >= std::time::Duration::from_secs(3600))
+            {
+                last_retention = Some(std::time::Instant::now());
+                if let Err(error) = monitor::rollup::retention_once(&pool).await {
+                    tracing::warn!(%error, "metrics retention failed");
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        }
+    });
+}
+
+/// Highest schema migration this binary applies.
+pub fn known_migration() -> i64 {
+    db::known_migration()
+}
+
+/// Restore a panel backup into an empty database before the panel starts.
+pub async fn restore_panel(options: RestoreOptions) -> anyhow::Result<RestoreReport> {
+    panel::restore(options).await
+}
+
+/// Write an encrypted panel backup to `out`, or to stdout when `out` is `-`.
+/// Returns the number of bytes written.
+pub async fn backup_panel(
+    config: &Config,
+    passphrase: &str,
+    include_history: bool,
+    out: &std::path::Path,
+) -> anyhow::Result<u64> {
+    use futures_util::StreamExt;
+    use tokio::io::AsyncWriteExt;
+
+    let pool = db::connect(config).await?;
+    let archive = panel::archive(&pool, config, include_history)
+        .await
+        .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+    let mut stream =
+        panel::seal(archive, passphrase).map_err(|error| anyhow::anyhow!(error.to_string()))?;
+    let mut writer: std::pin::Pin<Box<dyn tokio::io::AsyncWrite + Send>> =
+        if out == std::path::Path::new("-") {
+            Box::pin(tokio::io::stdout())
+        } else {
+            Box::pin(
+                tokio::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .mode(0o600)
+                    .open(out)
+                    .await
+                    .with_context(|| format!("create {}", out.display()))?,
+            )
+        };
+    let mut written = 0u64;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| anyhow::anyhow!(error.to_string()))?;
+        writer.write_all(&chunk).await?;
+        written += chunk.len() as u64;
+    }
+    writer.flush().await?;
+    writer.shutdown().await?;
+    pool.close().await;
+    Ok(written)
+}
+
+/// The OpenAPI document as pretty JSON, used to generate frontend types.
+pub fn openapi_json() -> String {
+    openapi::document()
+        .to_pretty_json()
+        .expect("OpenAPI document serializes")
+}
+
 /// HTTP router. Additional route groups are nested here as features land.
 pub fn router(state: AppState) -> axum::Router {
     axum::Router::new()
@@ -103,6 +278,15 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::catalog::router())
         .merge(routes::edge::router())
         .merge(routes::git::router())
+        .merge(routes::databases::router())
+        .merge(routes::backups::router())
+        .merge(routes::stacks::router())
+        .merge(routes::cache::router())
+        .merge(routes::logs::router())
+        .merge(routes::monitoring::router())
+        .merge(routes::agents::router())
+        .merge(routes::system::router())
+        .merge(routes::updates::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

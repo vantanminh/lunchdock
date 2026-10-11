@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, logged_at, server_id, project_id, service_id, source, level, message,\n               http_status, fields\n        FROM log_entries\n        WHERE logged_at >= $1 AND logged_at <= $2\n          AND ($3::text IS NULL OR source = $3)\n          AND ($4::uuid IS NULL OR service_id = $4)\n          AND ($5::uuid IS NULL OR server_id = $5)\n          AND ($6::uuid IS NULL OR project_id = $6)\n          AND (cardinality($7::text[]) = 0 OR level = ANY($7))\n          AND ($8::text IS NULL OR message ILIKE $8 ESCAPE '\\')\n          AND ($9::int IS NULL OR http_status >= $9)\n          AND ($10::int IS NULL OR http_status <= $10)\n          AND ($11::timestamptz IS NULL OR (logged_at, id) < ($11, $12::bigint))\n        ORDER BY logged_at DESC, id DESC\n        LIMIT $13\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "logged_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "service_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "http_status",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "fields",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "TextArray",
+        "Text",
+        "Int4",
+        "Int4",
+        "Timestamptz",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "e0f2b8613245dde82f2873d6421848a450855c59a4556872fa90043f9c0a93f8"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM metrics_samples WHERE sampled_at < now() - make_interval(hours => $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e7e774141308c273817b53c3c6fe97d3ff975b3d7856ec0d0240e3356ae9bb21"
+}

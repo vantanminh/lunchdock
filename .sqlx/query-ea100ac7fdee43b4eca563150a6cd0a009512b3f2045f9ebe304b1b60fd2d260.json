@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE backup_runs SET status = 'running', started_at = now(), logs = $2 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ea100ac7fdee43b4eca563150a6cd0a009512b3f2045f9ebe304b1b60fd2d260"
+}

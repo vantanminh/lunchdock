@@ -33,7 +33,9 @@ export function AuditPage() {
             <tbody>
               {(audit.data ?? []).map((event) => (
                 <tr key={event.id} className="border-t border-line">
-                  <td className="py-2 pr-3 whitespace-nowrap">{new Date(event.created_at).toLocaleString()}</td>
+                  <td className="py-2 pr-3 whitespace-nowrap">
+                    {new Date(event.created_at).toLocaleString()}
+                  </td>
                   <td className="py-2 pr-3">{event.action}</td>
                   <td className="py-2 pr-3">
                     {event.resource_type}

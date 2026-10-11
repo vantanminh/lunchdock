@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE alerts\n            SET state = $2, state_since = $3, last_value = $4,\n                last_fired_at = CASE WHEN $5 THEN $3 ELSE last_fired_at END\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Float8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8ad612cd1d254134c6113c23775f6ea9b4c0632f03109ece1b2fc0eb552d26e4"
+}

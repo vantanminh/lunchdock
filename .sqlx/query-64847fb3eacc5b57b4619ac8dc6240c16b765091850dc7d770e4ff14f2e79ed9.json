@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id FROM servers\n        WHERE kind = 'remote' AND join_token_hash = $1 AND join_token_expires_at > now()\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "64847fb3eacc5b57b4619ac8dc6240c16b765091850dc7d770e4ff14f2e79ed9"
+}

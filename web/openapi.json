@@ -1,0 +1,7661 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Rudder API",
+    "description": "Control-plane API for the Rudder deployment panel.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "operationId": "get_health",
+        "responses": {
+          "200": {
+            "description": "Health",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/enroll": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Exchange a join token and a CSR for an agent client certificate",
+        "operationId": "post_v1_agent_enroll",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Exchange a join token and a CSR for an agent client certificate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alert-kinds": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Supported alert kinds",
+        "operationId": "get_v1_alert-kinds",
+        "responses": {
+          "200": {
+            "description": "Supported alert kinds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertKindView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "List alert rules",
+        "operationId": "get_v1_alerts",
+        "responses": {
+          "200": {
+            "description": "List alert rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Create an alert rule",
+        "operationId": "post_v1_alerts",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAlert"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an alert rule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{id}": {
+      "put": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Update an alert rule",
+        "operationId": "put_v1_alerts__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAlert"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update an alert rule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Delete an alert rule",
+        "operationId": "delete_v1_alerts__id_",
+        "responses": {
+          "204": {
+            "description": "Delete an alert rule"
+          }
+        }
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Recent audit events",
+        "operationId": "get_v1_audit",
+        "responses": {
+          "200": {
+            "description": "Recent audit events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-jobs": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "List backup jobs",
+        "operationId": "get_v1_backup-jobs",
+        "responses": {
+          "200": {
+            "description": "List backup jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BackupJobView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Create a backup job",
+        "operationId": "post_v1_backup-jobs",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveBackupJob"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a backup job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupJobView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-jobs/{id}": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Get a backup job",
+        "operationId": "get_v1_backup-jobs__id_",
+        "responses": {
+          "200": {
+            "description": "Get a backup job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupJobView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Delete a backup job",
+        "operationId": "delete_v1_backup-jobs__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a backup job"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Update a backup job",
+        "operationId": "patch_v1_backup-jobs__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveBackupJob"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a backup job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupJobView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-jobs/{id}/run": {
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Back up now",
+        "operationId": "post_v1_backup-jobs__id__run",
+        "responses": {
+          "202": {
+            "description": "Back up now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-jobs/{id}/runs": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Backup and restore history",
+        "operationId": "get_v1_backup-jobs__id__runs",
+        "responses": {
+          "200": {
+            "description": "Backup and restore history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BackupRunView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-presets": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Schedule presets",
+        "operationId": "get_v1_backup-presets",
+        "responses": {
+          "200": {
+            "description": "Schedule presets"
+          }
+        }
+      }
+    },
+    "/api/v1/backup-runs/{id}": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Get a run with logs",
+        "operationId": "get_v1_backup-runs__id_",
+        "responses": {
+          "200": {
+            "description": "Get a run with logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupRunView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-runs/{id}/download": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Download the stored backup object (admin)",
+        "operationId": "get_v1_backup-runs__id__download",
+        "responses": {
+          "200": {
+            "description": "Download the stored backup object (admin)"
+          }
+        }
+      }
+    },
+    "/api/v1/backup-runs/{id}/restore": {
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Restore a backup",
+        "operationId": "post_v1_backup-runs__id__restore",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Restore a backup",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/build-queue/{id}/cancel": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Cancel a queued or running build",
+        "operationId": "post_v1_build-queue__id__cancel",
+        "responses": {
+          "204": {
+            "description": "Cancel a queued or running build"
+          }
+        }
+      }
+    },
+    "/api/v1/cache-policies": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "List cache policies with their rules",
+        "operationId": "get_v1_cache-policies",
+        "responses": {
+          "200": {
+            "description": "List cache policies with their rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CachePolicyView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Create a cache policy, optionally from a preset",
+        "operationId": "post_v1_cache-policies",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCachePolicy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a cache policy, optionally from a preset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePolicyView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cache-policies/{id}": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "One cache policy",
+        "operationId": "get_v1_cache-policies__id_",
+        "responses": {
+          "200": {
+            "description": "One cache policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePolicyView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Replace a cache policy and republish the servers using it",
+        "operationId": "put_v1_cache-policies__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCachePolicy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replace a cache policy and republish the servers using it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePolicyView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Delete a cache policy; domains fall back to the default policy",
+        "operationId": "delete_v1_cache-policies__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a cache policy; domains fall back to the default policy"
+          }
+        }
+      }
+    },
+    "/api/v1/cache-presets": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Built-in policy presets",
+        "operationId": "get_v1_cache-presets",
+        "responses": {
+          "200": {
+            "description": "Built-in policy presets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CachePresetView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificates": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "List certificates without private keys",
+        "operationId": "get_v1_certificates",
+        "responses": {
+          "200": {
+            "description": "List certificates without private keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CertificateView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Upload a certificate",
+        "operationId": "post_v1_certificates",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadCertificate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Upload a certificate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificates/match": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Find the certificate that matches a host",
+        "operationId": "get_v1_certificates_match",
+        "responses": {
+          "200": {
+            "description": "Find the certificate that matches a host",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificates/{id}": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Get a certificate",
+        "operationId": "get_v1_certificates__id_",
+        "responses": {
+          "200": {
+            "description": "Get a certificate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Replace an uploaded certificate",
+        "operationId": "put_v1_certificates__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadCertificate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replace an uploaded certificate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Delete a certificate",
+        "operationId": "delete_v1_certificates__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a certificate"
+          }
+        }
+      }
+    },
+    "/api/v1/database-engines": {
+      "get": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "List database engines and versions",
+        "operationId": "get_v1_database-engines",
+        "responses": {
+          "200": {
+            "description": "List database engines and versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DatabaseEngineView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/domains/{id}": {
+      "delete": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Delete a domain",
+        "operationId": "delete_v1_domains__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a domain"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Update a domain",
+        "operationId": "patch_v1_domains__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDomain"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/domains/{id}/cache": {
+      "put": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Turn caching on or off for a domain and choose its policy",
+        "operationId": "put_v1_domains__id__cache",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDomainCache"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Turn caching on or off for a domain and choose its policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainCacheView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/environments/{id}": {
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete an environment",
+        "operationId": "delete_v1_environments__id_",
+        "responses": {
+          "204": {
+            "description": "Delete an environment"
+          }
+        }
+      }
+    },
+    "/api/v1/environments/{id}/databases": {
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Create a database",
+        "operationId": "post_v1_environments__id__databases",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDatabase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a database",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/environments/{id}/services": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List an environment's services",
+        "operationId": "get_v1_environments__id__services",
+        "responses": {
+          "200": {
+            "description": "List an environment's services",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Create a service",
+        "operationId": "post_v1_environments__id__services",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateService"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/environments/{id}/stacks": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Create a compose stack from YAML or Git",
+        "operationId": "post_v1_environments__id__stacks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStack"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a compose stack from YAML or Git",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/environments/{id}/templates/{slug}/deploy": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Deploy a template as a stack",
+        "operationId": "post_v1_environments__id__templates__slug__deploy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeployTemplate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Deploy a template as a stack",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDeployed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Recent system events",
+        "operationId": "get_v1_events",
+        "responses": {
+          "200": {
+            "description": "Recent system events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/git-providers": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "List Git providers without secrets",
+        "operationId": "get_v1_git-providers",
+        "responses": {
+          "200": {
+            "description": "List Git providers without secrets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GitProviderView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Save a git provider",
+        "operationId": "post_v1_git-providers",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGitProvider"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Save a git provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitProviderView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/git-providers/{id}": {
+      "delete": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Delete a Git provider",
+        "operationId": "delete_v1_git-providers__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a Git provider"
+          }
+        }
+      }
+    },
+    "/api/v1/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign in",
+        "operationId": "post_v1_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sign in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign out",
+        "operationId": "post_v1_logout",
+        "responses": {
+          "204": {
+            "description": "Sign out"
+          }
+        }
+      }
+    },
+    "/api/v1/logs": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Search logs. Query: source, service_id, server_id, project_id, level (comma list), q, status (2xx..5xx), since, until, before_time, before_id, limit (max 1000)",
+        "operationId": "get_v1_logs",
+        "responses": {
+          "200": {
+            "description": "Search logs. Query: source, service_id, server_id, project_id, level (comma list), q, status (2xx..5xx), since, until, before_time, before_id, limit (max 1000)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/logs/export": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Export matching logs as NDJSON or CSV (format=ndjson|csv, at most 100000 lines); same filters as search",
+        "operationId": "get_v1_logs_export",
+        "responses": {
+          "200": {
+            "description": "Export matching logs as NDJSON or CSV (format=ndjson|csv, at most 100000 lines); same filters as search"
+          }
+        }
+      }
+    },
+    "/api/v1/logs/ingest": {
+      "post": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Ingest up to 1000 log lines (write scope)",
+        "operationId": "post_v1_logs_ingest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ingest up to 1000 log lines (write scope)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/logs/tail": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Live tail over WebSocket; same filters as search. Messages: {type:entry,entry} or {type:lagged,skipped}",
+        "operationId": "get_v1_logs_tail",
+        "responses": {
+          "101": {
+            "description": "Live tail over WebSocket; same filters as search. Messages: {type:entry,entry} or {type:lagged,skipped}"
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Current session",
+        "operationId": "get_v1_me",
+        "responses": {
+          "200": {
+            "description": "Current session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change password",
+        "operationId": "post_v1_me_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Change password"
+          }
+        }
+      }
+    },
+    "/api/v1/me/totp/disable": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Disable authenticator",
+        "operationId": "post_v1_me_totp_disable",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpDisable"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Disable authenticator"
+          }
+        }
+      }
+    },
+    "/api/v1/me/totp/enable": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Enable authenticator",
+        "operationId": "post_v1_me_totp_enable",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpEnable"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Enable authenticator"
+          }
+        }
+      }
+    },
+    "/api/v1/me/totp/setup": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Start authenticator setup",
+        "operationId": "post_v1_me_totp_setup",
+        "responses": {
+          "200": {
+            "description": "Start authenticator setup",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSetupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/metrics": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Metric series for one server or service. Query: server_id or service_id, metrics (comma list), range (15m, 1h, 6h, 24h, 7d, 30d)",
+        "operationId": "get_v1_metrics",
+        "responses": {
+          "200": {
+            "description": "Metric series for one server or service. Query: server_id or service_id, metrics (comma list), range (15m, 1h, 6h, 24h, 7d, 30d)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/metrics/overview": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Latest usage of every server and the busiest services",
+        "operationId": "get_v1_metrics_overview",
+        "responses": {
+          "200": {
+            "description": "Latest usage of every server and the busiest services",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notification-channels": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "List notification channels without secrets (admin)",
+        "operationId": "get_v1_notification-channels",
+        "responses": {
+          "200": {
+            "description": "List notification channels without secrets (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChannelView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Create a notification channel (admin)",
+        "operationId": "post_v1_notification-channels",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveChannel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a notification channel (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notification-channels/{id}": {
+      "put": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Update a notification channel; empty secrets keep the stored value (admin)",
+        "operationId": "put_v1_notification-channels__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveChannel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a notification channel; empty secrets keep the stored value (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Delete a notification channel (admin)",
+        "operationId": "delete_v1_notification-channels__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a notification channel (admin)"
+          }
+        }
+      }
+    },
+    "/api/v1/notification-channels/{id}/test": {
+      "post": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Send a test notification (admin)",
+        "operationId": "post_v1_notification-channels__id__test",
+        "responses": {
+          "200": {
+            "description": "Send a test notification (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/panel": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Panel domain and TLS settings",
+        "operationId": "get_v1_panel",
+        "responses": {
+          "200": {
+            "description": "Panel domain and TLS settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Set the panel domain",
+        "operationId": "patch_v1_panel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePanel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set the panel domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List projects",
+        "operationId": "get_v1_projects",
+        "responses": {
+          "200": {
+            "description": "List projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Create a project",
+        "operationId": "post_v1_projects",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Get a project",
+        "operationId": "get_v1_projects__id_",
+        "responses": {
+          "200": {
+            "description": "Get a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete a project and its environments",
+        "operationId": "delete_v1_projects__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a project and its environments"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Rename or describe a project",
+        "operationId": "patch_v1_projects__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rename or describe a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/environments": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List a project's environments",
+        "operationId": "get_v1_projects__id__environments",
+        "responses": {
+          "200": {
+            "description": "List a project's environments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnvironmentView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Create an environment",
+        "operationId": "post_v1_projects__id__environments",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEnvironment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an environment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/registries": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "List registries without credentials",
+        "operationId": "get_v1_registries",
+        "responses": {
+          "200": {
+            "description": "List registries without credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RegistryView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Save registry credentials",
+        "operationId": "post_v1_registries",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRegistry"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Save registry credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/registries/{id}": {
+      "delete": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Delete a registry",
+        "operationId": "delete_v1_registries__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a registry"
+          }
+        }
+      }
+    },
+    "/api/v1/s3-destinations": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "List S3 destinations",
+        "operationId": "get_v1_s3-destinations",
+        "responses": {
+          "200": {
+            "description": "List S3 destinations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DestinationView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Create an S3 destination",
+        "operationId": "post_v1_s3-destinations",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDestination"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an S3 destination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DestinationView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/s3-destinations/{id}": {
+      "put": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Update an S3 destination",
+        "operationId": "put_v1_s3-destinations__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDestination"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update an S3 destination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DestinationView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Delete an unused S3 destination",
+        "operationId": "delete_v1_s3-destinations__id_",
+        "responses": {
+          "204": {
+            "description": "Delete an unused S3 destination"
+          }
+        }
+      }
+    },
+    "/api/v1/s3-destinations/{id}/test": {
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Test an S3 destination",
+        "operationId": "post_v1_s3-destinations__id__test",
+        "responses": {
+          "200": {
+            "description": "Test an S3 destination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List servers",
+        "operationId": "get_v1_servers",
+        "responses": {
+          "200": {
+            "description": "List servers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServerView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Add a server; remote servers get a one-time join command",
+        "operationId": "post_v1_servers",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Add a server; remote servers get a one-time join command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedServer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers/{id}": {
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete a server and revoke its agent certificate",
+        "operationId": "delete_v1_servers__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a server and revoke its agent certificate"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Update a server's name, description, IP, or auto-prune",
+        "operationId": "patch_v1_servers__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a server's name, description, IP, or auto-prune",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers/{id}/cache/stats": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Counters and usage from a server's cache",
+        "operationId": "get_v1_servers__id__cache_stats",
+        "responses": {
+          "200": {
+            "description": "Counters and usage from a server's cache",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers/{id}/join-token": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Issue a new join token for a remote server (valid for one hour)",
+        "operationId": "post_v1_servers__id__join-token",
+        "responses": {
+          "200": {
+            "description": "Issue a new join token for a remote server (valid for one hour)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinToken"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers/{id}/probe": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Refresh Docker and OS facts for a server",
+        "operationId": "post_v1_servers__id__probe",
+        "responses": {
+          "200": {
+            "description": "Refresh Docker and OS facts for a server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers/{id}/prune": {
+      "post": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Remove dangling images and build cache now",
+        "operationId": "post_v1_servers__id__prune",
+        "responses": {
+          "200": {
+            "description": "Remove dangling images and build cache now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PruneResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "All services with their project and environment",
+        "operationId": "get_v1_services",
+        "responses": {
+          "200": {
+            "description": "All services with their project and environment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Get a service",
+        "operationId": "get_v1_services__id_",
+        "responses": {
+          "200": {
+            "description": "Get a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete a service and its containers",
+        "operationId": "delete_v1_services__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a service and its containers"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Update a service",
+        "operationId": "patch_v1_services__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateService"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/build": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Queue a git build",
+        "operationId": "post_v1_services__id__build",
+        "responses": {
+          "202": {
+            "description": "Queue a git build",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/builds": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "List a service's builds",
+        "operationId": "get_v1_services__id__builds",
+        "responses": {
+          "200": {
+            "description": "List a service's builds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BuildQueueView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/cache": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Cache settings and counters for a service's domains",
+        "operationId": "get_v1_services__id__cache",
+        "responses": {
+          "200": {
+            "description": "Cache settings and counters for a service's domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCacheView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/cache/purge": {
+      "post": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Purge cached objects for a service's domains",
+        "operationId": "post_v1_services__id__cache_purge",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceCachePurge"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Purge cached objects for a service's domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePurgeResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/connection": {
+      "get": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Reveal the connection string (admin)",
+        "operationId": "get_v1_services__id__connection",
+        "responses": {
+          "200": {
+            "description": "Reveal the connection string (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/database": {
+      "delete": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Delete a database (optionally its volume)",
+        "operationId": "delete_v1_services__id__database",
+        "responses": {
+          "204": {
+            "description": "Delete a database (optionally its volume)"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Update database ports and limits",
+        "operationId": "patch_v1_services__id__database",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDatabase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update database ports and limits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/deploy": {
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Deploy a container image",
+        "operationId": "post_v1_services__id__deploy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeployBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deploy a container image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/deployments": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "List a service's deployments, newest first",
+        "operationId": "get_v1_services__id__deployments",
+        "responses": {
+          "200": {
+            "description": "List a service's deployments, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeploymentView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/domains": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "List a service's domains",
+        "operationId": "get_v1_services__id__domains",
+        "responses": {
+          "200": {
+            "description": "List a service's domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DomainView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Attach a domain",
+        "operationId": "post_v1_services__id__domains",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDomain"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attach a domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/env": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List environment variables; secret values are masked",
+        "operationId": "get_v1_services__id__env",
+        "responses": {
+          "200": {
+            "description": "List environment variables; secret values are masked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnvVarView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Set an environment variable",
+        "operationId": "put_v1_services__id__env",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutEnvVar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Set an environment variable"
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/env/{key}": {
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete an environment variable",
+        "operationId": "delete_v1_services__id__env__key_",
+        "responses": {
+          "204": {
+            "description": "Delete an environment variable"
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/logs": {
+      "get": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Recent container logs",
+        "operationId": "get_v1_services__id__logs",
+        "responses": {
+          "200": {
+            "description": "Recent container logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/preview-domain": {
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Create a generated preview domain",
+        "operationId": "post_v1_services__id__preview-domain",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewDomain"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a generated preview domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/restart": {
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Restart a service",
+        "operationId": "post_v1_services__id__restart",
+        "responses": {
+          "200": {
+            "description": "Restart a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/rollback": {
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Roll back to a successful deployment",
+        "operationId": "post_v1_services__id__rollback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Roll back to a successful deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/source": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Get a service's Git source",
+        "operationId": "get_v1_services__id__source",
+        "responses": {
+          "200": {
+            "description": "Get a service's Git source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Set the git source",
+        "operationId": "put_v1_services__id__source",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set the git source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/stack": {
+      "get": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Stack source, generated compose file, and service states",
+        "operationId": "get_v1_services__id__stack",
+        "responses": {
+          "200": {
+            "description": "Stack source, generated compose file, and service states",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Replace the stack source",
+        "operationId": "put_v1_services__id__stack",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStack"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replace the stack source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Stop and delete a stack; ?volumes=true also removes named volumes",
+        "operationId": "delete_v1_services__id__stack",
+        "responses": {
+          "204": {
+            "description": "Stop and delete a stack; ?volumes=true also removes named volumes"
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/stack/logs": {
+      "get": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Logs of one compose service (?service=&tail=)",
+        "operationId": "get_v1_services__id__stack_logs",
+        "responses": {
+          "200": {
+            "description": "Logs of one compose service (?service=&tail=)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackLogsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/stack/{action}": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Run up, down, restart, or pull in the background",
+        "operationId": "post_v1_services__id__stack__action_",
+        "responses": {
+          "202": {
+            "description": "Run up, down, restart, or pull in the background",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/start": {
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Start a service",
+        "operationId": "post_v1_services__id__start",
+        "responses": {
+          "200": {
+            "description": "Start a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/stop": {
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Stop a service",
+        "operationId": "post_v1_services__id__stop",
+        "responses": {
+          "200": {
+            "description": "Stop a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/terminal": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Interactive shell over WebSocket (write scope). Query: cols, rows, container (compose service). Send {type:input,data} or {type:resize,cols,rows}; output is binary",
+        "operationId": "get_v1_services__id__terminal",
+        "responses": {
+          "101": {
+            "description": "Interactive shell over WebSocket (write scope). Query: cols, rows, container (compose service). Send {type:input,data} or {type:resize,cols,rows}; output is binary"
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/webhook": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Accept a git push webhook",
+        "operationId": "post_v1_services__id__webhook",
+        "responses": {
+          "202": {
+            "description": "Accept a git push webhook"
+          }
+        }
+      }
+    },
+    "/api/v1/settings/retention": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Log and metrics retention (admin)",
+        "operationId": "get_v1_settings_retention",
+        "responses": {
+          "200": {
+            "description": "Log and metrics retention (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionSettings"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Update per-source log retention in days (admin)",
+        "operationId": "put_v1_settings_retention",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRetention"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update per-source log retention in days (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/setup": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create the owner",
+        "operationId": "post_v1_setup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Create the owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/setup/status": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Setup status",
+        "operationId": "get_v1_setup_status",
+        "responses": {
+          "200": {
+            "description": "Setup status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Panel version, schema version, and pg_dump availability (admin)",
+        "operationId": "get_v1_system",
+        "responses": {
+          "200": {
+            "description": "Panel version, schema version, and pg_dump availability (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/backup": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Download an encrypted panel backup: database dump and master key (admin, write)",
+        "operationId": "post_v1_system_backup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PanelBackupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Download an encrypted panel backup: database dump and master key (admin, write)"
+          }
+        }
+      }
+    },
+    "/api/v1/system/settings-export": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Download the panel configuration as JSON, without secrets (admin)",
+        "operationId": "get_v1_system_settings-export",
+        "responses": {
+          "200": {
+            "description": "Download the panel configuration as JSON, without secrets (admin)"
+          }
+        }
+      }
+    },
+    "/api/v1/system/updates": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Update status: versions, last release check, components, and history (admin)",
+        "operationId": "get_v1_system_updates",
+        "responses": {
+          "200": {
+            "description": "Update status: versions, last release check, components, and history (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/updates/apply": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Back up, then update the panel to the latest verified release with rollback (admin, write)",
+        "operationId": "post_v1_system_updates_apply",
+        "responses": {
+          "202": {
+            "description": "Back up, then update the panel to the latest verified release with rollback (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStarted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/updates/check": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Check GitHub for a newer signed release now (admin, write)",
+        "operationId": "post_v1_system_updates_check",
+        "responses": {
+          "200": {
+            "description": "Check GitHub for a newer signed release now (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCheck"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/updates/components": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Update outdated agents and caches to this panel's version (admin, write)",
+        "operationId": "post_v1_system_updates_components",
+        "responses": {
+          "202": {
+            "description": "Update outdated agents and caches to this panel's version (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentsStarted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/updates/settings": {
+      "put": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Set the update channel, auto-update, and maintenance window (admin, write)",
+        "operationId": "put_v1_system_updates_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set the update channel, auto-update, and maintenance window (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/templates": {
+      "get": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "App template gallery",
+        "operationId": "get_v1_templates",
+        "responses": {
+          "200": {
+            "description": "App template gallery",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/templates/{slug}": {
+      "get": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "One template with its compose file",
+        "operationId": "get_v1_templates__slug_",
+        "responses": {
+          "200": {
+            "description": "One template with its compose file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tokens": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List API tokens",
+        "operationId": "get_v1_tokens",
+        "responses": {
+          "200": {
+            "description": "List API tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TokenView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create an API token",
+        "operationId": "post_v1_tokens",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateToken"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an API token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedToken"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tokens/{id}": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Revoke an API token",
+        "operationId": "delete_v1_tokens__id_",
+        "responses": {
+          "204": {
+            "description": "Revoke an API token"
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List users",
+        "operationId": "get_v1_users",
+        "responses": {
+          "200": {
+            "description": "List users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create user",
+        "operationId": "post_v1_users",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUser"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{id}": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Delete a user",
+        "operationId": "delete_v1_users__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a user"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change a user's role",
+        "operationId": "patch_v1_users__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUser"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Change a user's role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/downloads/{file}": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Agent binaries and checksums",
+        "operationId": "get__downloads__file_",
+        "responses": {
+          "200": {
+            "description": "Agent binaries and checksums"
+          }
+        }
+      }
+    },
+    "/install-agent.sh": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Agent install script (text/x-shellscript)",
+        "operationId": "get__install-agent.sh",
+        "responses": {
+          "200": {
+            "description": "Agent install script (text/x-shellscript)"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlertKindView": {
+        "type": "object",
+        "required": [
+          "kind",
+          "description",
+          "needs_threshold",
+          "target"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "needs_threshold": {
+            "type": "boolean"
+          },
+          "target": {
+            "type": "string",
+            "description": "`server`, `service`, or `events`."
+          }
+        }
+      },
+      "AlertView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "target_spec",
+          "duration_secs",
+          "channel_ids",
+          "enabled",
+          "state",
+          "state_since",
+          "created_at"
+        ],
+        "properties": {
+          "channel_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "duration_secs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "last_fired_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_value": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "description": "`ok`, `pending`, or `firing`."
+          },
+          "state_since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "target_spec": {
+            "type": "object",
+            "description": "`server_id`, `service_id`, or `events` (patterns) and `min_severity`."
+          },
+          "threshold": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "AuditView": {
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "resource_type",
+          "metadata",
+          "created_at"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor_user_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "resource_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resource_type": {
+            "type": "string"
+          }
+        }
+      },
+      "BackupJobView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "target_kind",
+          "target_spec",
+          "timezone",
+          "destination_ids",
+          "path_prefix",
+          "filename_template",
+          "retention",
+          "compression",
+          "compression_level",
+          "encrypted",
+          "tool_options",
+          "consistency",
+          "timeout_secs",
+          "retries",
+          "verify_after_upload",
+          "notify_on_success",
+          "enabled",
+          "created_at"
+        ],
+        "properties": {
+          "bandwidth_limit_bps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "compression": {
+            "type": "string"
+          },
+          "compression_level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "consistency": {},
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "destination_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "encrypted": {
+            "type": "boolean"
+          },
+          "filename_template": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_run_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "next_run_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "notify_on_success": {
+            "type": "boolean"
+          },
+          "path_prefix": {
+            "type": "string"
+          },
+          "retention": {},
+          "retries": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "schedule_cron": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "target_kind": {
+            "type": "string"
+          },
+          "target_spec": {},
+          "timeout_secs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "tool_options": {},
+          "verify_after_upload": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BackupRunView": {
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "kind",
+          "trigger",
+          "status",
+          "started_at",
+          "object_keys",
+          "destination_ids",
+          "meta",
+          "logs"
+        ],
+        "properties": {
+          "checksum": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "destination_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "duration_ms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "logs": {
+            "type": "string"
+          },
+          "meta": {},
+          "object_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "size_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string"
+          }
+        }
+      },
+      "BuildAccepted": {
+        "type": "object",
+        "required": [
+          "deployment_id",
+          "queue_id"
+        ],
+        "properties": {
+          "deployment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "queue_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "BuildQueueView": {
+        "type": "object",
+        "required": [
+          "id",
+          "deployment_id",
+          "status",
+          "cancel_requested",
+          "created_at"
+        ],
+        "properties": {
+          "cancel_requested": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deployment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "CacheHostStats": {
+        "type": "object",
+        "required": [
+          "host",
+          "hits",
+          "misses",
+          "stale",
+          "bypass",
+          "bytes_served",
+          "objects",
+          "stored_bytes"
+        ],
+        "properties": {
+          "bypass": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "bytes_served": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "hits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "host": {
+            "type": "string"
+          },
+          "misses": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "objects": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "stale": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "stored_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "CachePolicyView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "rules",
+          "domains",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "domains": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Domains that use this policy."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "max_object_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Largest response body stored. Null means 16 MiB."
+          },
+          "memory_max_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Share of the server's memory store. Null uses the default (256 MiB in total)."
+          },
+          "name": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheRule"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CachePresetView": {
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "description",
+          "rules"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheRule"
+            }
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "CachePurgeResult": {
+        "type": "object",
+        "required": [
+          "removed"
+        ],
+        "properties": {
+          "removed": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "CacheRule": {
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/RuleAction"
+          },
+          "match": {
+            "$ref": "#/components/schemas/RuleMatch"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CacheStats": {
+        "type": "object",
+        "required": [
+          "version",
+          "rules_version",
+          "objects",
+          "stored_bytes",
+          "memory_max_bytes",
+          "evictions",
+          "reloads",
+          "hosts"
+        ],
+        "properties": {
+          "evictions": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "hosts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheHostStats"
+            }
+          },
+          "memory_max_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "objects": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "reloads": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "rules_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "stored_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "CertificateView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "sans",
+          "created_at"
+        ],
+        "properties": {
+          "common_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issuer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "not_after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "not_before": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "sans": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ChannelView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "summary",
+          "enabled",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Non-secret description such as the chat id or webhook host."
+          }
+        }
+      },
+      "ComponentStatus": {
+        "type": "object",
+        "description": "Agent and cache versions per server.",
+        "required": [
+          "server_id",
+          "server_name",
+          "kind",
+          "online",
+          "agent_outdated",
+          "cache_outdated"
+        ],
+        "properties": {
+          "agent_outdated": {
+            "type": "boolean"
+          },
+          "agent_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cache_image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cache_outdated": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "server_name": {
+            "type": "string"
+          }
+        }
+      },
+      "ComponentsStarted": {
+        "type": "object",
+        "required": [
+          "queued"
+        ],
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "description": "Agents and caches queued for an update.",
+            "minimum": 0
+          }
+        }
+      },
+      "ConnectionView": {
+        "type": "object",
+        "required": [
+          "engine",
+          "host",
+          "port",
+          "database",
+          "username",
+          "password",
+          "internal_url"
+        ],
+        "properties": {
+          "database": {
+            "type": "string"
+          },
+          "engine": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "internal_url": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "public_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateDatabase": {
+        "type": "object",
+        "required": [
+          "name",
+          "engine",
+          "version",
+          "server_id"
+        ],
+        "properties": {
+          "database": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "engine": {
+            "type": "string",
+            "description": "postgres, mysql, mariadb, mongo, or redis."
+          },
+          "memory_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nano_cpus": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "public_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Publish the database port on the host. Omit to keep it internal.",
+            "minimum": 0
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Start the container right away. Defaults to true."
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateDomain": {
+        "type": "object",
+        "required": [
+          "host",
+          "target_port",
+          "ssl_mode"
+        ],
+        "properties": {
+          "basic_auth_password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "basic_auth_user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "compose_service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Required for compose stacks unless the stack has a main service."
+          },
+          "host": {
+            "type": "string"
+          },
+          "https_redirect": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "path_prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ssl_mode": {
+            "type": "string"
+          },
+          "target_port": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CreateEnvironment": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateGitProvider": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind"
+        ],
+        "properties": {
+          "app_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "installation_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "private_key_pem": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateProject": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateRegistry": {
+        "type": "object",
+        "required": [
+          "name",
+          "url"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateServer": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "public_ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateService": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "server_id"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spec": {}
+        }
+      },
+      "CreateStack": {
+        "type": "object",
+        "required": [
+          "name",
+          "server_id",
+          "source"
+        ],
+        "properties": {
+          "compose_yaml": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "git": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StackGit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "main_service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Compose service new domains point at by default."
+          },
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string",
+            "description": "`inline` (paste YAML) or `git`."
+          },
+          "start": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Run `docker compose up` right away. Defaults to false."
+          }
+        }
+      },
+      "CreateToken": {
+        "type": "object",
+        "required": [
+          "name",
+          "scopes"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CreateUser": {
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "role"
+        ],
+        "properties": {
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "CreatedServer": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ServerView"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "join_command": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "join_token": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "CreatedToken": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "token"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "DatabaseEngineView": {
+        "type": "object",
+        "required": [
+          "engine",
+          "versions",
+          "default_port"
+        ],
+        "properties": {
+          "default_port": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "engine": {
+            "type": "string"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DeployBody": {
+        "type": "object",
+        "properties": {
+          "health_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "health_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "health_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "health_timeout_secs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registry_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "watch_tag": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "DeployTemplate": {
+        "type": "object",
+        "required": [
+          "name",
+          "server_id"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Run `docker compose up` right away. Defaults to true."
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DeploymentView": {
+        "type": "object",
+        "required": [
+          "id",
+          "service_id",
+          "status",
+          "trigger",
+          "logs",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "image_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logs": {
+            "type": "string"
+          },
+          "service_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string"
+          }
+        }
+      },
+      "DestinationView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "region",
+          "bucket",
+          "path_style",
+          "access_key_hint",
+          "created_at"
+        ],
+        "properties": {
+          "access_key_hint": {
+            "type": "string",
+            "description": "Last four characters of the access key id."
+          },
+          "bucket": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endpoint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path_style": {
+            "type": "boolean"
+          },
+          "region": {
+            "type": "string"
+          }
+        }
+      },
+      "DomainCacheView": {
+        "type": "object",
+        "required": [
+          "domain_id",
+          "host",
+          "path_prefix",
+          "enabled"
+        ],
+        "properties": {
+          "domain_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "host": {
+            "type": "string"
+          },
+          "path_prefix": {
+            "type": "string"
+          },
+          "policy_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "policy_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "DomainView": {
+        "type": "object",
+        "required": [
+          "id",
+          "service_id",
+          "host",
+          "path_prefix",
+          "target_port",
+          "https_redirect",
+          "ssl_mode",
+          "cache_enabled",
+          "is_preview",
+          "published"
+        ],
+        "properties": {
+          "basic_auth_user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cache_enabled": {
+            "type": "boolean"
+          },
+          "certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "compose_service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Compose service inside a stack that receives the traffic."
+          },
+          "host": {
+            "type": "string"
+          },
+          "https_redirect": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_preview": {
+            "type": "boolean"
+          },
+          "matched_certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "matched_certificate_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path_prefix": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "service_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ssl_mode": {
+            "type": "string"
+          },
+          "target_port": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "EnrollRequest": {
+        "type": "object",
+        "required": [
+          "join_token",
+          "csr_pem"
+        ],
+        "properties": {
+          "csr_pem": {
+            "type": "string",
+            "description": "PKCS#10 request for the agent's own key, PEM."
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "join_token": {
+            "type": "string"
+          }
+        }
+      },
+      "EnrollResponse": {
+        "type": "object",
+        "required": [
+          "server_id",
+          "client_cert_pem",
+          "ca_pem",
+          "grpc_url",
+          "tls_name"
+        ],
+        "properties": {
+          "ca_pem": {
+            "type": "string"
+          },
+          "client_cert_pem": {
+            "type": "string"
+          },
+          "grpc_url": {
+            "type": "string",
+            "description": "Where the agent dials its gRPC session."
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tls_name": {
+            "type": "string",
+            "description": "TLS server name to verify on that connection."
+          }
+        }
+      },
+      "EnvVarView": {
+        "type": "object",
+        "required": [
+          "key",
+          "is_build_secret"
+        ],
+        "properties": {
+          "is_build_secret": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          }
+        }
+      },
+      "EnvironmentView": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "EventView": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "severity",
+          "title",
+          "message",
+          "payload",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delivered_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "payload": {},
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "GeneratedValue": {
+        "type": "object",
+        "required": [
+          "key",
+          "value"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "GitProviderView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "product"
+        ],
+        "properties": {
+          "product": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "IngestEntry": {
+        "type": "object",
+        "required": [
+          "source",
+          "message"
+        ],
+        "properties": {
+          "fields": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "http_status": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "level": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Detected from the message when omitted."
+          },
+          "message": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The project is filled in from the service."
+          },
+          "source": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Defaults to now. Must be within the last 30 days."
+          }
+        }
+      },
+      "IngestRequest": {
+        "type": "object",
+        "required": [
+          "entries"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IngestEntry"
+            }
+          }
+        }
+      },
+      "IngestResult": {
+        "type": "object",
+        "required": [
+          "accepted"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "JoinToken": {
+        "type": "object",
+        "required": [
+          "join_token",
+          "join_command",
+          "expires_at"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "join_command": {
+            "type": "string"
+          },
+          "join_token": {
+            "type": "string"
+          }
+        }
+      },
+      "LifecycleView": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "container_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "LogPage": {
+        "type": "object",
+        "required": [
+          "entries"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LogView"
+            },
+            "description": "Newest first."
+          },
+          "next_before_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "next_before_time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Pass as `before_time` and `before_id` to fetch older lines."
+          }
+        }
+      },
+      "LogView": {
+        "type": "object",
+        "required": [
+          "id",
+          "logged_at",
+          "source",
+          "level",
+          "message",
+          "fields"
+        ],
+        "properties": {
+          "fields": {
+            "type": "object"
+          },
+          "http_status": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "level": {
+            "type": "string"
+          },
+          "logged_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "totp_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LogsView": {
+        "type": "object",
+        "required": [
+          "logs"
+        ],
+        "properties": {
+          "logs": {
+            "type": "string"
+          }
+        }
+      },
+      "MetricPoint": {
+        "type": "object",
+        "required": [
+          "t",
+          "avg",
+          "min",
+          "max"
+        ],
+        "properties": {
+          "avg": {
+            "type": "number",
+            "format": "double"
+          },
+          "max": {
+            "type": "number",
+            "format": "double"
+          },
+          "min": {
+            "type": "number",
+            "format": "double"
+          },
+          "t": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MetricSeries": {
+        "type": "object",
+        "required": [
+          "metric",
+          "points"
+        ],
+        "properties": {
+          "metric": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricPoint"
+            }
+          }
+        }
+      },
+      "MetricsOverview": {
+        "type": "object",
+        "required": [
+          "servers",
+          "services"
+        ],
+        "properties": {
+          "servers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerUsage"
+            }
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceUsage"
+            }
+          }
+        }
+      },
+      "MetricsRetention": {
+        "type": "object",
+        "required": [
+          "raw_hours",
+          "m1_days",
+          "m5_days",
+          "h1_days"
+        ],
+        "properties": {
+          "h1_days": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "m1_days": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Days to keep each rollup resolution, 1 to 365.",
+            "minimum": 0
+          },
+          "m5_days": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "raw_hours": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Hours to keep 10-second samples, 1 to 168.",
+            "minimum": 0
+          }
+        }
+      },
+      "MetricsView": {
+        "type": "object",
+        "required": [
+          "resolution",
+          "since",
+          "series"
+        ],
+        "properties": {
+          "resolution": {
+            "type": "string",
+            "description": "`raw`, `1m`, `5m`, or `1h`."
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricSeries"
+            }
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PanelBackupRequest": {
+        "type": "object",
+        "required": [
+          "passphrase"
+        ],
+        "properties": {
+          "include_history": {
+            "type": "boolean",
+            "description": "Also include log lines, metric samples, and sessions."
+          },
+          "passphrase": {
+            "type": "string",
+            "description": "At least 12 characters. Needed to restore; it is not stored."
+          }
+        }
+      },
+      "PanelView": {
+        "type": "object",
+        "required": [
+          "panel_ssl_mode"
+        ],
+        "properties": {
+          "acme_email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "matched_certificate_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "panel_certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "panel_domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "panel_ssl_mode": {
+            "type": "string"
+          }
+        }
+      },
+      "PasswordChange": {
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "properties": {
+          "current_password": {
+            "type": "string"
+          },
+          "new_password": {
+            "type": "string"
+          }
+        }
+      },
+      "PreviewDomain": {
+        "type": "object",
+        "properties": {
+          "target_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ProjectView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "PruneResult": {
+        "type": "object",
+        "required": [
+          "reclaimed_bytes"
+        ],
+        "properties": {
+          "reclaimed_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "PutEnvVar": {
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "is_build_secret"
+        ],
+        "properties": {
+          "is_build_secret": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "RegistryView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "url",
+          "has_password"
+        ],
+        "properties": {
+          "has_password": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ReleaseInfo": {
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "html_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "RestoreRequest": {
+        "type": "object",
+        "description": "Where a restore writes.",
+        "properties": {
+          "target_path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Host path for bind and path backups. Defaults to the original path."
+          },
+          "target_service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Database or service to restore into. Defaults to the job's service."
+          },
+          "target_volume": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Volume name for volume backups. Defaults to the original volume."
+          }
+        }
+      },
+      "RetentionSettings": {
+        "type": "object",
+        "required": [
+          "log_days",
+          "metrics"
+        ],
+        "properties": {
+          "log_days": {
+            "type": "object",
+            "description": "Days to keep per log source.",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/MetricsRetention"
+          }
+        }
+      },
+      "RollbackBody": {
+        "type": "object",
+        "required": [
+          "deployment_id"
+        ],
+        "properties": {
+          "deployment_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "RuleAction": {
+        "type": "object",
+        "properties": {
+          "bypass_cookies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Requests carrying a cookie whose name starts with one of these skip the cache.",
+            "default": []
+          },
+          "ignore_query": {
+            "type": "boolean",
+            "description": "Drop the query string from the cache key.",
+            "default": false
+          },
+          "mode": {
+            "$ref": "#/components/schemas/RuleMode",
+            "default": "cache"
+          },
+          "query_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "When non-empty, only these query parameters are part of the key (sorted).",
+            "default": []
+          },
+          "respect_origin": {
+            "type": "boolean",
+            "description": "Use `s-maxage`/`max-age` from the origin when present, and honor `no-store`/`private`.",
+            "default": true
+          },
+          "stale_if_error_secs": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0,
+            "minimum": 0
+          },
+          "stale_while_revalidate_secs": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0,
+            "minimum": 0
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Response statuses that may be stored.",
+            "default": [
+              200,
+              203,
+              204,
+              300,
+              301,
+              308,
+              404,
+              410
+            ]
+          },
+          "ttl_secs": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Freshness when the origin gives none, or always when `respect_origin` is false.",
+            "default": 300,
+            "minimum": 0
+          }
+        }
+      },
+      "RuleMatch": {
+        "type": "object",
+        "description": "Every set field must match. An empty matcher matches every request.",
+        "properties": {
+          "extensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "File extensions without the dot, compared case-insensitively.",
+            "default": []
+          },
+          "path_glob": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`*` matches any run of characters; anchored at both ends.",
+            "default": null
+          },
+          "path_prefixes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Path must start with one of these.",
+            "default": []
+          }
+        }
+      },
+      "RuleMode": {
+        "type": "string",
+        "enum": [
+          "cache",
+          "bypass"
+        ]
+      },
+      "RunAccepted": {
+        "type": "object",
+        "required": [
+          "run_id"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SaveAlert": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "target_spec",
+          "channel_ids"
+        ],
+        "properties": {
+          "channel_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "duration_secs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "target_spec": {
+            "type": "object"
+          },
+          "threshold": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "SaveBackupJob": {
+        "type": "object",
+        "properties": {
+          "bandwidth_limit_bps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "compression": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "compression_level": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "consistency": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "destination_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "encryption_passphrase": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Client-side encryption passphrase. Empty string removes encryption."
+          },
+          "filename_template": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notify_on_success": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "path_prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retention": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "retries": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "schedule_cron": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Five-field cron or a preset such as `@daily`. Empty string clears it."
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "target_kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "database, volume, bind, or path."
+          },
+          "target_spec": {
+            "description": "`{\"volume\": \"name\"}`, `{\"source\": \"/bind/source\"}`, or `{\"path\": \"/host/path\"}`."
+          },
+          "timeout_secs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "timezone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tool_options": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "verify_after_upload": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "SaveCachePolicy": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_object_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "memory_max_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "preset": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Preset slug to start from when creating."
+          },
+          "rules": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CacheRule"
+            },
+            "description": "Ordered rules; the first match wins. Defaults to the preset's rules on create."
+          }
+        }
+      },
+      "SaveChannel": {
+        "type": "object",
+        "required": [
+          "name",
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "description": "`{\"kind\":\"telegram\",\"bot_token\",\"chat_id\"}`, `{\"kind\":\"discord\"|\"slack\",\"webhook_url\"}`,\n`{\"kind\":\"webhook\",\"url\",\"secret\"?}`, or\n`{\"kind\":\"smtp\",\"host\",\"port\"?,\"security\":\"starttls\"|\"tls\"|\"none\",\"username\"?,\"password\"?,\"from\",\"to\":[]}`.\nOn update, empty secret fields keep the stored value."
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "SaveDestination": {
+        "type": "object",
+        "required": [
+          "name",
+          "bucket"
+        ],
+        "properties": {
+          "access_key_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bucket": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "path_style": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "region": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "secret_access_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ServerUsage": {
+        "type": "object",
+        "required": [
+          "server_id",
+          "name",
+          "status"
+        ],
+        "properties": {
+          "cpu_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "disk_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "load1": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "memory_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sampled_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "status",
+          "description",
+          "created_at",
+          "auto_prune",
+          "telemetry_dropped"
+        ],
+        "properties": {
+          "agent_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "auto_prune": {
+            "type": "boolean",
+            "description": "Remove dangling images and build cache once a day."
+          },
+          "cpu_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "docker_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enrolled_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the agent last exchanged a join token for a certificate."
+          },
+          "hostname": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hostname the agent reported."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "last_heartbeat_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_pruned_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "memory_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "os_info": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "public_ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "telemetry_dropped": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Telemetry items the agent discarded because its buffer was full."
+          }
+        }
+      },
+      "ServiceCachePurge": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "domain_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Limit the purge to one domain. Defaults to every cached domain of the service."
+          },
+          "paths": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ServiceCacheView": {
+        "type": "object",
+        "required": [
+          "domains",
+          "stats"
+        ],
+        "properties": {
+          "domains": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainCacheView"
+            }
+          },
+          "stats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheHostStats"
+            },
+            "description": "Counters for this service's cached hosts."
+          },
+          "stats_error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why stats are missing, such as an unreachable cache server."
+          }
+        }
+      },
+      "ServiceSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "status",
+          "server_id",
+          "environment_id",
+          "environment_name",
+          "project_id",
+          "project_name"
+        ],
+        "properties": {
+          "environment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environment_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ServiceUsage": {
+        "type": "object",
+        "required": [
+          "service_id",
+          "name",
+          "server_id"
+        ],
+        "properties": {
+          "containers": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "cpu_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "memory_bytes": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ServiceView": {
+        "type": "object",
+        "required": [
+          "id",
+          "environment_id",
+          "server_id",
+          "name",
+          "kind",
+          "status",
+          "spec",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "environment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spec": {},
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "SessionResponse": {
+        "type": "object",
+        "required": [
+          "user"
+        ],
+        "properties": {
+          "csrf_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserView"
+          }
+        }
+      },
+      "SetupRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "SetupStatus": {
+        "type": "object",
+        "required": [
+          "needs_setup"
+        ],
+        "properties": {
+          "needs_setup": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SourceView": {
+        "type": "object",
+        "required": [
+          "provider_id",
+          "repo",
+          "branch",
+          "strategy",
+          "dockerfile",
+          "context",
+          "publish_dir",
+          "has_webhook_secret"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string"
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "has_webhook_secret": {
+            "type": "boolean"
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "public_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publish_dir": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "webhook_secret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "StackGit": {
+        "type": "object",
+        "required": [
+          "provider_id",
+          "repo",
+          "branch",
+          "compose_file"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "compose_file": {
+            "type": "string",
+            "description": "Path of the compose file inside the repository."
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "repo": {
+            "type": "string"
+          }
+        }
+      },
+      "StackLogsView": {
+        "type": "object",
+        "required": [
+          "service",
+          "logs"
+        ],
+        "properties": {
+          "logs": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          }
+        }
+      },
+      "StackServiceView": {
+        "type": "object",
+        "required": [
+          "name",
+          "container",
+          "routed"
+        ],
+        "properties": {
+          "container": {
+            "type": "string"
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "routed": {
+            "type": "boolean"
+          },
+          "running": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Null when the server cannot be reached."
+          }
+        }
+      },
+      "StackView": {
+        "type": "object",
+        "required": [
+          "service",
+          "project",
+          "source",
+          "compose_yaml",
+          "generated_yaml",
+          "compose_path",
+          "services",
+          "warnings",
+          "variables",
+          "missing_variables"
+        ],
+        "properties": {
+          "compose_path": {
+            "type": "string"
+          },
+          "compose_yaml": {
+            "type": "string"
+          },
+          "generated_yaml": {
+            "type": "string",
+            "description": "The file Rudder runs: project name, labels, and proxy network applied."
+          },
+          "git": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StackGit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "main_service": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "missing_variables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Referenced variables with no value under Environment."
+          },
+          "project": {
+            "type": "string"
+          },
+          "service": {
+            "$ref": "#/components/schemas/ServiceView"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackServiceView"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "template": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "`${NAME}` references in the compose file."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SystemInfo": {
+        "type": "object",
+        "required": [
+          "version",
+          "schema",
+          "known_schema"
+        ],
+        "properties": {
+          "known_schema": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Highest migration this binary carries."
+          },
+          "pg_dump": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`pg_dump --version`, or `None` when it cannot run."
+          },
+          "schema": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Highest applied schema migration."
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "TemplateDeployed": {
+        "type": "object",
+        "required": [
+          "service",
+          "generated"
+        ],
+        "properties": {
+          "deployment": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DeploymentView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "generated": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeneratedValue"
+            },
+            "description": "Secrets generated for empty fields. Shown once; they are stored encrypted."
+          },
+          "service": {
+            "$ref": "#/components/schemas/ServiceView"
+          }
+        }
+      },
+      "TemplateDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TemplateView"
+          },
+          {
+            "type": "object",
+            "required": [
+              "compose"
+            ],
+            "properties": {
+              "compose": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "TemplateVariableView": {
+        "type": "object",
+        "required": [
+          "name",
+          "label",
+          "description",
+          "kind",
+          "required"
+        ],
+        "properties": {
+          "default": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "domain, string, email, secret, number, or boolean."
+          },
+          "label": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TemplateView": {
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "description",
+          "category",
+          "tags",
+          "website",
+          "main_service",
+          "port",
+          "notes",
+          "variables",
+          "services",
+          "images"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "main_service": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "slug": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateVariableView"
+            }
+          },
+          "website": {
+            "type": "string"
+          }
+        }
+      },
+      "TestResult": {
+        "type": "object",
+        "required": [
+          "ok",
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TokenView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TotpDisable": {
+        "type": "object",
+        "required": [
+          "password",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "TotpEnable": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "TotpSetupResponse": {
+        "type": "object",
+        "required": [
+          "secret",
+          "otpauth_url"
+        ],
+        "properties": {
+          "otpauth_url": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateCheck": {
+        "type": "object",
+        "required": [
+          "checked_at",
+          "current",
+          "channel",
+          "verified"
+        ],
+        "properties": {
+          "channel": {
+            "type": "string"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latest": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReleaseInfo",
+                "description": "Newest release above the current version, if any."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "The latest release's signature and checksums were verified."
+          }
+        }
+      },
+      "UpdateDatabase": {
+        "type": "object",
+        "properties": {
+          "clear_public_port": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "memory_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "nano_cpus": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "public_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "UpdateDomain": {
+        "type": "object",
+        "properties": {
+          "basic_auth_password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "basic_auth_user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "clear_basic_auth": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "https_redirect": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "path_prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ssl_mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateDomainCache": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "policy_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Null uses the built-in \"Honor origin headers\" policy."
+          }
+        }
+      },
+      "UpdateHistoryEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "component",
+          "to_version",
+          "status",
+          "logs",
+          "started_at"
+        ],
+        "properties": {
+          "component": {
+            "type": "string"
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "from_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "logs": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "server_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "to_version": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateOverview": {
+        "type": "object",
+        "required": [
+          "current_version",
+          "channel",
+          "auto_update",
+          "repository",
+          "signing_key",
+          "components",
+          "history"
+        ],
+        "properties": {
+          "apply_blocker": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why \"Update now\" is unavailable, if it is."
+          },
+          "auto_update": {
+            "type": "boolean"
+          },
+          "channel": {
+            "type": "string",
+            "description": "`stable` or `prerelease`."
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComponentStatus"
+            }
+          },
+          "current_version": {
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateHistoryEntry"
+            }
+          },
+          "last_check": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UpdateCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maintenance_window": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`HH:MM-HH:MM` in UTC; automatic updates wait for it. Empty means any time."
+          },
+          "repository": {
+            "type": "string"
+          },
+          "signing_key": {
+            "type": "boolean",
+            "description": "A release signing key is configured, so verified releases can be applied."
+          },
+          "target_cache_image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cache image for this panel version, from its signed release."
+          }
+        }
+      },
+      "UpdatePanel": {
+        "type": "object",
+        "properties": {
+          "acme_email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "clear_domain": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "panel_certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "panel_domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "panel_ssl_mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateRetention": {
+        "type": "object",
+        "properties": {
+          "log_days": {
+            "type": "object",
+            "description": "Days to keep per source, 1 to 365. Sources not listed keep their value.",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "metrics": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MetricsRetention",
+                "description": "Replaces the metric retention when present."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateServer": {
+        "type": "object",
+        "properties": {
+          "auto_prune": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Prune dangling images and build cache once a day."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "public_ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateService": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "spec": {}
+        }
+      },
+      "UpdateSettings": {
+        "type": "object",
+        "required": [
+          "channel",
+          "auto_update"
+        ],
+        "properties": {
+          "auto_update": {
+            "type": "boolean"
+          },
+          "channel": {
+            "type": "string",
+            "description": "`stable` or `prerelease`."
+          },
+          "maintenance_window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateSource": {
+        "type": "object",
+        "required": [
+          "provider_id",
+          "repo",
+          "branch",
+          "strategy"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "context": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dockerfile": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publish_dir": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "repo": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateStack": {
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "compose_yaml": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "git": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StackGit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "main_service": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateStarted": {
+        "type": "object",
+        "required": [
+          "history_id"
+        ],
+        "properties": {
+          "history_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UpdateUser": {
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "UploadCertificate": {
+        "type": "object",
+        "required": [
+          "name",
+          "cert_pem",
+          "key_pem"
+        ],
+        "properties": {
+          "cert_pem": {
+            "type": "string"
+          },
+          "chain_pem": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key_pem": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "UserView": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "role",
+          "totp_enabled"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string"
+          },
+          "totp_enabled": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API token",
+        "description": "Scoped API token. Send `Authorization: Bearer rdr_...`."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "system",
+      "description": "Process health, version, settings export, panel backups, and self-update"
+    },
+    {
+      "name": "auth",
+      "description": "Setup, sessions, users, tokens, and audit"
+    },
+    {
+      "name": "catalog",
+      "description": "Servers, projects, environments, and services"
+    },
+    {
+      "name": "edge",
+      "description": "Domains, certificates, registries, and image deploys"
+    },
+    {
+      "name": "source",
+      "description": "Git providers, webhooks, and builds"
+    },
+    {
+      "name": "databases",
+      "description": "Managed databases and their lifecycle"
+    },
+    {
+      "name": "backups",
+      "description": "S3 destinations, backup jobs, runs, and restores"
+    },
+    {
+      "name": "stacks",
+      "description": "Docker Compose stacks and app templates"
+    },
+    {
+      "name": "cache",
+      "description": "HTTP cache policies, purge, and stats"
+    },
+    {
+      "name": "logs",
+      "description": "Central logs, live tail, retention, and the container terminal"
+    },
+    {
+      "name": "monitoring",
+      "description": "Metrics, alerts, notification channels, and Docker prune"
+    }
+  ]
+}

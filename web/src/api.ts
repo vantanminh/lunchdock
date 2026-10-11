@@ -47,3 +47,34 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   return data as T;
 }
+
+/** Fetch a file from the API and hand it to the browser as a download. */
+export async function download(path: string, init: RequestInit = {}): Promise<void> {
+  const headers = new Headers(init.headers);
+  const method = (init.method ?? "GET").toUpperCase();
+  if (init.body && !headers.has("content-type")) {
+    headers.set("content-type", "application/json");
+  }
+  if (csrfToken && method !== "GET" && method !== "HEAD") {
+    headers.set("x-csrf-token", csrfToken);
+  }
+  const response = await fetch(path, { ...init, headers, credentials: "same-origin" });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: { code?: string; message?: string };
+    } | null;
+    throw new ApiError(
+      response.status,
+      payload?.error?.code ?? "error",
+      payload?.error?.message ?? response.statusText,
+    );
+  }
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "download";
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}

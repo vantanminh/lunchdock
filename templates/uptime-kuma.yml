@@ -1,0 +1,22 @@
+slug: uptime-kuma
+name: Uptime Kuma
+description: Self-hosted uptime monitoring with status pages and notifications.
+category: Monitoring
+tags: [uptime, monitoring, status-page, alerts]
+website: https://uptime.kuma.pet
+main_service: uptime-kuma
+port: 3001
+notes: Create the admin account on first visit.
+variables:
+  - name: DOMAIN
+    label: Domain
+    kind: domain
+compose: |
+  services:
+    uptime-kuma:
+      image: louislam/uptime-kuma:1
+      restart: unless-stopped
+      volumes:
+        - kuma_data:/app/data
+  volumes:
+    kuma_data: {}

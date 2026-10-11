@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, job_id, kind, trigger, status, started_at, finished_at, size_bytes, checksum,\n               object_keys, destination_ids, meta, logs, error\n        FROM backup_runs\n        WHERE job_id = $1\n        ORDER BY created_at DESC\n        LIMIT $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "job_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "trigger",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "started_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "finished_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "size_bytes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "checksum",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "object_keys",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 10,
+        "name": "destination_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 11,
+        "name": "meta",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 12,
+        "name": "logs",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "error",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "cf7892ee5db47d6dffcc025352eafaf334b2a0aaf241450f9165ffceb287dcee"
+}

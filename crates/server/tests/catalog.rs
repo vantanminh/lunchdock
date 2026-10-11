@@ -196,6 +196,12 @@ async fn servers_projects_and_services_round_trip(pool: PgPool) {
     let service_id = service.body["id"].as_str().unwrap();
     assert_eq!(service.body["spec"]["image"], "ghcr.io/acme/web:1");
 
+    let all = call(&app, "GET", "/api/v1/services", Some(&cookie), None, None).await;
+    assert_eq!(all.status, StatusCode::OK);
+    assert_eq!(all.body[0]["id"], service_id);
+    assert_eq!(all.body[0]["environment_name"], "prod");
+    assert!(all.body[0]["project_name"].is_string());
+
     let stored = call(
         &app,
         "PUT",

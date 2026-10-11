@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, job_id, kind, trigger, status, started_at, finished_at, size_bytes, checksum,\n               object_keys, destination_ids, meta, logs, error\n        FROM backup_runs WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "job_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "trigger",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "started_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "finished_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "size_bytes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "checksum",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "object_keys",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 10,
+        "name": "destination_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 11,
+        "name": "meta",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 12,
+        "name": "logs",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "error",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "efc028858e8046f83e043ec37cb187592d5a4cc835288c1dce35962cb776a9a4"
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE panel_settings\n        SET update_channel = $1, auto_update = $2, maintenance_window = $3, updated_at = now()\n        WHERE id = TRUE\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "331e11a6d4296d624846a2d4b6f6904767d511547e1187972da9e19dea26dc25"
+}

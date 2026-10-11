@@ -14,6 +14,8 @@ use thiserror::Error;
 const DEFAULT_BIND: &str = "0.0.0.0:3000";
 const DEFAULT_DATA_DIR: &str = "/var/lib/rudder";
 const DEFAULT_GITHUB_REPO: &str = "vantanminh/lunchdock";
+const DEFAULT_AGENT_BIND: &str = "0.0.0.0:7443";
+const DEFAULT_DIST_DIR: &str = "/usr/share/rudder/dist";
 
 /// How tracing lines are encoded.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,7 +38,36 @@ pub struct Config {
     pub cookie_secure: bool,
     /// When true, the first `X-Forwarded-For` hop is the client IP.
     pub trust_proxy: bool,
+    /// Docker Engine unix socket. `None` uses `DOCKER_HOST` or `/var/run/docker.sock`.
+    pub docker_socket: Option<PathBuf>,
+    /// Admin listener of the local cache server.
+    pub cache_admin_url: String,
+    /// procfs of the host, for server metrics. `/host/proc` when the panel runs in a container.
+    pub host_proc: PathBuf,
+    /// gRPC listener agents dial. `None` when set to `off`.
+    pub agent_bind: Option<SocketAddr>,
+    /// Address agents are told to dial, such as `https://panel.example.com:7443`.
+    pub agent_url: Option<String>,
+    /// Release binaries served at `/downloads`, such as the agent for each architecture.
+    pub dist_dir: PathBuf,
+    /// `pg_dump` used for panel backups.
+    pub pg_dump: PathBuf,
+    /// `pg_restore` used to roll back a failed update.
+    pub pg_restore: PathBuf,
+    /// File the master key was read from, when it came from a file.
+    pub master_key_file: Option<PathBuf>,
+    /// GitHub API base for release checks.
+    pub update_api_url: String,
+    /// Minisign public key that signs releases. `None` disables applying updates.
+    pub update_public_key: Option<String>,
+    /// Name of the container the panel runs in.
+    pub self_container: String,
+    /// Seconds between background release checks; 0 turns them off.
+    pub update_check_secs: u64,
 }
+
+/// Release signing key compiled into official builds.
+const BUILT_IN_UPDATE_KEY: Option<&str> = option_env!("RUDDER_UPDATE_PUBKEY");
 
 impl Config {
     /// Load configuration from process environment variables.
@@ -101,6 +132,104 @@ impl Config {
         let cookie_secure = parse_bool(vars, "RUDDER_COOKIE_SECURE", true)?;
         let trust_proxy = parse_bool(vars, "RUDDER_TRUST_PROXY", true)?;
         let master_key = load_master_key(vars, read_file)?;
+        let docker_socket = vars
+            .get("RUDDER_DOCKER_SOCKET")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from);
+        let cache_admin_url = vars
+            .get("RUDDER_CACHE_ADMIN_URL")
+            .filter(|v| !v.is_empty())
+            .cloned()
+            .unwrap_or_else(|| crate::driver::DEFAULT_CACHE_ADMIN.to_owned());
+        if !cache_admin_url.starts_with("http://") && !cache_admin_url.starts_with("https://") {
+            return Err(ConfigError::Invalid {
+                name: "RUDDER_CACHE_ADMIN_URL",
+                reason: "expected an http:// or https:// URL".into(),
+            });
+        }
+        let host_proc = vars
+            .get("RUDDER_HOST_PROC")
+            .filter(|v| !v.is_empty())
+            .map_or_else(|| PathBuf::from("/proc"), PathBuf::from);
+        let agent_bind = match vars.get("RUDDER_AGENT_BIND").map(String::as_str) {
+            Some("off") => None,
+            value => Some(
+                value
+                    .filter(|v| !v.is_empty())
+                    .unwrap_or(DEFAULT_AGENT_BIND)
+                    .parse::<SocketAddr>()
+                    .map_err(|error| ConfigError::Invalid {
+                        name: "RUDDER_AGENT_BIND",
+                        reason: error.to_string(),
+                    })?,
+            ),
+        };
+        let agent_url = vars
+            .get("RUDDER_AGENT_URL")
+            .filter(|v| !v.is_empty())
+            .cloned();
+        if let Some(url) = &agent_url {
+            if !url.starts_with("https://") {
+                return Err(ConfigError::Invalid {
+                    name: "RUDDER_AGENT_URL",
+                    reason: "expected an https:// URL".into(),
+                });
+            }
+        }
+        let dist_dir = PathBuf::from(
+            vars.get("RUDDER_DIST_DIR")
+                .filter(|v| !v.is_empty())
+                .map_or(DEFAULT_DIST_DIR, String::as_str),
+        );
+        let pg_dump = PathBuf::from(
+            vars.get("RUDDER_PG_DUMP")
+                .filter(|v| !v.is_empty())
+                .map_or("pg_dump", String::as_str),
+        );
+        let pg_restore = PathBuf::from(
+            vars.get("RUDDER_PG_RESTORE")
+                .filter(|v| !v.is_empty())
+                .map_or("pg_restore", String::as_str),
+        );
+        let master_key_file = vars
+            .get("RUDDER_MASTER_KEY_FILE")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from);
+        let update_api_url = vars
+            .get("RUDDER_UPDATE_API_URL")
+            .filter(|v| !v.is_empty())
+            .map_or("https://api.github.com", String::as_str)
+            .trim_end_matches('/')
+            .to_owned();
+        if !update_api_url.starts_with("https://") && !update_api_url.starts_with("http://") {
+            return Err(ConfigError::Invalid {
+                name: "RUDDER_UPDATE_API_URL",
+                reason: "expected an http:// or https:// URL".into(),
+            });
+        }
+        let update_public_key = vars
+            .get("RUDDER_UPDATE_PUBKEY")
+            .map(String::as_str)
+            .or(BUILT_IN_UPDATE_KEY)
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(str::to_owned);
+        let self_container = vars
+            .get("RUDDER_SELF_CONTAINER")
+            .filter(|v| !v.is_empty())
+            .map_or("rudder", String::as_str)
+            .to_owned();
+        rudder_core::validate_name(&self_container).map_err(|error| ConfigError::Invalid {
+            name: "RUDDER_SELF_CONTAINER",
+            reason: error.to_string(),
+        })?;
+        let update_check_secs = match vars.get("RUDDER_UPDATE_CHECK_SECS") {
+            None => 6 * 3600,
+            Some(value) => value.parse().map_err(|_| ConfigError::Invalid {
+                name: "RUDDER_UPDATE_CHECK_SECS",
+                reason: "expected a number of seconds".into(),
+            })?,
+        };
         Ok(Self {
             database_url,
             bind,
@@ -111,6 +240,19 @@ impl Config {
             log_format,
             cookie_secure,
             trust_proxy,
+            docker_socket,
+            cache_admin_url,
+            host_proc,
+            agent_bind,
+            agent_url,
+            dist_dir,
+            pg_dump,
+            pg_restore,
+            master_key_file,
+            update_api_url,
+            update_public_key,
+            self_container,
+            update_check_secs,
         })
     }
 }
@@ -128,6 +270,17 @@ impl fmt::Debug for Config {
             .field("log_format", &self.log_format)
             .field("cookie_secure", &self.cookie_secure)
             .field("trust_proxy", &self.trust_proxy)
+            .field("docker_socket", &self.docker_socket)
+            .field("cache_admin_url", &self.cache_admin_url)
+            .field("agent_bind", &self.agent_bind)
+            .field("agent_url", &self.agent_url)
+            .field("dist_dir", &self.dist_dir)
+            .field("host_proc", &self.host_proc)
+            .field("pg_dump", &self.pg_dump)
+            .field("pg_restore", &self.pg_restore)
+            .field("update_api_url", &self.update_api_url)
+            .field("update_public_key", &self.update_public_key.is_some())
+            .field("self_container", &self.self_container)
             .finish()
     }
 }

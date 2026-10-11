@@ -1,21 +1,60 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { lazy, useState, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "./auth";
 import { Shell } from "./layout/Shell";
-import { AccountPage } from "./pages/AccountPage";
-import { AuditPage } from "./pages/AuditPage";
 import { DashboardPage } from "./pages/Dashboard";
-import { CertificatesPage } from "./pages/CertificatesPage";
-import { GitProvidersPage } from "./pages/GitProvidersPage";
-import { ProjectsPage } from "./pages/ProjectsPage";
-import { RegistriesPage } from "./pages/RegistriesPage";
-import { ServersPage } from "./pages/ServersPage";
-import { ServicePage } from "./pages/ServicePage";
 import { LoginPage, SetupPage } from "./pages/AuthPages";
-import { TokensPage } from "./pages/TokensPage";
-import { UsersPage } from "./pages/UsersPage";
+
+const AccountPage = lazy(() =>
+  import("./pages/AccountPage").then((m) => ({ default: m.AccountPage })),
+);
+const AlertsPage = lazy(() =>
+  import("./pages/AlertsPage").then((m) => ({ default: m.AlertsPage })),
+);
+const AuditPage = lazy(() => import("./pages/AuditPage").then((m) => ({ default: m.AuditPage })));
+const BackupsPage = lazy(() =>
+  import("./pages/BackupsPage").then((m) => ({ default: m.BackupsPage })),
+);
+const CachePoliciesPage = lazy(() =>
+  import("./pages/CachePoliciesPage").then((m) => ({ default: m.CachePoliciesPage })),
+);
+const CertificatesPage = lazy(() =>
+  import("./pages/CertificatesPage").then((m) => ({ default: m.CertificatesPage })),
+);
+const GitProvidersPage = lazy(() =>
+  import("./pages/GitProvidersPage").then((m) => ({ default: m.GitProvidersPage })),
+);
+const LogsPage = lazy(() => import("./pages/LogsPage").then((m) => ({ default: m.LogsPage })));
+const MonitoringPage = lazy(() =>
+  import("./pages/MonitoringPage").then((m) => ({ default: m.MonitoringPage })),
+);
+const ProjectsPage = lazy(() =>
+  import("./pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage })),
+);
+const RegistriesPage = lazy(() =>
+  import("./pages/RegistriesPage").then((m) => ({ default: m.RegistriesPage })),
+);
+const S3DestinationsPage = lazy(() =>
+  import("./pages/S3DestinationsPage").then((m) => ({ default: m.S3DestinationsPage })),
+);
+const ServersPage = lazy(() =>
+  import("./pages/ServersPage").then((m) => ({ default: m.ServersPage })),
+);
+const ServicePage = lazy(() =>
+  import("./pages/ServicePage").then((m) => ({ default: m.ServicePage })),
+);
+const SystemPage = lazy(() =>
+  import("./pages/SystemPage").then((m) => ({ default: m.SystemPage })),
+);
+const TemplatesPage = lazy(() =>
+  import("./pages/TemplatesPage").then((m) => ({ default: m.TemplatesPage })),
+);
+const TokensPage = lazy(() =>
+  import("./pages/TokensPage").then((m) => ({ default: m.TokensPage })),
+);
+const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })));
 
 function Guard({ children }: { children: ReactNode }) {
   const { user, loading, needsSetup } = useAuth();
@@ -47,12 +86,20 @@ function AppRoutes() {
         <Route path="servers" element={<ServersPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="services/:id" element={<ServicePage />} />
+        <Route path="templates" element={<TemplatesPage />} />
+        <Route path="monitoring" element={<MonitoringPage />} />
+        <Route path="alerts" element={<AlertsPage />} />
+        <Route path="logs" element={<LogsPage />} />
+        <Route path="backups" element={<BackupsPage />} />
+        <Route path="s3-destinations" element={<S3DestinationsPage />} />
+        <Route path="cache" element={<CachePoliciesPage />} />
         <Route path="certificates" element={<CertificatesPage />} />
         <Route path="registries" element={<RegistriesPage />} />
         <Route path="git" element={<GitProvidersPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="audit" element={<AuditPage />} />
+        <Route path="system" element={<SystemPage />} />
         <Route path="account" element={<AccountPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

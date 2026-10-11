@@ -24,6 +24,11 @@ struct RouteRow {
     basic_auth_hash: Option<String>,
     service_name: String,
     container_name: Option<String>,
+    compose_service: Option<String>,
+    stack_container: Option<String>,
+    project: Option<String>,
+    cache_enabled: bool,
+    cache_policy_id: Option<Uuid>,
 }
 
 struct PanelRoute {
@@ -39,7 +44,8 @@ struct CertBlob {
     chain_pem_enc: Option<Vec<u8>>,
 }
 
-/// Refresh the local Traefik file. Remote servers wait for the agent.
+/// Write a server's Traefik routes, certificates, and cache rules. Changes for a
+/// remote server whose agent is offline are applied when it reconnects.
 pub async fn publish_server(state: &AppState, server_id: Uuid) -> Result<bool, ApiError> {
     let kind = sqlx::query_scalar!(r#"SELECT kind FROM servers WHERE id = $1"#, server_id)
         .fetch_optional(&state.pool)
@@ -48,19 +54,33 @@ pub async fn publish_server(state: &AppState, server_id: Uuid) -> Result<bool, A
     let Some(kind) = kind else {
         return Err(crate::routes::catalog::not_found("server not found"));
     };
-    if kind != "local" {
+    let driver: std::sync::Arc<dyn NodeDriver> = if kind == "local" {
+        state.local_driver.clone()
+    } else if let Some(driver) = state.agents.driver(server_id) {
+        driver
+    } else {
         tracing::info!(%server_id, "routing change stored; the agent applies it when connected");
         return Ok(false);
-    }
-    let yaml = render_for_server(&state.pool, server_id, state.config.bind.port()).await?;
-    let materials = write_certificates(state).await?;
+    };
+    let (routes, note, sites) =
+        render_for_server(&state.pool, server_id, state.config.bind.port()).await?;
+    let yaml = (routes, note);
+    let cache_document = crate::cache::render_document(&state.pool, sites).await?;
+    crate::cache::ensure_token(driver.as_ref()).await?;
+    driver
+        .write_file(
+            rudder_core::CACHE_RULES_FILE,
+            &serde_json::to_vec_pretty(&cache_document).unwrap_or_default(),
+        )
+        .await
+        .map_err(core_error)?;
+    let materials = write_certificates(state, driver.as_ref()).await?;
     let document = render_dynamic_config(&yaml.0, &materials).map_err(core_error)?;
     let mut body = document;
     if !yaml.1.is_empty() {
         let _ = write!(body, "\n# panel certificate {}\n", yaml.1);
     }
-    state
-        .local_driver
+    driver
         .write_file("traefik/dynamic/routes.yml", body.as_bytes())
         .await
         .map_err(core_error)?;
@@ -71,7 +91,7 @@ async fn render_for_server(
     pool: &PgPool,
     server_id: Uuid,
     panel_port: u16,
-) -> Result<(Vec<ProxyRoute>, String), ApiError> {
+) -> Result<(Vec<ProxyRoute>, String, Vec<crate::cache::SiteSource>), ApiError> {
     let rows = sqlx::query_as!(
         RouteRow,
         r#"
@@ -84,6 +104,11 @@ async fn render_for_server(
                d.basic_auth_user,
                d.basic_auth_hash,
                s.name AS service_name,
+               d.compose_service,
+               s.spec -> 'containers' ->> d.compose_service AS "stack_container?",
+               s.spec ->> 'project' AS "project?",
+               d.cache_enabled,
+               d.cache_policy_id,
                (
                    SELECT sc.container_name
                    FROM service_containers sc
@@ -102,8 +127,21 @@ async fn render_for_server(
     .await
     .map_err(ApiError::database)?;
     let mut routes = Vec::new();
+    let mut sites = Vec::new();
     for row in rows {
-        routes.push(route_from_row(row)?);
+        let cache = row.cache_enabled.then_some(row.cache_policy_id);
+        let mut route = route_from_row(row)?;
+        if let Some(policy_id) = cache {
+            sites.push(crate::cache::SiteSource {
+                host: route.host.clone(),
+                path_prefix: route.path_prefix.clone(),
+                upstream: format!("{}:{}", route.container, route.port),
+                policy_id,
+            });
+            route.container = rudder_core::CACHE_CONTAINER.into();
+            route.port = rudder_core::CACHE_PORT;
+        }
+        routes.push(route);
     }
     let panel = sqlx::query_as!(
         PanelRoute,
@@ -139,13 +177,17 @@ async fn render_for_server(
             });
         }
     }
-    Ok((routes, note))
+    Ok((routes, note, sites))
 }
 
 fn route_from_row(row: RouteRow) -> Result<ProxyRoute, ApiError> {
     let port = u16::try_from(row.target_port)
         .map_err(|_| bad("invalid", "target port is out of range"))?;
-    let container = row.container_name.unwrap_or(row.service_name);
+    let container = match (row.compose_service, row.stack_container, row.project) {
+        (Some(_), Some(container), _) => container,
+        (Some(service), None, Some(project)) => format!("{project}-{service}-1"),
+        _ => row.container_name.unwrap_or(row.service_name),
+    };
     Ok(ProxyRoute {
         name: router_name(row.id),
         host: row.host,
@@ -176,7 +218,10 @@ pub(crate) fn tls_mode(value: &str) -> Result<TlsMode, ApiError> {
     }
 }
 
-async fn write_certificates(state: &AppState) -> Result<Vec<TlsMaterial>, ApiError> {
+async fn write_certificates(
+    state: &AppState,
+    driver: &dyn NodeDriver,
+) -> Result<Vec<TlsMaterial>, ApiError> {
     let rows = sqlx::query_as!(
         CertBlob,
         r#"
@@ -202,13 +247,11 @@ async fn write_certificates(state: &AppState) -> Result<Vec<TlsMaterial>, ApiErr
         }
         let cert_rel = format!("traefik/certs/{}.crt", row.id);
         let key_rel = format!("traefik/certs/{}.key", row.id);
-        state
-            .local_driver
+        driver
             .write_file(&cert_rel, full.as_bytes())
             .await
             .map_err(core_error)?;
-        state
-            .local_driver
+        driver
             .write_file(&key_rel, key.as_bytes())
             .await
             .map_err(core_error)?;

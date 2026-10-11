@@ -1,5 +1,14 @@
 pub mod account;
+pub mod agents;
+pub mod backups;
+pub mod cache;
 pub mod catalog;
+pub mod databases;
 pub mod edge;
 pub mod git;
 pub mod health;
+pub mod logs;
+pub mod monitoring;
+pub mod stacks;
+pub mod system;
+pub mod updates;

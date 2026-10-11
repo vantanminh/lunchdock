@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT h.id, h.component, h.server_id, s.name AS \"server_name?\", h.from_version,\n               h.to_version, h.status, h.logs, h.started_at, h.finished_at\n        FROM update_history h\n        LEFT JOIN servers s ON s.id = h.server_id\n        ORDER BY h.started_at DESC\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "component",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "server_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "from_version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "to_version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "logs",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "started_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "finished_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "c075aa517db389f3a934510bdf1d37f784a86fd029c6dee615c0be8340d12c43"
+}

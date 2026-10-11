@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE services\n                SET current_container_id = $2, current_image = $3, status = 'running',\n                    updated_at = now()\n                WHERE id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "553934b14248b50bcf2ea821f2cf198ca99edca60e3d136e87956f6eadf3fd90"
+}

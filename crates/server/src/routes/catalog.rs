@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::routing::get;
 use axum::Json;
 use chrono::{DateTime, Duration, Utc};
-use rudder_core::{validate_env_key, validate_name, Error as CoreError, NodeDriver};
+use rudder_core::{validate_env_key, validate_name, Error as CoreError};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use utoipa::ToSchema;
@@ -31,6 +31,15 @@ pub struct ServerView {
     pub memory_bytes: Option<i64>,
     pub last_heartbeat_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    /// Remove dangling images and build cache once a day.
+    pub auto_prune: bool,
+    pub last_pruned_at: Option<DateTime<Utc>>,
+    /// Hostname the agent reported.
+    pub hostname: Option<String>,
+    /// When the agent last exchanged a join token for a certificate.
+    pub enrolled_at: Option<DateTime<Utc>>,
+    /// Telemetry items the agent discarded because its buffer was full.
+    pub telemetry_dropped: i64,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -54,6 +63,8 @@ pub struct UpdateServer {
     pub name: Option<String>,
     pub public_ip: Option<String>,
     pub description: Option<String>,
+    /// Prune dangling images and build cache once a day.
+    pub auto_prune: Option<bool>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -94,6 +105,19 @@ pub struct ServiceView {
     pub status: String,
     pub spec: Value,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ServiceSummary {
+    pub id: Uuid,
+    pub name: String,
+    pub kind: String,
+    pub status: String,
+    pub server_id: Uuid,
+    pub environment_id: Uuid,
+    pub environment_name: String,
+    pub project_id: Uuid,
+    pub project_name: String,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -153,6 +177,7 @@ pub fn router() -> axum::Router<AppState> {
             "/api/v1/environments/{id}/services",
             get(list_services).post(create_service),
         )
+        .route("/api/v1/services", get(list_all_services))
         .route(
             "/api/v1/services/{id}",
             get(get_service)
@@ -174,7 +199,8 @@ async fn list_servers(
         ServerRow,
         r#"
         SELECT id, name, kind, status, public_ip, description, agent_version, docker_version,
-               os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at
+               os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
+                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped
         FROM servers
         ORDER BY created_at
         "#
@@ -188,6 +214,7 @@ async fn list_servers(
 async fn create_server(
     State(state): State<AppState>,
     auth: AuthUser,
+    headers: axum::http::HeaderMap,
     Json(body): Json<CreateServer>,
 ) -> Result<(StatusCode, Json<CreatedServer>), ApiError> {
     auth.require_write()?;
@@ -224,7 +251,8 @@ async fn create_server(
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,
-                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at
+                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
+                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped
         "#,
         body.name,
         body.kind,
@@ -257,16 +285,9 @@ async fn create_server(
         None,
     )
     .await;
-    let command = join_token.as_ref().map(|token| {
-        format!(
-            "rudder-agent join --server {} --token {token}",
-            state
-                .config
-                .public_url
-                .clone()
-                .unwrap_or_else(|| "https://panel.example".into())
-        )
-    });
+    let command = join_token
+        .as_ref()
+        .map(|token| crate::routes::agents::join_command(&state, &headers, token));
     Ok((
         StatusCode::CREATED,
         Json(CreatedServer {
@@ -294,15 +315,18 @@ async fn update_server(
         SET name = COALESCE($2, name),
             public_ip = COALESCE($3, public_ip),
             description = COALESCE($4, description),
+            auto_prune = COALESCE($5, auto_prune),
             updated_at = now()
         WHERE id = $1
         RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,
-                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at
+                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
+                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped
         "#,
         id,
         body.name,
         body.public_ip,
         body.description,
+        body.auto_prune,
     )
     .fetch_optional(&state.pool)
     .await;
@@ -363,6 +387,7 @@ async fn delete_server(
         .execute(&state.pool)
         .await
         .map_err(ApiError::database)?;
+    state.agents.disconnect(id);
     audit::record(
         &state.pool,
         Some(auth.id),
@@ -382,20 +407,16 @@ async fn probe_server(
     Path(id): Path<Uuid>,
 ) -> Result<Json<ServerView>, ApiError> {
     auth.require_write()?;
-    let kind = sqlx::query!(r#"SELECT kind FROM servers WHERE id = $1"#, id)
-        .fetch_optional(&state.pool)
+    Ok(Json(probe(&state, id).await?))
+}
+
+/// Ask the server's Docker for its version and capacity and mark it online.
+pub(crate) async fn probe(state: &AppState, id: Uuid) -> Result<ServerView, ApiError> {
+    let info = crate::nodes::driver_for(state, id)
+        .await?
+        .docker_info()
         .await
-        .map_err(ApiError::database)?;
-    let Some(kind) = kind else {
-        return Err(not_found("server not found"));
-    };
-    if kind.kind != "local" {
-        return Err(conflict(
-            "agent_required",
-            "remote servers report status through the agent",
-        ));
-    }
-    let info = state.local_driver.docker_info().await.map_err(core_error)?;
+        .map_err(core_error)?;
     let row = sqlx::query_as!(
         ServerRow,
         r#"
@@ -409,7 +430,8 @@ async fn probe_server(
             updated_at = now()
         WHERE id = $1
         RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,
-                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at
+                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
+                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped
         "#,
         id,
         info.version,
@@ -420,7 +442,7 @@ async fn probe_server(
     .fetch_one(&state.pool)
     .await
     .map_err(ApiError::database)?;
-    Ok(Json(server_from_row(row)))
+    Ok(server_from_row(row))
 }
 
 async fn list_projects(
@@ -693,6 +715,27 @@ async fn list_services(
     Ok(Json(rows.into_iter().map(service_from_row).collect()))
 }
 
+async fn list_all_services(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+) -> Result<Json<Vec<ServiceSummary>>, ApiError> {
+    let rows = sqlx::query_as!(
+        ServiceSummary,
+        r#"
+        SELECT s.id, s.name, s.kind, s.status, s.server_id, s.environment_id,
+               e.name AS environment_name, p.id AS project_id, p.name AS project_name
+        FROM services s
+        JOIN environments e ON e.id = s.environment_id
+        JOIN projects p ON p.id = e.project_id
+        ORDER BY p.name, e.name, s.name
+        "#
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    Ok(Json(rows))
+}
+
 async fn create_service(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -804,12 +847,26 @@ async fn delete_service(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     auth.require_write()?;
-    let result = sqlx::query!(r#"DELETE FROM services WHERE id = $1"#, id)
+    let service = sqlx::query!(
+        r#"SELECT kind, server_id, current_container_id FROM services WHERE id = $1"#,
+        id
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?
+    .ok_or_else(|| not_found("service not found"))?;
+    if service.kind == "compose" {
+        crate::stacks::destroy(&state, id, false).await?;
+    } else {
+        remove_service_containers(&state, id, service.server_id, service.current_container_id)
+            .await;
+    }
+    sqlx::query!(r#"DELETE FROM services WHERE id = $1"#, id)
         .execute(&state.pool)
         .await
         .map_err(ApiError::database)?;
-    if result.rows_affected() == 0 {
-        return Err(not_found("service not found"));
+    if let Err(error) = crate::publish::publish_server(&state, service.server_id).await {
+        tracing::warn!(message = %error.public_message(), "routes were not republished");
     }
     audit::record(
         &state.pool,
@@ -822,6 +879,47 @@ async fn delete_service(
     )
     .await;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Best effort: a server that is offline or already gone must not block the delete.
+async fn remove_service_containers(
+    state: &AppState,
+    id: Uuid,
+    server_id: Uuid,
+    current: Option<String>,
+) {
+    let driver = match crate::nodes::driver_for(state, server_id).await {
+        Ok(driver) => driver,
+        Err(error) => {
+            tracing::warn!(message = %error.public_message(), service_id = %id, "containers of the deleted service were not removed");
+            return;
+        }
+    };
+    let label = id.to_string();
+    let mut containers: Vec<String> = match driver.list_containers().await {
+        Ok(list) => list
+            .into_iter()
+            .filter(|c| c.labels.get("rudder.service") == Some(&label))
+            .map(|c| c.id)
+            .collect(),
+        Err(error) => {
+            tracing::warn!(%error, service_id = %id, "could not list containers of the deleted service");
+            Vec::new()
+        }
+    };
+    if let Some(current) = current {
+        if !containers
+            .iter()
+            .any(|c| c.starts_with(&current) || current.starts_with(c.as_str()))
+        {
+            containers.push(current);
+        }
+    }
+    for container in containers {
+        if let Err(error) = driver.remove_container(&container, true).await {
+            tracing::warn!(%error, service_id = %id, container, "container of the deleted service was not removed");
+        }
+    }
 }
 
 async fn list_env(
@@ -936,6 +1034,11 @@ struct ServerRow {
     memory_bytes: Option<i64>,
     last_heartbeat_at: Option<DateTime<Utc>>,
     created_at: DateTime<Utc>,
+    auto_prune: bool,
+    last_pruned_at: Option<DateTime<Utc>>,
+    hostname: Option<String>,
+    enrolled_at: Option<DateTime<Utc>>,
+    telemetry_dropped: i64,
 }
 
 fn server_from_row(row: ServerRow) -> ServerView {
@@ -953,6 +1056,11 @@ fn server_from_row(row: ServerRow) -> ServerView {
         memory_bytes: row.memory_bytes,
         last_heartbeat_at: row.last_heartbeat_at,
         created_at: row.created_at,
+        auto_prune: row.auto_prune,
+        last_pruned_at: row.last_pruned_at,
+        hostname: row.hostname,
+        enrolled_at: row.enrolled_at,
+        telemetry_dropped: row.telemetry_dropped,
     }
 }
 
@@ -979,6 +1087,22 @@ fn service_from_row(row: ServiceRow) -> ServiceView {
         spec: row.spec,
         created_at: row.created_at,
     }
+}
+
+pub(crate) async fn load_service_view(state: &AppState, id: Uuid) -> Result<ServiceView, ApiError> {
+    let row = sqlx::query_as!(
+        ServiceRow,
+        r#"
+        SELECT id, environment_id, server_id, name, kind, status, spec, created_at
+        FROM services WHERE id = $1
+        "#,
+        id
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?
+    .ok_or_else(|| not_found("service not found"))?;
+    Ok(service_from_row(row))
 }
 
 fn checked_spec(spec: Value) -> Result<Value, ApiError> {

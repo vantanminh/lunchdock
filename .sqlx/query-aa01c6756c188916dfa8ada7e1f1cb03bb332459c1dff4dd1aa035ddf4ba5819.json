@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cert_pem, key_sealed FROM agent_ca WHERE id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cert_pem",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "key_sealed",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "aa01c6756c188916dfa8ada7e1f1cb03bb332459c1dff4dd1aa035ddf4ba5819"
+}
