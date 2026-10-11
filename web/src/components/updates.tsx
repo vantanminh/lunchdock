@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../api";
 import { errorMessage, formatTime } from "../format";
+import { useT } from "../i18n";
+import { MAINTENANCE_WINDOWS, UPDATE_CHANNELS } from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Card, Empty, Field, Select, TextInput } from "./ui";
+import { Badge, Button, Card, Empty, Field, PickField, QuickPick, TextInput } from "./ui";
 
 type Overview = Schemas["UpdateOverview"];
 
@@ -287,6 +289,7 @@ export function UpdatesCard() {
 }
 
 function UpdateSettingsForm({ data, onSaved }: { data: Overview; onSaved: () => void }) {
+  const t = useT();
   const [channel, setChannel] = useState(data.channel);
   const [autoUpdate, setAutoUpdate] = useState(data.auto_update);
   const [maintenance, setMaintenance] = useState(data.maintenance_window ?? "");
@@ -308,19 +311,24 @@ function UpdateSettingsForm({ data, onSaved }: { data: Overview; onSaved: () => 
   });
   return (
     <form
-      className="mt-5 grid gap-3 border-t border-line pt-4 md:grid-cols-[180px_220px_1fr] md:items-end"
+      className="mt-5 grid gap-3 border-t border-line pt-4 md:grid-cols-2"
       onSubmit={(event) => {
         event.preventDefault();
         save.mutate();
       }}
     >
-      <Field label="Channel">
-        <Select value={channel} onChange={(event) => setChannel(event.target.value)}>
-          <option value="stable">Stable releases</option>
-          <option value="prerelease">Include pre-releases</option>
-        </Select>
-      </Field>
-      <Field label="Maintenance window (UTC)">
+      <PickField label="Channel" options={UPDATE_CHANNELS} value={channel} onPick={setChannel} />
+      <Field
+        label="Maintenance window (UTC)"
+        presets={
+          <QuickPick
+            label={t("Maintenance window presets")}
+            options={MAINTENANCE_WINDOWS}
+            value={maintenance}
+            onPick={setMaintenance}
+          />
+        }
+      >
         <TextInput
           placeholder="02:00-05:00"
           pattern="\d\d:\d\d-\d\d:\d\d"
@@ -328,7 +336,7 @@ function UpdateSettingsForm({ data, onSaved }: { data: Overview; onSaved: () => 
           onChange={(event) => setMaintenance(event.target.value)}
         />
       </Field>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 md:col-span-2">
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

@@ -4,8 +4,10 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../api";
 import { errorMessage, formatBytes } from "../format";
+import { useT } from "../i18n";
+import { PURGE_PATHS } from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Card, Empty, Field, Select, TextArea } from "./ui";
+import { Badge, Button, Card, Empty, Field, QuickPick, Select, TextArea } from "./ui";
 
 type ServiceCache = Schemas["ServiceCacheView"];
 type Policy = Schemas["CachePolicyView"];
@@ -39,6 +41,7 @@ export function ruleSummary(rule: Rule): string {
 }
 
 export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const cache = useQuery({
     queryKey: ["service-cache", serviceId],
@@ -205,7 +208,22 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
                   ))}
                 </Select>
               </Field>
-              <Field label="Paths (one per line, or a single /prefix*)">
+              <Field
+                label="Paths (one per line, or a single /prefix*)"
+                presets={
+                  <QuickPick
+                    label={t("Common paths")}
+                    options={PURGE_PATHS}
+                    onPick={(path) =>
+                      setPaths(
+                        path.endsWith("*")
+                          ? path
+                          : [...new Set([...paths.split("\n").filter(Boolean), path])].join("\n"),
+                      )
+                    }
+                  />
+                }
+              >
                 <TextArea
                   value={paths}
                   placeholder={"/index.html\n/blog/?page=2"}

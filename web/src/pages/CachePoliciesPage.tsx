@@ -3,8 +3,19 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../api";
 import { hitRatio, ruleSummary, usePolicies } from "../components/cache";
-import { Button, Card, Empty, Field, Select, TextArea, TextInput } from "../components/ui";
+import {
+  Button,
+  Card,
+  Empty,
+  Field,
+  PickField,
+  QuickPick,
+  TextArea,
+  TextInput,
+} from "../components/ui";
 import { errorMessage, formatBytes } from "../format";
+import { useT } from "../i18n";
+import { CACHE_MEMORY_MIB, CACHE_OBJECT_MIB } from "../presets";
 import type { Schemas } from "../types";
 
 type Policy = Schemas["CachePolicyView"];
@@ -93,6 +104,7 @@ function PolicyEditor({
   presets: Preset[];
   onDone: () => void;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [name, setName] = useState(policy?.name ?? "");
   const [description, setDescription] = useState(policy?.description ?? "");
@@ -160,15 +172,15 @@ function PolicyEditor({
         }}
       >
         {!policy ? (
-          <Field label="Start from preset">
-            <Select value={preset} onChange={(event) => choosePreset(event.target.value)}>
-              {presets.map((item) => (
-                <option key={item.slug} value={item.slug}>
-                  {item.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <div className="md:col-span-2">
+            <PickField
+              label="Start from preset"
+              hint={presets.find((item) => item.slug === preset)?.description}
+              options={presets.map((item) => ({ label: item.name, value: item.slug }))}
+              value={preset}
+              onPick={choosePreset}
+            />
+          </div>
         ) : null}
         <Field label="Name">
           <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
@@ -176,14 +188,34 @@ function PolicyEditor({
         <Field label="Description">
           <TextInput value={description} onChange={(event) => setDescription(event.target.value)} />
         </Field>
-        <Field label="Memory budget (MiB, blank for default)">
+        <Field
+          label="Memory budget (MiB, blank for default)"
+          presets={
+            <QuickPick
+              label={t("Memory presets")}
+              options={CACHE_MEMORY_MIB}
+              value={memory}
+              onPick={setMemory}
+            />
+          }
+        >
           <TextInput
             inputMode="numeric"
             value={memory}
             onChange={(event) => setMemory(event.target.value)}
           />
         </Field>
-        <Field label="Largest object (MiB, blank for 16)">
+        <Field
+          label="Largest object (MiB, blank for 16)"
+          presets={
+            <QuickPick
+              label={t("Object size presets")}
+              options={CACHE_OBJECT_MIB}
+              value={maxObject}
+              onPick={setMaxObject}
+            />
+          }
+        >
           <TextInput
             inputMode="numeric"
             value={maxObject}

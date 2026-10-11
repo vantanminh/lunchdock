@@ -3,8 +3,28 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { Badge, Button, Card, Empty, Field, Select, TextInput } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Empty,
+  Field,
+  PickField,
+  QuickPick,
+  Select,
+  TextInput,
+} from "../components/ui";
 import { errorMessage, formatTime } from "../format";
+import { msg, useT } from "../i18n";
+import {
+  ALERT_NAMES,
+  alertThresholds,
+  EVENT_SETS,
+  pickDurations,
+  SEVERITIES as SEVERITY_CHOICES,
+  SMTP_PORTS,
+  SMTP_PROVIDERS,
+} from "../presets";
 import type { Schemas } from "../types";
 
 type Alert = Schemas["AlertView"];
@@ -52,8 +72,6 @@ const CHANNEL_FIELDS: Record<
   ],
 };
 
-const SEVERITIES = ["info", "warning", "critical"] as const;
-
 const severityTone: Record<string, string> = {
   info: "ok",
   warning: "partial",
@@ -81,7 +99,16 @@ function channelConfig(kind: ChannelKind, values: Record<string, string>, securi
   return config;
 }
 
+const CHANNEL_NAMES: Record<ChannelKind, string> = {
+  telegram: "Telegram",
+  discord: "Discord",
+  slack: "Slack",
+  webhook: "Webhook",
+  smtp: "Email",
+};
+
 function ChannelsCard({ channels }: { channels: Channel[] }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [kind, setKind] = useState<ChannelKind>("telegram");
@@ -139,35 +166,70 @@ function ChannelsCard({ channels }: { channels: Channel[] }) {
         <Field label="Name">
           <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
-        <Field label="Kind">
-          <Select
+        <div className="md:col-span-2">
+          <PickField
+            label="Kind"
+            options={CHANNEL_KINDS.map((item) => ({ label: CHANNEL_NAMES[item], value: item }))}
             value={kind}
-            disabled={editing !== null}
-            onChange={(event) => {
-              setKind(event.target.value as ChannelKind);
+            onPick={(next) => {
+              if (editing !== null) return;
+              const previous = CHANNEL_NAMES[kind];
+              setKind(next as ChannelKind);
               setValues({});
+              if (!name || name === previous) setName(CHANNEL_NAMES[next as ChannelKind]);
             }}
-          >
-            {CHANNEL_KINDS.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </Select>
-        </Field>
+          />
+        </div>
         {kind === "smtp" ? (
-          <Field label="Security">
-            <Select value={security} onChange={(event) => setSecurity(event.target.value)}>
-              <option value="starttls">STARTTLS</option>
-              <option value="tls">Implicit TLS</option>
-              <option value="none">None (local relay only)</option>
-            </Select>
-          </Field>
+          <>
+            <div className="md:col-span-3">
+              <PickField
+                label="Mail provider"
+                hint={t(
+                  "Fills in the host, port, and security. Add your own username and password.",
+                )}
+                options={SMTP_PROVIDERS.map((item) => ({ label: item.label, value: item.label }))}
+                value={SMTP_PROVIDERS.find((item) => item.host === values.host)?.label ?? ""}
+                onPick={(label) => {
+                  const provider = SMTP_PROVIDERS.find((item) => item.label === label);
+                  if (!provider) return;
+                  setValues({
+                    ...values,
+                    host: provider.host,
+                    port: provider.port,
+                    ...(provider.username && !values.username
+                      ? { username: provider.username }
+                      : {}),
+                  });
+                  setSecurity(provider.security);
+                }}
+              />
+            </div>
+            <PickField
+              label="Security"
+              options={SMTP_SECURITY}
+              value={security}
+              onPick={setSecurity}
+            />
+          </>
         ) : null}
         {CHANNEL_FIELDS[kind].map((field) => (
           <Field
             key={field.key}
             label={field.secret && editing ? `${field.label} (leave empty to keep)` : field.label}
+            presets={
+              kind === "smtp" && field.key === "port" ? (
+                <QuickPick
+                  label={t("Port presets")}
+                  options={SMTP_PORTS}
+                  value={values.port}
+                  onPick={(port) => {
+                    setValues({ ...values, port });
+                    setSecurity(port === "465" ? "tls" : port === "25" ? "none" : "starttls");
+                  }}
+                />
+              ) : undefined
+            }
           >
             <TextInput
               required={!field.optional && !(field.secret && editing)}
@@ -224,6 +286,16 @@ function ChannelsCard({ channels }: { channels: Channel[] }) {
   );
 }
 
+const SMTP_SECURITY = [
+  { label: "STARTTLS", value: "starttls", hint: msg("Upgrade a plain connection; port 587") },
+  { label: msg("Implicit TLS"), value: "tls", hint: msg("Encrypted from the start; port 465") },
+  {
+    label: msg("None (local relay only)"),
+    value: "none",
+    hint: msg("Unencrypted; only for a relay on this network"),
+  },
+];
+
 const blankRule = {
   name: "",
   kind: "server_cpu",
@@ -243,6 +315,7 @@ function RulesCard({
   channels: Channel[];
   kinds: AlertKind[];
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const servers = useQuery({
     queryKey: ["servers"],
@@ -257,6 +330,7 @@ function RulesCard({
   const [editing, setEditing] = useState<string | null>(null);
   const kind = kinds.find((item) => item.kind === form.kind);
   const scope = kind?.target ?? "server";
+  const suggestedName = ALERT_NAMES[form.kind];
 
   const reset = () => {
     setForm(blankRule);
@@ -362,7 +436,19 @@ function RulesCard({
           save.mutate();
         }}
       >
-        <Field label="Name">
+        <Field
+          label="Name"
+          presets={
+            suggestedName ? (
+              <QuickPick
+                label={t("Name suggestions")}
+                options={[{ label: suggestedName, value: t(suggestedName) }]}
+                value={form.name}
+                onPick={(name) => setForm({ ...form, name })}
+              />
+            ) : undefined
+          }
+        >
           <TextInput required value={form.name} onChange={set("name")} />
         </Field>
         <Field label="Condition">
@@ -403,18 +489,26 @@ function RulesCard({
         ) : null}
         {scope === "events" ? (
           <>
-            <Field label="Event patterns">
+            <Field
+              label="Event patterns"
+              hint={t("Comma separated. Use * as a wildcard, for example backup.*")}
+              presets={
+                <QuickPick
+                  label={t("Event sets")}
+                  options={EVENT_SETS}
+                  value={form.events}
+                  onPick={(events) => setForm({ ...form, events })}
+                />
+              }
+            >
               <TextInput required value={form.events} onChange={set("events")} />
             </Field>
-            <Field label="Minimum severity">
-              <Select value={form.minSeverity} onChange={set("minSeverity")}>
-                {SEVERITIES.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <PickField
+              label="Minimum severity"
+              options={SEVERITY_CHOICES}
+              value={form.minSeverity}
+              onPick={(minSeverity) => setForm({ ...form, minSeverity })}
+            />
           </>
         ) : null}
         {kind?.needs_threshold ? (
@@ -425,6 +519,14 @@ function RulesCard({
                 : form.kind === "http_errors"
                   ? "Threshold (5xx responses)"
                   : "Threshold (%)"
+            }
+            presets={
+              <QuickPick
+                label={t("Threshold presets")}
+                options={alertThresholds(form.kind)}
+                value={form.threshold}
+                onPick={(threshold) => setForm({ ...form, threshold })}
+              />
             }
           >
             <TextInput
@@ -438,7 +540,17 @@ function RulesCard({
           </Field>
         ) : null}
         {scope !== "events" ? (
-          <Field label="For at least (seconds)">
+          <Field
+            label="For at least (seconds)"
+            presets={
+              <QuickPick
+                label={t("Duration presets")}
+                options={pickDurations("60", "300", "900", "1800", "3600")}
+                value={form.duration}
+                onPick={(duration) => setForm({ ...form, duration })}
+              />
+            }
+          >
             <TextInput
               required
               type="number"
