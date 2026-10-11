@@ -9,6 +9,7 @@ const links = [
   ["/servers", "Servers"],
   ["/projects", "Projects"],
   ["/templates", "Templates"],
+  ["/logs", "Logs"],
   ["/backups", "Backups"],
   ["/s3-destinations", "S3 destinations"],
   ["/cache", "Cache"],

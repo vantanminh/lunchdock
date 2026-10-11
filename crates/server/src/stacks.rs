@@ -316,7 +316,10 @@ pub fn refresh_network_later(state: &AppState, service_id: Uuid) {
     });
 }
 
-async fn load_env(state: &AppState, id: Uuid) -> Result<Vec<(String, String)>, ApiError> {
+pub(crate) async fn load_env(
+    state: &AppState,
+    id: Uuid,
+) -> Result<Vec<(String, String)>, ApiError> {
     let rows = sqlx::query!(
         r#"
         SELECT key, value_enc

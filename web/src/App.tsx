@@ -11,6 +11,7 @@ import { DashboardPage } from "./pages/Dashboard";
 import { CachePoliciesPage } from "./pages/CachePoliciesPage";
 import { CertificatesPage } from "./pages/CertificatesPage";
 import { GitProvidersPage } from "./pages/GitProvidersPage";
+import { LogsPage } from "./pages/LogsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { RegistriesPage } from "./pages/RegistriesPage";
 import { S3DestinationsPage } from "./pages/S3DestinationsPage";
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="services/:id" element={<ServicePage />} />
         <Route path="templates" element={<TemplatesPage />} />
+        <Route path="logs" element={<LogsPage />} />
         <Route path="backups" element={<BackupsPage />} />
         <Route path="s3-destinations" element={<S3DestinationsPage />} />
         <Route path="cache" element={<CachePoliciesPage />} />

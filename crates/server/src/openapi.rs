@@ -7,6 +7,8 @@ use utoipa::{Modify, OpenApi as OpenApiDerive};
 
 use crate::backup::RestoreRequest;
 use crate::deploy::DeploymentView;
+use crate::logs::retention::RetentionSettings;
+use crate::logs::LogView;
 use crate::routes::account::{
     AuditView, CreateToken, CreateUser, CreatedToken, LoginRequest, PasswordChange,
     SessionResponse, SetupRequest, SetupStatus, TokenView, TotpDisable, TotpEnable,
@@ -35,6 +37,7 @@ use crate::routes::git::{
     BuildAccepted, BuildQueueView, CreateGitProvider, GitProviderView, SourceView, UpdateSource,
 };
 use crate::routes::health::HealthResponse;
+use crate::routes::logs::{IngestEntry, IngestRequest, IngestResult, LogPage, UpdateRetention};
 use crate::routes::stacks::{
     CreateStack, DeployTemplate, GeneratedValue, StackLogsView, StackServiceView, StackView,
     TemplateDeployed, TemplateDetail, TemplateVariableView, TemplateView, UpdateStack,
@@ -139,7 +142,14 @@ use rudder_core::{
         ServiceCacheView,
         ServiceCachePurge,
         CachePurgeResult,
-        CacheStats
+        CacheStats,
+        LogView,
+        LogPage,
+        IngestEntry,
+        IngestRequest,
+        IngestResult,
+        RetentionSettings,
+        UpdateRetention
     )),
     modifiers(&SecurityAddon),
     tags(
@@ -151,7 +161,8 @@ use rudder_core::{
         (name = "databases", description = "Managed databases and their lifecycle"),
         (name = "backups", description = "S3 destinations, backup jobs, runs, and restores"),
         (name = "stacks", description = "Docker Compose stacks and app templates"),
-        (name = "cache", description = "HTTP cache policies, purge, and stats")
+        (name = "cache", description = "HTTP cache policies, purge, and stats"),
+        (name = "logs", description = "Central logs, live tail, retention, and the container terminal")
     )
 )]
 struct ApiDoc;
@@ -908,6 +919,69 @@ const ROUTES: &[Route] = &[
         request: None,
         response: Some("CacheStats"),
         status: 200,
+    },
+    Route {
+        path: "/api/v1/logs",
+        method: HttpMethod::Get,
+        tag: "logs",
+        summary: "Search logs. Query: source, service_id, server_id, project_id, level (comma list), q, status (2xx..5xx), since, until, before_time, before_id, limit (max 1000)",
+        request: None,
+        response: Some("LogPage"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/logs/ingest",
+        method: HttpMethod::Post,
+        tag: "logs",
+        summary: "Ingest up to 1000 log lines (write scope)",
+        request: Some("IngestRequest"),
+        response: Some("IngestResult"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/logs/export",
+        method: HttpMethod::Get,
+        tag: "logs",
+        summary: "Export matching logs as NDJSON or CSV (format=ndjson|csv, at most 100000 lines); same filters as search",
+        request: None,
+        response: None,
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/logs/tail",
+        method: HttpMethod::Get,
+        tag: "logs",
+        summary: "Live tail over WebSocket; same filters as search. Messages: {type:entry,entry} or {type:lagged,skipped}",
+        request: None,
+        response: None,
+        status: 101,
+    },
+    Route {
+        path: "/api/v1/settings/retention",
+        method: HttpMethod::Get,
+        tag: "logs",
+        summary: "Log and metrics retention (admin)",
+        request: None,
+        response: Some("RetentionSettings"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/settings/retention",
+        method: HttpMethod::Put,
+        tag: "logs",
+        summary: "Update per-source log retention in days (admin)",
+        request: Some("UpdateRetention"),
+        response: Some("RetentionSettings"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/terminal",
+        method: HttpMethod::Get,
+        tag: "logs",
+        summary: "Interactive shell over WebSocket (write scope). Query: cols, rows, container (compose service). Send {type:input,data} or {type:resize,cols,rows}; output is binary",
+        request: None,
+        response: None,
+        status: 101,
     },
 ];
 

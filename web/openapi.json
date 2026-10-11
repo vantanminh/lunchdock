@@ -731,6 +731,85 @@
         }
       }
     },
+    "/api/v1/logs": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Search logs. Query: source, service_id, server_id, project_id, level (comma list), q, status (2xx..5xx), since, until, before_time, before_id, limit (max 1000)",
+        "operationId": "get_v1_logs",
+        "responses": {
+          "200": {
+            "description": "Search logs. Query: source, service_id, server_id, project_id, level (comma list), q, status (2xx..5xx), since, until, before_time, before_id, limit (max 1000)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/logs/export": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Export matching logs as NDJSON or CSV (format=ndjson|csv, at most 100000 lines); same filters as search",
+        "operationId": "get_v1_logs_export",
+        "responses": {
+          "200": {
+            "description": "Export matching logs as NDJSON or CSV (format=ndjson|csv, at most 100000 lines); same filters as search"
+          }
+        }
+      }
+    },
+    "/api/v1/logs/ingest": {
+      "post": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Ingest up to 1000 log lines (write scope)",
+        "operationId": "post_v1_logs_ingest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ingest up to 1000 log lines (write scope)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/logs/tail": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Live tail over WebSocket; same filters as search. Messages: {type:entry,entry} or {type:lagged,skipped}",
+        "operationId": "get_v1_logs_tail",
+        "responses": {
+          "101": {
+            "description": "Live tail over WebSocket; same filters as search. Messages: {type:entry,entry} or {type:lagged,skipped}"
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -1579,6 +1658,20 @@
         }
       }
     },
+    "/api/v1/services/{id}/terminal": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Interactive shell over WebSocket (write scope). Query: cols, rows, container (compose service). Send {type:input,data} or {type:resize,cols,rows}; output is binary",
+        "operationId": "get_v1_services__id__terminal",
+        "responses": {
+          "101": {
+            "description": "Interactive shell over WebSocket (write scope). Query: cols, rows, container (compose service). Send {type:input,data} or {type:resize,cols,rows}; output is binary"
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/webhook": {
       "post": {
         "tags": [
@@ -1589,6 +1682,55 @@
         "responses": {
           "202": {
             "description": "Accept a git push webhook"
+          }
+        }
+      }
+    },
+    "/api/v1/settings/retention": {
+      "get": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Log and metrics retention (admin)",
+        "operationId": "get_v1_settings_retention",
+        "responses": {
+          "200": {
+            "description": "Log and metrics retention (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionSettings"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "logs"
+        ],
+        "summary": "Update per-source log retention in days (admin)",
+        "operationId": "put_v1_settings_retention",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRetention"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update per-source log retention in days (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionSettings"
+                }
+              }
+            }
           }
         }
       }
@@ -3375,6 +3517,90 @@
           }
         }
       },
+      "IngestEntry": {
+        "type": "object",
+        "required": [
+          "source",
+          "message"
+        ],
+        "properties": {
+          "fields": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "http_status": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "level": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Detected from the message when omitted."
+          },
+          "message": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The project is filled in from the service."
+          },
+          "source": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Defaults to now. Must be within the last 30 days."
+          }
+        }
+      },
+      "IngestRequest": {
+        "type": "object",
+        "required": [
+          "entries"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IngestEntry"
+            }
+          }
+        }
+      },
+      "IngestResult": {
+        "type": "object",
+        "required": [
+          "accepted"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "LifecycleView": {
         "type": "object",
         "required": [
@@ -3388,6 +3614,97 @@
             ]
           },
           "status": {
+            "type": "string"
+          }
+        }
+      },
+      "LogPage": {
+        "type": "object",
+        "required": [
+          "entries"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LogView"
+            },
+            "description": "Newest first."
+          },
+          "next_before_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "next_before_time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Pass as `before_time` and `before_id` to fetch older lines."
+          }
+        }
+      },
+      "LogView": {
+        "type": "object",
+        "required": [
+          "id",
+          "logged_at",
+          "source",
+          "level",
+          "message",
+          "fields"
+        ],
+        "properties": {
+          "fields": {
+            "type": "object"
+          },
+          "http_status": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "level": {
+            "type": "string"
+          },
+          "logged_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "source": {
             "type": "string"
           }
         }
@@ -3586,6 +3903,30 @@
               "null"
             ],
             "description": "Volume name for volume backups. Defaults to the original volume."
+          }
+        }
+      },
+      "RetentionSettings": {
+        "type": "object",
+        "required": [
+          "log_days",
+          "metrics"
+        ],
+        "properties": {
+          "log_days": {
+            "type": "object",
+            "description": "Days to keep per log source.",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "metrics": {
+            "type": "object"
           }
         }
       },
@@ -4805,6 +5146,26 @@
           }
         }
       },
+      "UpdateRetention": {
+        "type": "object",
+        "required": [
+          "log_days"
+        ],
+        "properties": {
+          "log_days": {
+            "type": "object",
+            "description": "Days to keep per source, 1 to 365. Sources not listed keep their value.",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "UpdateServer": {
         "type": "object",
         "properties": {
@@ -5026,6 +5387,10 @@
     {
       "name": "cache",
       "description": "HTTP cache policies, purge, and stats"
+    },
+    {
+      "name": "logs",
+      "description": "Central logs, live tail, retention, and the container terminal"
     }
   ]
 }

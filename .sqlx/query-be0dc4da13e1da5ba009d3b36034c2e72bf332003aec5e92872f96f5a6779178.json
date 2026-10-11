@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT rudder_ensure_daily_partition('log_entries', (CURRENT_DATE + $1::int))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "rudder_ensure_daily_partition",
+        "type_info": "Void"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "be0dc4da13e1da5ba009d3b36034c2e72bf332003aec5e92872f96f5a6779178"
+}

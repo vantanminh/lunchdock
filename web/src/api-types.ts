@@ -435,6 +435,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search logs. Query: source, service_id, server_id, project_id, level (comma list), q, status (2xx..5xx), since, until, before_time, before_id, limit (max 1000) */
+        get: operations["get_v1_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/logs/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export matching logs as NDJSON or CSV (format=ndjson|csv, at most 100000 lines); same filters as search */
+        get: operations["get_v1_logs_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/logs/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest up to 1000 log lines (write scope) */
+        post: operations["post_v1_logs_ingest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/logs/tail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live tail over WebSocket; same filters as search. Messages: {type:entry,entry} or {type:lagged,skipped} */
+        get: operations["get_v1_logs_tail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -951,6 +1019,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/terminal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Interactive shell over WebSocket (write scope). Query: cols, rows, container (compose service). Send {type:input,data} or {type:resize,cols,rows}; output is binary */
+        get: operations["get_v1_services__id__terminal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/webhook": {
         parameters: {
             query?: never;
@@ -962,6 +1047,24 @@ export interface paths {
         put?: never;
         /** Accept a git push webhook */
         post: operations["post_v1_services__id__webhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/retention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Log and metrics retention (admin) */
+        get: operations["get_v1_settings_retention"];
+        /** Update per-source log retention in days (admin) */
+        put: operations["put_v1_settings_retention"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1542,9 +1645,65 @@ export interface components {
             status: string;
             version: string;
         };
+        IngestEntry: {
+            fields?: Record<string, never> | null;
+            /** Format: int32 */
+            http_status?: number | null;
+            /** @description Detected from the message when omitted. */
+            level?: string | null;
+            message: string;
+            /** Format: uuid */
+            server_id?: string | null;
+            /**
+             * Format: uuid
+             * @description The project is filled in from the service.
+             */
+            service_id?: string | null;
+            source: string;
+            /**
+             * Format: date-time
+             * @description Defaults to now. Must be within the last 30 days.
+             */
+            timestamp?: string | null;
+        };
+        IngestRequest: {
+            entries: components["schemas"]["IngestEntry"][];
+        };
+        IngestResult: {
+            accepted: number;
+        };
         LifecycleView: {
             container_id?: string | null;
             status: string;
+        };
+        LogPage: {
+            /** @description Newest first. */
+            entries: components["schemas"]["LogView"][];
+            /** Format: int64 */
+            next_before_id?: number | null;
+            /**
+             * Format: date-time
+             * @description Pass as `before_time` and `before_id` to fetch older lines.
+             */
+            next_before_time?: string | null;
+        };
+        LogView: {
+            fields: Record<string, never>;
+            /** Format: int32 */
+            http_status?: number | null;
+            /** Format: int64 */
+            id: number;
+            level: string;
+            /** Format: date-time */
+            logged_at: string;
+            message: string;
+            /** Format: uuid */
+            project_id?: string | null;
+            /** Format: uuid */
+            server_id?: string | null;
+            /** Format: uuid */
+            service_id?: string | null;
+            source: string;
         };
         LoginRequest: {
             email: string;
@@ -1602,6 +1761,13 @@ export interface components {
             target_service_id?: string | null;
             /** @description Volume name for volume backups. Defaults to the original volume. */
             target_volume?: string | null;
+        };
+        RetentionSettings: {
+            /** @description Days to keep per log source. */
+            log_days: {
+                [key: string]: number;
+            };
+            metrics: Record<string, never>;
         };
         RollbackBody: {
             /** Format: uuid */
@@ -1952,6 +2118,12 @@ export interface components {
             panel_certificate_id?: string | null;
             panel_domain?: string | null;
             panel_ssl_mode?: string | null;
+        };
+        UpdateRetention: {
+            /** @description Days to keep per source, 1 to 365. Sources not listed keep their value. */
+            log_days: {
+                [key: string]: number;
+            };
         };
         UpdateServer: {
             description?: string | null;
@@ -2660,6 +2832,86 @@ export interface operations {
         responses: {
             /** @description Sign out */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_v1_logs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Search logs. Query: source, service_id, server_id, project_id, level (comma list), q, status (2xx..5xx), since, until, before_time, before_id, limit (max 1000) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogPage"];
+                };
+            };
+        };
+    };
+    get_v1_logs_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Export matching logs as NDJSON or CSV (format=ndjson|csv, at most 100000 lines); same filters as search */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_v1_logs_ingest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["IngestRequest"];
+            };
+        };
+        responses: {
+            /** @description Ingest up to 1000 log lines (write scope) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestResult"];
+                };
+            };
+        };
+    };
+    get_v1_logs_tail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Live tail over WebSocket; same filters as search. Messages: {type:entry,entry} or {type:lagged,skipped} */
+            101: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3441,6 +3693,24 @@ export interface operations {
             };
         };
     };
+    get_v1_services__id__terminal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Interactive shell over WebSocket (write scope). Query: cols, rows, container (compose service). Send {type:input,data} or {type:resize,cols,rows}; output is binary */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     post_v1_services__id__webhook: {
         parameters: {
             query?: never;
@@ -3456,6 +3726,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_v1_settings_retention: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Log and metrics retention (admin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionSettings"];
+                };
+            };
+        };
+    };
+    put_v1_settings_retention: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateRetention"];
+            };
+        };
+        responses: {
+            /** @description Update per-source log retention in days (admin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionSettings"];
+                };
             };
         };
     };

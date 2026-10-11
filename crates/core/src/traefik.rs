@@ -8,6 +8,9 @@ use crate::Error;
 /// Docker network shared by Traefik and routed containers.
 pub const PROXY_NETWORK: &str = "rudder-proxy";
 
+/// Name of the per-server Traefik container. Its JSON access log is collected as `proxy` logs.
+pub const TRAEFIK_CONTAINER: &str = "rudder-traefik";
+
 /// Path inside the Traefik container. The install mounts the panel data directory here.
 pub const TRAEFIK_CERT_DIR: &str = "/etc/rudder/traefik/certs";
 

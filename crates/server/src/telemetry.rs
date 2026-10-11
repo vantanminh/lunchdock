@@ -11,7 +11,9 @@ use crate::config::{Config, LogFormat};
 /// Install a global subscriber. Later calls are ignored so tests can share a process.
 pub fn init(config: &Config) {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let registry = tracing_subscriber::registry().with(filter);
+    let registry = tracing_subscriber::registry()
+        .with(filter)
+        .with(crate::logs::layer::PanelLayer);
     match config.log_format {
         LogFormat::Json => {
             let _ = registry

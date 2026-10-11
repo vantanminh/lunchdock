@@ -1,15 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { lazy, Suspense, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { BackupJobForm, BackupJobs } from "../components/backups";
 import { ServiceCachePanel } from "../components/cache";
+import { LogViewer } from "../components/logs";
 import { DatabasePanel, ServiceLogs } from "../components/DatabasePanel";
 import { StackLogs, StackOverview, StackSourceEditor, useStack } from "../components/stacks";
 import { Badge, Button, Card, Empty, Field, Tabs, TextInput } from "../components/ui";
 import { errorMessage } from "../format";
 import type { Schemas } from "../types";
+
+const TerminalPanel = lazy(() =>
+  import("../components/terminal").then((module) => ({ default: module.TerminalPanel })),
+);
 
 const TABS = [
   ["general", "General"],
@@ -19,6 +24,7 @@ const TABS = [
   ["cache", "Cache"],
   ["deployments", "Deployments"],
   ["logs", "Logs"],
+  ["terminal", "Terminal"],
   ["backups", "Backups"],
 ] as const;
 
@@ -476,11 +482,19 @@ export function ServicePage() {
         </>
       ) : null}
       {tab === "logs" ? (
-        isStack ? (
-          <StackLogs serviceId={id} />
-        ) : (
-          <ServiceLogs serviceId={id} />
-        )
+        <>
+          <Card title="Stored logs">
+            <LogViewer fixed={{ service_id: id }} sources={["app", "proxy"]} />
+          </Card>
+          {isStack ? <StackLogs serviceId={id} /> : <ServiceLogs serviceId={id} />}
+        </>
+      ) : null}
+      {tab === "terminal" ? (
+        <Card title="Terminal">
+          <Suspense fallback={<Empty>Loading terminal…</Empty>}>
+            <TerminalPanel serviceId={id} containers={stackServices} />
+          </Suspense>
+        </Card>
       ) : null}
       {tab === "backups" && current ? (
         <>

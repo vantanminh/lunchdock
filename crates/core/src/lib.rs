@@ -15,6 +15,7 @@ mod envelope;
 mod error;
 mod github_app;
 mod image_ref;
+mod logs;
 mod retention;
 mod rollout;
 mod schedule;
@@ -49,8 +50,9 @@ pub use compose::{compose_args, ComposeAction};
 pub use crypto::Cipher;
 pub use database::{connection_string, database_runtime, DatabaseRequest, DatabaseRuntime, Engine};
 pub use driver::{
-    validate_host_path, ArchiveSource, ByteStream, ContainerSpec, ContainerStats, DockerInfo,
-    ExecOutput, ExecSpec, HealthState, NodeDriver, PortMapping, RegistryAuth, VolumeMount,
+    validate_host_path, ArchiveSource, ByteStream, ContainerInfo, ContainerSpec, ContainerStats,
+    DockerInfo, ExecOutput, ExecSpec, HealthState, LogLine, LogLineStream, LogStreamKind,
+    NodeDriver, PortMapping, RegistryAuth, TerminalInput, TerminalInputStream, VolumeMount,
 };
 pub use envelope::{Decryptor, Encryptor};
 pub use error::Error;
@@ -58,6 +60,11 @@ pub use github_app::github_app_jwt;
 pub use image_ref::{
     container_name, image_registry, normalize_registry, select_registry, validate_registry_url,
     RegistryRecord,
+};
+pub use logs::{
+    escape_like, normalize_level, parse_docker_timestamp, parse_line, partition_day,
+    partitions_to_drop, validate_source as validate_log_source, ParsedLog, LOG_LEVELS,
+    LOG_PARTITION_PREFIX, LOG_SOURCES, MAX_LOG_MESSAGE,
 };
 pub use retention::{expired_ids, BackupPoint, RetentionPolicy};
 pub use rollout::{
@@ -71,7 +78,7 @@ pub use stack::{
 pub use template::{ResolvedTemplate, Template, TemplateVariable, VariableKind};
 pub use traefik::{
     preview_hostname, render_dynamic_config, validate_host, validate_path_prefix, ProxyRoute,
-    TlsMaterial, TlsMode, PROXY_NETWORK, TRAEFIK_CERT_DIR,
+    TlsMaterial, TlsMode, PROXY_NETWORK, TRAEFIK_CERT_DIR, TRAEFIK_CONTAINER,
 };
 pub use validate::{validate_env_key, validate_image_ref, validate_name};
 pub use webhook::{evaluate_hook, HookInput, HookKind, HookOutcome};

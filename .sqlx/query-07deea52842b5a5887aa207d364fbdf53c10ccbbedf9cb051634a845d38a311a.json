@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT log_days, metrics FROM retention_settings WHERE id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "log_days",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 1,
+        "name": "metrics",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "07deea52842b5a5887aa207d364fbdf53c10ccbbedf9cb051634a845d38a311a"
+}

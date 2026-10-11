@@ -1,0 +1,84 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO log_entries (\n            logged_at, server_id, project_id, service_id, source, level, message, http_status,\n            fields\n        )\n        SELECT * FROM UNNEST(\n            $1::timestamptz[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::text[],\n            $7::text[], $8::int[], $9::jsonb[]\n        )\n        RETURNING id, logged_at, server_id, project_id, service_id, source, level, message,\n                  http_status, fields\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "logged_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "service_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "level",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "http_status",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "fields",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TimestamptzArray",
+        "UuidArray",
+        "UuidArray",
+        "UuidArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "Int4Array",
+        "JsonbArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "42545dbbc75de1f8990f2bd48c9bee82c9d90f6e779860926d75ed8964eea563"
+}

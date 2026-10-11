@@ -23,11 +23,21 @@ use rudder_core::{
     ComposeAction, ContainerSpec, DockerInfo, Error, ExecOutput, ExecSpec, HealthState, NodeDriver,
     RegistryAuth, VolumeMount, CACHE_TOKEN_FILE, PROXY_NETWORK,
 };
+use rudder_core::{
+    ContainerInfo, LogLine, LogLineStream, LogStreamKind, TerminalInput, TerminalInputStream,
+};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
 
 /// Small image with `tar` used to read and write volumes and host paths.
 pub const HELPER_IMAGE: &str = "alpine:3.20";
+
+/// Fixed argv for web terminals: bash when the image has it, otherwise sh.
+const TERMINAL_SHELL: &[&str] = &[
+    "/bin/sh",
+    "-c",
+    "if command -v bash >/dev/null 2>&1; then exec bash -l; else exec sh -l; fi",
+];
 
 /// Admin listener of the cache server on the panel host.
 pub const DEFAULT_CACHE_ADMIN: &str = "http://127.0.0.1:9090";
@@ -705,6 +715,165 @@ impl NodeDriver for LocalDriver {
     async fn read_file(&self, relative_path: &str) -> Result<Vec<u8>, Error> {
         let path = confined_path(&self.root, relative_path)?;
         tokio::fs::read(&path).await.map_err(Self::node)
+    }
+
+    async fn list_containers(&self) -> Result<Vec<ContainerInfo>, Error> {
+        let options = bollard::query_parameters::ListContainersOptionsBuilder::new()
+            .all(false)
+            .build();
+        let summaries = self
+            .docker()?
+            .list_containers(Some(options))
+            .await
+            .map_err(Self::node)?;
+        Ok(summaries
+            .into_iter()
+            .filter_map(|summary| {
+                let name = summary
+                    .names
+                    .as_ref()
+                    .and_then(|names| names.first())
+                    .map(|name| name.trim_start_matches('/').to_owned())?;
+                Some(ContainerInfo {
+                    id: summary.id?,
+                    name,
+                    image: summary.image.unwrap_or_default(),
+                    labels: summary.labels.unwrap_or_default().into_iter().collect(),
+                })
+            })
+            .collect())
+    }
+
+    async fn follow_logs(&self, id: &str, since_unix: i64) -> Result<LogLineStream, Error> {
+        let options = LogsOptionsBuilder::new()
+            .follow(true)
+            .stdout(true)
+            .stderr(true)
+            .timestamps(true)
+            .since(i32::try_from(since_unix).unwrap_or(0))
+            .build();
+        let frames = self.docker()?.logs(id, Some(options));
+        let lines = frames.flat_map(|frame| {
+            let items: Vec<Result<LogLine, Error>> = match frame {
+                Ok(output) => {
+                    let (stream, message) = match output {
+                        LogOutput::StdErr { message } => (LogStreamKind::Stderr, message),
+                        LogOutput::StdOut { message } | LogOutput::Console { message } => {
+                            (LogStreamKind::Stdout, message)
+                        }
+                        LogOutput::StdIn { .. } => return futures_util::stream::iter(Vec::new()),
+                    };
+                    String::from_utf8_lossy(&message)
+                        .split('\n')
+                        .filter(|line| !line.trim().is_empty())
+                        .map(|line| {
+                            let (timestamp, text) = match line.split_once(' ') {
+                                Some((ts, rest))
+                                    if rudder_core::parse_docker_timestamp(ts).is_some() =>
+                                {
+                                    (Some(ts.to_owned()), rest.to_owned())
+                                }
+                                _ => (None, line.to_owned()),
+                            };
+                            Ok(LogLine {
+                                stream,
+                                timestamp,
+                                text,
+                            })
+                        })
+                        .collect()
+                }
+                Err(error) => vec![Err(Self::node(error))],
+            };
+            futures_util::stream::iter(items)
+        });
+        Ok(Box::pin(lines))
+    }
+
+    async fn terminal(
+        &self,
+        id: &str,
+        cols: u16,
+        rows: u16,
+        mut input: TerminalInputStream,
+    ) -> Result<ByteStream, Error> {
+        let docker = self.docker()?.clone();
+        let exec = docker
+            .create_exec(
+                id,
+                CreateExecOptions {
+                    attach_stdin: Some(true),
+                    attach_stdout: Some(true),
+                    attach_stderr: Some(true),
+                    tty: Some(true),
+                    env: Some(vec!["TERM=xterm-256color".to_owned()]),
+                    cmd: Some(
+                        TERMINAL_SHELL
+                            .iter()
+                            .map(|part| (*part).to_owned())
+                            .collect(),
+                    ),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(Self::node)?;
+        let started = docker
+            .start_exec(
+                &exec.id,
+                Some(bollard::exec::StartExecOptions {
+                    detach: false,
+                    tty: true,
+                    output_capacity: None,
+                }),
+            )
+            .await
+            .map_err(Self::node)?;
+        let StartExecResults::Attached {
+            output,
+            input: mut stdin,
+        } = started
+        else {
+            return Err(Error::Node("terminal exec did not attach".into()));
+        };
+        let resize = |docker: Docker, exec_id: String, cols: u16, rows: u16| async move {
+            let options = bollard::exec::ResizeExecOptions {
+                height: rows.max(1),
+                width: cols.max(1),
+            };
+            if let Err(error) = docker.resize_exec(&exec_id, options).await {
+                tracing::debug!(%error, "terminal resize failed");
+            }
+        };
+        resize(docker.clone(), exec.id.clone(), cols, rows).await;
+        let exec_id = exec.id.clone();
+        tokio::spawn(async move {
+            while let Some(event) = input.next().await {
+                match event {
+                    TerminalInput::Data(bytes) => {
+                        if stdin.write_all(&bytes).await.is_err() {
+                            break;
+                        }
+                        let _ = stdin.flush().await;
+                    }
+                    TerminalInput::Resize { cols, rows } => {
+                        resize(docker.clone(), exec_id.clone(), cols, rows).await;
+                    }
+                }
+            }
+            let _ = stdin.shutdown().await;
+        });
+        Ok(Box::pin(output.filter_map(|frame| async move {
+            match frame {
+                Ok(LogOutput::StdIn { .. }) => None,
+                Ok(
+                    LogOutput::StdOut { message }
+                    | LogOutput::StdErr { message }
+                    | LogOutput::Console { message },
+                ) => Some(Ok(message)),
+                Err(error) => Some(Err(Self::node(error))),
+            }
+        })))
     }
 
     async fn cache_purge(

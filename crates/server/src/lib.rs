@@ -17,6 +17,7 @@ mod embed;
 mod error;
 mod events;
 mod gitkey;
+mod logs;
 mod nodes;
 mod openapi;
 mod publish;
@@ -35,6 +36,7 @@ pub use build_queue::build_once;
 pub use config::{Config, ConfigError, LogFormat};
 pub use db::ensure_partitions;
 pub use error::ApiError;
+pub use logs::retention::run_once as apply_log_retention;
 pub use state::AppState;
 
 /// Bind the HTTP server, run migrations, and serve until shutdown.
@@ -63,6 +65,25 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
 
     let addr = config.bind;
     let state = AppState::new(pool, config);
+    logs::layer::install(state.logs.sender());
+    start_log_pipeline(&state);
+    let retention_pool = state.pool.clone();
+    tokio::spawn(async move {
+        loop {
+            match logs::retention::run_once(&retention_pool).await {
+                Ok(report) if report.deleted_rows > 0 || !report.dropped_partitions.is_empty() => {
+                    tracing::info!(
+                        deleted = report.deleted_rows,
+                        dropped = ?report.dropped_partitions,
+                        "log retention applied"
+                    )
+                }
+                Ok(_) => {}
+                Err(error) => tracing::warn!(%error, "log retention failed"),
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+        }
+    });
     let watch_state = state.clone();
     let backup_state = state.clone();
     tokio::spawn(async move {
@@ -114,6 +135,12 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Start the log writer and the local container log collector.
+pub fn start_log_pipeline(state: &AppState) {
+    tokio::spawn(state.logs.clone().run_writer(state.pool.clone()));
+    tokio::spawn(logs::collector::run(state.clone()));
+}
+
 /// The OpenAPI document as pretty JSON, used to generate frontend types.
 pub fn openapi_json() -> String {
     openapi::document()
@@ -133,6 +160,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::backups::router())
         .merge(routes::stacks::router())
         .merge(routes::cache::router())
+        .merge(routes::logs::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

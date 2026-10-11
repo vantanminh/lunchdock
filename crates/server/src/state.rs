@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::agents::AgentRegistry;
 use crate::driver::LocalDriver;
+use crate::logs::LogHub;
 use crate::Config;
 use rudder_core::Cipher;
 
@@ -31,6 +32,7 @@ pub struct AppState {
     pub local_driver: Arc<LocalDriver>,
     pub agents: Arc<AgentRegistry>,
     pub backup_slots: Arc<BackupSlots>,
+    pub logs: Arc<LogHub>,
 }
 
 impl AppState {
@@ -50,6 +52,7 @@ impl AppState {
             local_driver,
             agents: Arc::new(AgentRegistry::default()),
             backup_slots: Arc::new(Mutex::new(HashMap::new())),
+            logs: Arc::new(LogHub::default()),
         }
     }
 }

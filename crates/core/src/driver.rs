@@ -12,6 +12,40 @@ use crate::Error;
 /// Chunked bytes from or to a machine. An `Err` item ends the stream.
 pub type ByteStream = Pin<Box<dyn Stream<Item = Result<Bytes, Error>> + Send>>;
 
+/// A running container as seen by the log collector and metrics sampler.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerInfo {
+    pub id: String,
+    pub name: String,
+    pub image: String,
+    pub labels: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LogStreamKind {
+    Stdout,
+    Stderr,
+}
+
+/// One line of container output. `timestamp` is RFC 3339 as written by Docker.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LogLine {
+    pub stream: LogStreamKind,
+    pub timestamp: Option<String>,
+    pub text: String,
+}
+
+pub type LogLineStream = Pin<Box<dyn Stream<Item = Result<LogLine, Error>> + Send>>;
+
+/// Keystrokes and window size changes for an interactive shell.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TerminalInput {
+    Data(Bytes),
+    Resize { cols: u16, rows: u16 },
+}
+
+pub type TerminalInputStream = Pin<Box<dyn Stream<Item = TerminalInput> + Send>>;
+
 /// A command run inside a container. `env` entries are `KEY=value` and are
 /// never logged; pass secrets here instead of on the argv.
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -259,6 +293,27 @@ pub trait NodeDriver: Send + Sync {
         _request: &crate::CachePurge,
     ) -> Result<crate::CachePurgeResult, Error> {
         Err(unsupported("cache_purge"))
+    }
+
+    /// Running containers with their labels.
+    async fn list_containers(&self) -> Result<Vec<ContainerInfo>, Error> {
+        Err(unsupported("list_containers"))
+    }
+
+    /// Follow a container's output from `since_unix` (seconds) until it stops.
+    async fn follow_logs(&self, _id: &str, _since_unix: i64) -> Result<LogLineStream, Error> {
+        Err(unsupported("follow_logs"))
+    }
+
+    /// Open a TTY shell in a running container. Output ends when the shell exits.
+    async fn terminal(
+        &self,
+        _id: &str,
+        _cols: u16,
+        _rows: u16,
+        _input: TerminalInputStream,
+    ) -> Result<ByteStream, Error> {
+        Err(unsupported("terminal"))
     }
 
     /// Counters and usage from the node's HTTP cache.
