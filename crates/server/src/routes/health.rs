@@ -2,11 +2,12 @@ use axum::extract::State;
 use axum::routing::get;
 use axum::Json;
 use serde::Serialize;
+use utoipa::ToSchema;
 
 use crate::error::ApiError;
 use crate::state::AppState;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct HealthResponse {
     pub status: &'static str,
     pub version: &'static str,

@@ -27,6 +27,18 @@ base64 = "0.23.1"
 uuid = { workspace = true, features = ["v4", "serde"] }
 tower-http = { version = "0.7.1", features = ["trace"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "migrate", "uuid", "chrono", "json", "macros"] }
+argon2 = "0.6.0"
+cookie = "0.18"
+totp-rs = { version = "6.0.0", features = ["gen_secret", "otpauth"] }
+governor = "0.10.4"
+subtle = "2.6.1"
+sha2 = "0.11.0"
+hex = "0.4.3"
+rust-embed = { version = "8.13.0", features = ["include-exclude"] }
+mime_guess = "2.0.5"
+axum-extra = { version = "0.12.6", features = ["cookie"] }
+utoipa = { version = "6.0.0", features = ["chrono", "uuid", "axum_extras"] }
+utoipa-swagger-ui = { version = "10.0.1", features = ["axum"] }
 
 [dev-dependencies]
 http-body-util = "0.1.5"

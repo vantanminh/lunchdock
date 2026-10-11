@@ -103,10 +103,7 @@ async fn migration_creates_required_tables(pool: PgPool) {
 async fn health_endpoint_reports_ok(pool: PgPool) {
     let url =
         std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/rudder".into());
-    let state = rudder_server::AppState {
-        pool,
-        config: std::sync::Arc::new(test_config(&url)),
-    };
+    let state = rudder_server::AppState::new(pool, test_config(&url));
     let app = rudder_server::router(state);
     let response = app
         .oneshot(

@@ -10,6 +10,8 @@ description = "Domain types, validation, and shared errors for Rudder"
 [dependencies]
 thiserror.workspace = true
 serde.workspace = true
+aes-gcm = "0.11.1"
+rand = "0.10.3"
 
 [dev-dependencies]
 serde_json.workspace = true

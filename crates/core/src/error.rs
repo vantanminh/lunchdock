@@ -10,6 +10,10 @@ pub enum Error {
     /// Caller sent a value the domain rejects.
     #[error("{0}")]
     Validation(String),
+
+    /// AES-GCM rejected the key or the ciphertext.
+    #[error("crypto failure")]
+    Crypto,
 }
 
 impl PartialEq for Error {
@@ -17,6 +21,7 @@ impl PartialEq for Error {
         match (self, other) {
             (Self::InvalidName(a), Self::InvalidName(b)) => a == b,
             (Self::Validation(a), Self::Validation(b)) => a == b,
+            (Self::Crypto, Self::Crypto) => true,
             _ => false,
         }
     }

@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT github_repo, auto_update FROM panel_settings WHERE id = TRUE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "github_repo",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "auto_update",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "56cad0ab5fdaadb6b2b4c5621fdfcacd9dc2906330728c1a909a97ba87aaef91"
+}

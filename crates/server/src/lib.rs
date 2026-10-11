@@ -3,14 +3,16 @@
 //! The binary in `main.rs` loads configuration, initializes tracing, and calls
 //! [`run`]. Tests construct an [`AppState`] and the [`router`] directly.
 
+mod audit;
+mod auth;
 mod config;
 mod db;
+mod embed;
 mod error;
+mod openapi;
 mod routes;
 mod state;
 pub mod telemetry;
-
-use std::sync::Arc;
 
 use anyhow::Context;
 use tokio::net::TcpListener;
@@ -40,10 +42,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     );
 
     let addr = config.bind;
-    let state = AppState {
-        pool,
-        config: Arc::new(config),
-    };
+    let state = AppState::new(pool, config);
     let app = router(state);
     let listener = TcpListener::bind(addr)
         .await
@@ -51,10 +50,13 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     let bound = listener.local_addr().context("local address")?;
     tracing::info!(%bound, "rudder control plane listening");
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .context("http server")?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .context("http server")?;
     tracing::info!("rudder control plane stopped");
     Ok(())
 }
@@ -63,8 +65,14 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
 pub fn router(state: AppState) -> axum::Router {
     axum::Router::new()
         .merge(routes::health::router())
+        .merge(routes::account::router())
+        .merge(
+            utoipa_swagger_ui::SwaggerUi::new("/api/docs")
+                .url("/api/openapi.json", openapi::document()),
+        )
         .layer(TraceLayer::new_for_http())
         .with_state(state)
+        .fallback(embed::spa)
 }
 
 async fn shutdown_signal() {

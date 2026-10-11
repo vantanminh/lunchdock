@@ -34,6 +34,8 @@ pub struct Config {
     pub github_repo: String,
     pub log_format: LogFormat,
     pub cookie_secure: bool,
+    /// When true, the first `X-Forwarded-For` hop is the client IP.
+    pub trust_proxy: bool,
 }
 
 impl Config {
@@ -96,16 +98,8 @@ impl Config {
                 });
             }
         };
-        let cookie_secure = match vars.get("RUDDER_COOKIE_SECURE").map(String::as_str) {
-            None | Some("1") | Some("true") | Some("TRUE") => true,
-            Some("0") | Some("false") | Some("FALSE") => false,
-            Some(other) => {
-                return Err(ConfigError::Invalid {
-                    name: "RUDDER_COOKIE_SECURE",
-                    reason: format!("expected true or false, got '{other}'"),
-                });
-            }
-        };
+        let cookie_secure = parse_bool(vars, "RUDDER_COOKIE_SECURE", true)?;
+        let trust_proxy = parse_bool(vars, "RUDDER_TRUST_PROXY", true)?;
         let master_key = load_master_key(vars, read_file)?;
         Ok(Self {
             database_url,
@@ -116,6 +110,7 @@ impl Config {
             github_repo,
             log_format,
             cookie_secure,
+            trust_proxy,
         })
     }
 }
@@ -132,7 +127,24 @@ impl fmt::Debug for Config {
             .field("github_repo", &self.github_repo)
             .field("log_format", &self.log_format)
             .field("cookie_secure", &self.cookie_secure)
+            .field("trust_proxy", &self.trust_proxy)
             .finish()
+    }
+}
+
+fn parse_bool(
+    vars: &HashMap<String, String>,
+    name: &'static str,
+    default: bool,
+) -> Result<bool, ConfigError> {
+    match vars.get(name).map(String::as_str) {
+        None => Ok(default),
+        Some("1") | Some("true") | Some("TRUE") => Ok(true),
+        Some("0") | Some("false") | Some("FALSE") => Ok(false),
+        Some(other) => Err(ConfigError::Invalid {
+            name,
+            reason: format!("expected true or false, got '{other}'"),
+        }),
     }
 }
 
