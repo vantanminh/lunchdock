@@ -4,6 +4,7 @@ use std::path::Path;
 fn main() {
     let dist = Path::new("../../web/dist");
     println!("cargo:rerun-if-changed=../../web/dist");
+    println!("cargo:rerun-if-changed=migrations");
     let index = dist.join("index.html");
     if !index.exists() {
         let _ = fs::create_dir_all(dist);

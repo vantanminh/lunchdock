@@ -842,12 +842,26 @@ async fn delete_service(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     auth.require_write()?;
-    let result = sqlx::query!(r#"DELETE FROM services WHERE id = $1"#, id)
+    let service = sqlx::query!(
+        r#"SELECT kind, server_id, current_container_id FROM services WHERE id = $1"#,
+        id
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?
+    .ok_or_else(|| not_found("service not found"))?;
+    if service.kind == "compose" {
+        crate::stacks::destroy(&state, id, false).await?;
+    } else {
+        remove_service_containers(&state, id, service.server_id, service.current_container_id)
+            .await;
+    }
+    sqlx::query!(r#"DELETE FROM services WHERE id = $1"#, id)
         .execute(&state.pool)
         .await
         .map_err(ApiError::database)?;
-    if result.rows_affected() == 0 {
-        return Err(not_found("service not found"));
+    if let Err(error) = crate::publish::publish_server(&state, service.server_id).await {
+        tracing::warn!(message = %error.public_message(), "routes were not republished");
     }
     audit::record(
         &state.pool,
@@ -860,6 +874,47 @@ async fn delete_service(
     )
     .await;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Best effort: a server that is offline or already gone must not block the delete.
+async fn remove_service_containers(
+    state: &AppState,
+    id: Uuid,
+    server_id: Uuid,
+    current: Option<String>,
+) {
+    let driver = match crate::nodes::driver_for(state, server_id).await {
+        Ok(driver) => driver,
+        Err(error) => {
+            tracing::warn!(message = %error.public_message(), service_id = %id, "containers of the deleted service were not removed");
+            return;
+        }
+    };
+    let label = id.to_string();
+    let mut containers: Vec<String> = match driver.list_containers().await {
+        Ok(list) => list
+            .into_iter()
+            .filter(|c| c.labels.get("rudder.service") == Some(&label))
+            .map(|c| c.id)
+            .collect(),
+        Err(error) => {
+            tracing::warn!(%error, service_id = %id, "could not list containers of the deleted service");
+            Vec::new()
+        }
+    };
+    if let Some(current) = current {
+        if !containers
+            .iter()
+            .any(|c| c.starts_with(&current) || current.starts_with(c.as_str()))
+        {
+            containers.push(current);
+        }
+    }
+    for container in containers {
+        if let Err(error) = driver.remove_container(&container, true).await {
+            tracing::warn!(%error, service_id = %id, container, "container of the deleted service was not removed");
+        }
+    }
 }
 
 async fn list_env(
