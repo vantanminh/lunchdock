@@ -990,6 +990,14 @@ async fn fail_job(
     .execute(&state.pool)
     .await
     .map_err(ApiError::database)?;
+    crate::events::record(
+        &state.pool,
+        crate::events::Event::warning("build.failed", "Build failed")
+            .service(service_id)
+            .message(safe.clone())
+            .payload(serde_json::json!({ "deployment_id": deployment_id })),
+    )
+    .await;
     sqlx::query!(
         r#"
         UPDATE build_queue

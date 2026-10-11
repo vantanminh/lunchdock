@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT count(*) AS \"count!\"\n                FROM log_entries\n                WHERE source = 'proxy' AND service_id = $1 AND http_status >= 500\n                  AND logged_at > now() - make_interval(secs => $2)\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "1b3f396f6b40008569e154fedf3f4483dfdcd25a4facd8706b602de66303db51"
+}

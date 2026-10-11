@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, kind, target_spec, threshold, duration_secs, state, state_since\n        FROM alerts\n        WHERE enabled AND kind <> 'event'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "target_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "threshold",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "duration_secs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "state_since",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1e62d5f53ba9120da8dd789099df4229d5df1d1aca6a98d898f469e66eb16f9c"
+}

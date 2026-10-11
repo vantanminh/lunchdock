@@ -8,6 +8,7 @@ import { ServiceCachePanel } from "../components/cache";
 import { LogViewer } from "../components/logs";
 import { DatabasePanel, ServiceLogs } from "../components/DatabasePanel";
 import { StackLogs, StackOverview, StackSourceEditor, useStack } from "../components/stacks";
+import { MetricsGrid, SERVICE_CHARTS } from "../components/metrics";
 import { Badge, Button, Card, Empty, Field, Tabs, TextInput } from "../components/ui";
 import { errorMessage } from "../format";
 import type { Schemas } from "../types";
@@ -23,6 +24,7 @@ const TABS = [
   ["domains", "Domains & SSL"],
   ["cache", "Cache"],
   ["deployments", "Deployments"],
+  ["metrics", "Metrics"],
   ["logs", "Logs"],
   ["terminal", "Terminal"],
   ["backups", "Backups"],
@@ -480,6 +482,11 @@ export function ServicePage() {
             </ul>
           </Card>
         </>
+      ) : null}
+      {tab === "metrics" ? (
+        <Card title="Metrics">
+          <MetricsGrid charts={SERVICE_CHARTS} target={{ service_id: id }} />
+        </Card>
       ) : null}
       {tab === "logs" ? (
         <>

@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT bucket_start AS \"t!\", avg_value AS \"avg!\", min_value AS \"min!\",\n                       max_value AS \"max!\"\n                FROM metrics_rollups\n                WHERE resolution = $5 AND bucket_start >= $1 AND metric = $2\n                  AND (($3::uuid IS NOT NULL AND server_id = $3 AND service_id IS NULL)\n                    OR ($4::uuid IS NOT NULL AND service_id = $4))\n                ORDER BY bucket_start\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "t!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "avg!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "min!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "max!",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9734d59d396d2e9fde2e19d686a650b76fec8d5ae2f7c35099130ceae7ca7b2a"
+}

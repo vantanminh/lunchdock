@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE servers\n        SET name = COALESCE($2, name),\n            public_ip = COALESCE($3, public_ip),\n            description = COALESCE($4, description),\n            updated_at = now()\n        WHERE id = $1\n        RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,\n                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at\n        ",
+  "query": "\n        INSERT INTO servers (\n            name, kind, status, public_ip, description, join_token_hash, join_token_expires_at\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,\n                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,\n                  auto_prune, last_pruned_at\n        ",
   "describe": {
     "columns": [
       {
@@ -67,14 +67,27 @@
         "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "auto_prune",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "last_pruned_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Text",
         "Text",
-        "Text"
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
       ]
     },
     "nullable": [
@@ -90,8 +103,10 @@
       true,
       true,
       true,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "d31929fb48fd015a235910e5abb03b292b17a2791ed73676fe1b76dd8636cf03"
+  "hash": "6f09a10bd7e9a882c8f679b439b811d66ea6b5b2832e7f816f30d143aed81a62"
 }

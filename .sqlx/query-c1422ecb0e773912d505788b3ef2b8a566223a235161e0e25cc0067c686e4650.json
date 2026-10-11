@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE system_events\n            SET delivered_channels = $2, delivery_attempts = $3,\n                delivery_error = $4, delivered_at = CASE WHEN $5 THEN now() ELSE NULL END\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "UuidArray",
+        "Int4",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c1422ecb0e773912d505788b3ef2b8a566223a235161e0e25cc0067c686e4650"
+}

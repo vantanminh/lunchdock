@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, name, kind, status, public_ip, description, agent_version, docker_version,\n               os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at\n        FROM servers\n        ORDER BY created_at\n        ",
+  "query": "\n        SELECT id, name, kind, target_spec, threshold, duration_secs, channel_ids, enabled,\n               state, state_since, last_value, last_fired_at, created_at\n        FROM alerts ORDER BY name\n        ",
   "describe": {
     "columns": [
       {
@@ -20,47 +20,47 @@
       },
       {
         "ordinal": 3,
-        "name": "status",
-        "type_info": "Text"
+        "name": "target_spec",
+        "type_info": "Jsonb"
       },
       {
         "ordinal": 4,
-        "name": "public_ip",
-        "type_info": "Text"
+        "name": "threshold",
+        "type_info": "Float8"
       },
       {
         "ordinal": 5,
-        "name": "description",
-        "type_info": "Text"
+        "name": "duration_secs",
+        "type_info": "Int4"
       },
       {
         "ordinal": 6,
-        "name": "agent_version",
-        "type_info": "Text"
+        "name": "channel_ids",
+        "type_info": "UuidArray"
       },
       {
         "ordinal": 7,
-        "name": "docker_version",
-        "type_info": "Text"
+        "name": "enabled",
+        "type_info": "Bool"
       },
       {
         "ordinal": 8,
-        "name": "os_info",
+        "name": "state",
         "type_info": "Text"
       },
       {
         "ordinal": 9,
-        "name": "cpu_count",
-        "type_info": "Int4"
+        "name": "state_since",
+        "type_info": "Timestamptz"
       },
       {
         "ordinal": 10,
-        "name": "memory_bytes",
-        "type_info": "Int8"
+        "name": "last_value",
+        "type_info": "Float8"
       },
       {
         "ordinal": 11,
-        "name": "last_heartbeat_at",
+        "name": "last_fired_at",
         "type_info": "Timestamptz"
       },
       {
@@ -79,14 +79,14 @@
       false,
       true,
       false,
-      true,
-      true,
-      true,
-      true,
+      false,
+      false,
+      false,
+      false,
       true,
       true,
       false
     ]
   },
-  "hash": "41ddc2da6c0f8ef2ea90ce9cc9b14fb9eba0ecf75375f66a0d81355159bf96c4"
+  "hash": "b6f61cb05c2645868e6b9b4457042a1af382fd6044df79f45d9c10f1d00575ed"
 }

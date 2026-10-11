@@ -31,6 +31,118 @@
         }
       }
     },
+    "/api/v1/alert-kinds": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Supported alert kinds",
+        "operationId": "get_v1_alert-kinds",
+        "responses": {
+          "200": {
+            "description": "Supported alert kinds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertKindView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "List alert rules",
+        "operationId": "get_v1_alerts",
+        "responses": {
+          "200": {
+            "description": "List alert rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Create an alert rule",
+        "operationId": "post_v1_alerts",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAlert"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an alert rule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{id}": {
+      "put": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Update an alert rule",
+        "operationId": "put_v1_alerts__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAlert"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update an alert rule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Delete an alert rule",
+        "operationId": "delete_v1_alerts__id_",
+        "responses": {
+          "204": {
+            "description": "Delete an alert rule"
+          }
+        }
+      }
+    },
     "/api/v1/audit": {
       "get": {
         "tags": [
@@ -921,6 +1033,160 @@
         }
       }
     },
+    "/api/v1/metrics": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Metric series for one server or service. Query: server_id or service_id, metrics (comma list), range (15m, 1h, 6h, 24h, 7d, 30d)",
+        "operationId": "get_v1_metrics",
+        "responses": {
+          "200": {
+            "description": "Metric series for one server or service. Query: server_id or service_id, metrics (comma list), range (15m, 1h, 6h, 24h, 7d, 30d)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/metrics/overview": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Latest usage of every server and the busiest services",
+        "operationId": "get_v1_metrics_overview",
+        "responses": {
+          "200": {
+            "description": "Latest usage of every server and the busiest services",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notification-channels": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "List notification channels without secrets (admin)",
+        "operationId": "get_v1_notification-channels",
+        "responses": {
+          "200": {
+            "description": "List notification channels without secrets (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Create a notification channel (admin)",
+        "operationId": "post_v1_notification-channels",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveChannel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a notification channel (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notification-channels/{id}": {
+      "put": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Update a notification channel; empty secrets keep the stored value (admin)",
+        "operationId": "put_v1_notification-channels__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveChannel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a notification channel; empty secrets keep the stored value (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Delete a notification channel (admin)",
+        "operationId": "delete_v1_notification-channels__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a notification channel (admin)"
+          }
+        }
+      }
+    },
+    "/api/v1/notification-channels/{id}/test": {
+      "post": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Send a test notification (admin)",
+        "operationId": "post_v1_notification-channels__id__test",
+        "responses": {
+          "200": {
+            "description": "Send a test notification (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/panel": {
       "patch": {
         "tags": [
@@ -1186,6 +1452,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CacheStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers/{id}/prune": {
+      "post": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Remove dangling images and build cache now",
+        "operationId": "post_v1_servers__id__prune",
+        "responses": {
+          "200": {
+            "description": "Remove dangling images and build cache now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PruneResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "All services with their project and environment",
+        "operationId": "get_v1_services",
+        "responses": {
+          "200": {
+            "description": "All services with their project and environment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceSummary"
                 }
               }
             }
@@ -1985,6 +2293,108 @@
   },
   "components": {
     "schemas": {
+      "AlertKindView": {
+        "type": "object",
+        "required": [
+          "kind",
+          "description",
+          "needs_threshold",
+          "target"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "needs_threshold": {
+            "type": "boolean"
+          },
+          "target": {
+            "type": "string",
+            "description": "`server`, `service`, or `events`."
+          }
+        }
+      },
+      "AlertView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "target_spec",
+          "duration_secs",
+          "channel_ids",
+          "enabled",
+          "state",
+          "state_since",
+          "created_at"
+        ],
+        "properties": {
+          "channel_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "duration_secs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "last_fired_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_value": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "description": "`ok`, `pending`, or `firing`."
+          },
+          "state_since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "target_spec": {
+            "type": "object",
+            "description": "`server_id`, `service_id`, or `events` (patterns) and `min_severity`."
+          },
+          "threshold": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          }
+        }
+      },
       "AuditView": {
         "type": "object",
         "required": [
@@ -2576,6 +2986,40 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "ChannelView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "summary",
+          "enabled",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Non-secret description such as the chat id or webhook host."
           }
         }
       },
@@ -3741,6 +4185,129 @@
           }
         }
       },
+      "MetricPoint": {
+        "type": "object",
+        "required": [
+          "t",
+          "avg",
+          "min",
+          "max"
+        ],
+        "properties": {
+          "avg": {
+            "type": "number",
+            "format": "double"
+          },
+          "max": {
+            "type": "number",
+            "format": "double"
+          },
+          "min": {
+            "type": "number",
+            "format": "double"
+          },
+          "t": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MetricSeries": {
+        "type": "object",
+        "required": [
+          "metric",
+          "points"
+        ],
+        "properties": {
+          "metric": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricPoint"
+            }
+          }
+        }
+      },
+      "MetricsOverview": {
+        "type": "object",
+        "required": [
+          "servers",
+          "services"
+        ],
+        "properties": {
+          "servers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerUsage"
+            }
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceUsage"
+            }
+          }
+        }
+      },
+      "MetricsRetention": {
+        "type": "object",
+        "required": [
+          "raw_hours",
+          "m1_days",
+          "m5_days",
+          "h1_days"
+        ],
+        "properties": {
+          "h1_days": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "m1_days": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Days to keep each rollup resolution, 1 to 365.",
+            "minimum": 0
+          },
+          "m5_days": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "raw_hours": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Hours to keep 10-second samples, 1 to 168.",
+            "minimum": 0
+          }
+        }
+      },
+      "MetricsView": {
+        "type": "object",
+        "required": [
+          "resolution",
+          "since",
+          "series"
+        ],
+        "properties": {
+          "resolution": {
+            "type": "string",
+            "description": "`raw`, `1m`, `5m`, or `1h`."
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricSeries"
+            }
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "PanelView": {
         "type": "object",
         "required": [
@@ -3826,6 +4393,19 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "PruneResult": {
+        "type": "object",
+        "required": [
+          "reclaimed_bytes"
+        ],
+        "properties": {
+          "reclaimed_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           }
         }
       },
@@ -3926,7 +4506,7 @@
             }
           },
           "metrics": {
-            "type": "object"
+            "$ref": "#/components/schemas/MetricsRetention"
           }
         }
       },
@@ -4061,6 +4641,53 @@
           "run_id": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "SaveAlert": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "target_spec",
+          "channel_ids"
+        ],
+        "properties": {
+          "channel_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "duration_secs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "target_spec": {
+            "type": "object"
+          },
+          "threshold": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
           }
         }
       },
@@ -4259,6 +4886,28 @@
           }
         }
       },
+      "SaveChannel": {
+        "type": "object",
+        "required": [
+          "name",
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "description": "`{\"kind\":\"telegram\",\"bot_token\",\"chat_id\"}`, `{\"kind\":\"discord\"|\"slack\",\"webhook_url\"}`,\n`{\"kind\":\"webhook\",\"url\",\"secret\"?}`, or\n`{\"kind\":\"smtp\",\"host\",\"port\"?,\"security\":\"starttls\"|\"tls\"|\"none\",\"username\"?,\"password\"?,\"from\",\"to\":[]}`.\nOn update, empty secret fields keep the stored value."
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "SaveDestination": {
         "type": "object",
         "required": [
@@ -4304,6 +4953,61 @@
           }
         }
       },
+      "ServerUsage": {
+        "type": "object",
+        "required": [
+          "server_id",
+          "name",
+          "status"
+        ],
+        "properties": {
+          "cpu_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "disk_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "load1": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "memory_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sampled_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
       "ServerView": {
         "type": "object",
         "required": [
@@ -4312,7 +5016,8 @@
           "kind",
           "status",
           "description",
-          "created_at"
+          "created_at",
+          "auto_prune"
         ],
         "properties": {
           "agent_version": {
@@ -4320,6 +5025,10 @@
               "string",
               "null"
             ]
+          },
+          "auto_prune": {
+            "type": "boolean",
+            "description": "Remove dangling images and build cache once a day."
           },
           "cpu_count": {
             "type": [
@@ -4349,6 +5058,13 @@
             "type": "string"
           },
           "last_heartbeat_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_pruned_at": {
             "type": [
               "string",
               "null"
@@ -4442,6 +5158,95 @@
               "null"
             ],
             "description": "Why stats are missing, such as an unreachable cache server."
+          }
+        }
+      },
+      "ServiceSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "status",
+          "server_id",
+          "environment_id",
+          "environment_name",
+          "project_id",
+          "project_name"
+        ],
+        "properties": {
+          "environment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environment_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ServiceUsage": {
+        "type": "object",
+        "required": [
+          "service_id",
+          "name",
+          "server_id"
+        ],
+        "properties": {
+          "containers": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "cpu_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "memory_bytes": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -5148,9 +5953,6 @@
       },
       "UpdateRetention": {
         "type": "object",
-        "required": [
-          "log_days"
-        ],
         "properties": {
           "log_days": {
             "type": "object",
@@ -5163,12 +5965,30 @@
             "propertyNames": {
               "type": "string"
             }
+          },
+          "metrics": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MetricsRetention",
+                "description": "Replaces the metric retention when present."
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
       "UpdateServer": {
         "type": "object",
         "properties": {
+          "auto_prune": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Prune dangling images and build cache once a day."
+          },
           "description": {
             "type": [
               "string",
@@ -5391,6 +6211,10 @@
     {
       "name": "logs",
       "description": "Central logs, live tail, retention, and the container terminal"
+    },
+    {
+      "name": "monitoring",
+      "description": "Metrics, alerts, notification channels, and Docker prune"
     }
   ]
 }

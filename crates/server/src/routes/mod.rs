@@ -7,4 +7,5 @@ pub mod edge;
 pub mod git;
 pub mod health;
 pub mod logs;
+pub mod monitoring;
 pub mod stacks;

@@ -1103,20 +1103,40 @@ async fn finish_deployment(
     error: Option<&str>,
     logs: &str,
 ) -> Result<(), ApiError> {
-    sqlx::query!(
+    let service_id = sqlx::query_scalar!(
         r#"
         UPDATE deployments
         SET status = $2, error = $3, logs = $4, finished_at = now()
         WHERE id = $1
+        RETURNING service_id
         "#,
         deployment_id,
         status,
         error,
         logs
     )
-    .execute(&state.pool)
+    .fetch_optional(&state.pool)
     .await
     .map_err(ApiError::database)?;
+    if let Some(service_id) = service_id {
+        let event = match status {
+            "succeeded" => Some(crate::events::Event::info(
+                "deploy.succeeded",
+                "Deployment succeeded",
+            )),
+            "failed" => Some(
+                crate::events::Event::warning("deploy.failed", "Deployment failed")
+                    .message(error.unwrap_or_default()),
+            ),
+            _ => None,
+        };
+        if let Some(event) = event {
+            let event = event
+                .service(service_id)
+                .payload(serde_json::json!({ "deployment_id": deployment_id }));
+            crate::events::record(&state.pool, event).await;
+        }
+    }
     Ok(())
 }
 

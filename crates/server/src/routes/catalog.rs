@@ -31,6 +31,9 @@ pub struct ServerView {
     pub memory_bytes: Option<i64>,
     pub last_heartbeat_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    /// Remove dangling images and build cache once a day.
+    pub auto_prune: bool,
+    pub last_pruned_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -54,6 +57,8 @@ pub struct UpdateServer {
     pub name: Option<String>,
     pub public_ip: Option<String>,
     pub description: Option<String>,
+    /// Prune dangling images and build cache once a day.
+    pub auto_prune: Option<bool>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -94,6 +99,19 @@ pub struct ServiceView {
     pub status: String,
     pub spec: Value,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ServiceSummary {
+    pub id: Uuid,
+    pub name: String,
+    pub kind: String,
+    pub status: String,
+    pub server_id: Uuid,
+    pub environment_id: Uuid,
+    pub environment_name: String,
+    pub project_id: Uuid,
+    pub project_name: String,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -153,6 +171,7 @@ pub fn router() -> axum::Router<AppState> {
             "/api/v1/environments/{id}/services",
             get(list_services).post(create_service),
         )
+        .route("/api/v1/services", get(list_all_services))
         .route(
             "/api/v1/services/{id}",
             get(get_service)
@@ -174,7 +193,8 @@ async fn list_servers(
         ServerRow,
         r#"
         SELECT id, name, kind, status, public_ip, description, agent_version, docker_version,
-               os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at
+               os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
+                  auto_prune, last_pruned_at
         FROM servers
         ORDER BY created_at
         "#
@@ -224,7 +244,8 @@ async fn create_server(
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,
-                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at
+                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
+                  auto_prune, last_pruned_at
         "#,
         body.name,
         body.kind,
@@ -294,15 +315,18 @@ async fn update_server(
         SET name = COALESCE($2, name),
             public_ip = COALESCE($3, public_ip),
             description = COALESCE($4, description),
+            auto_prune = COALESCE($5, auto_prune),
             updated_at = now()
         WHERE id = $1
         RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,
-                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at
+                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
+                  auto_prune, last_pruned_at
         "#,
         id,
         body.name,
         body.public_ip,
         body.description,
+        body.auto_prune,
     )
     .fetch_optional(&state.pool)
     .await;
@@ -409,7 +433,8 @@ async fn probe_server(
             updated_at = now()
         WHERE id = $1
         RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,
-                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at
+                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
+                  auto_prune, last_pruned_at
         "#,
         id,
         info.version,
@@ -693,6 +718,27 @@ async fn list_services(
     Ok(Json(rows.into_iter().map(service_from_row).collect()))
 }
 
+async fn list_all_services(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+) -> Result<Json<Vec<ServiceSummary>>, ApiError> {
+    let rows = sqlx::query_as!(
+        ServiceSummary,
+        r#"
+        SELECT s.id, s.name, s.kind, s.status, s.server_id, s.environment_id,
+               e.name AS environment_name, p.id AS project_id, p.name AS project_name
+        FROM services s
+        JOIN environments e ON e.id = s.environment_id
+        JOIN projects p ON p.id = e.project_id
+        ORDER BY p.name, e.name, s.name
+        "#
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    Ok(Json(rows))
+}
+
 async fn create_service(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -936,6 +982,8 @@ struct ServerRow {
     memory_bytes: Option<i64>,
     last_heartbeat_at: Option<DateTime<Utc>>,
     created_at: DateTime<Utc>,
+    auto_prune: bool,
+    last_pruned_at: Option<DateTime<Utc>>,
 }
 
 fn server_from_row(row: ServerRow) -> ServerView {
@@ -953,6 +1001,8 @@ fn server_from_row(row: ServerRow) -> ServerView {
         memory_bytes: row.memory_bytes,
         last_heartbeat_at: row.last_heartbeat_at,
         created_at: row.created_at,
+        auto_prune: row.auto_prune,
+        last_pruned_at: row.last_pruned_at,
     }
 }
 

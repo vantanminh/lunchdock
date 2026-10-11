@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT avg(value) AS \"avg\"\n            FROM metrics_samples\n            WHERE sampled_at > now() - make_interval(secs => $4)\n              AND metric = $3\n              AND (($1::uuid IS NOT NULL AND server_id = $1 AND service_id IS NULL)\n                OR ($2::uuid IS NOT NULL AND service_id = $2))\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "7acc1b5ab8b186eb2db274a77bb3aaa03c1f205e361d12f8bf74bb5e5ab1a995"
+}

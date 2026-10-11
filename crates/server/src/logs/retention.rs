@@ -10,12 +10,50 @@ use utoipa::ToSchema;
 pub const MAX_LOG_DAYS: u32 = 365;
 const DEFAULT_LOG_DAYS: u32 = 14;
 
+pub const MAX_RAW_METRIC_HOURS: u32 = 168;
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+pub struct MetricsRetention {
+    /// Hours to keep 10-second samples, 1 to 168.
+    pub raw_hours: u32,
+    /// Days to keep each rollup resolution, 1 to 365.
+    pub m1_days: u32,
+    pub m5_days: u32,
+    pub h1_days: u32,
+}
+
+impl Default for MetricsRetention {
+    fn default() -> Self {
+        Self {
+            raw_hours: 24,
+            m1_days: 7,
+            m5_days: 14,
+            h1_days: 30,
+        }
+    }
+}
+
+impl MetricsRetention {
+    pub fn validate(&self) -> Result<(), String> {
+        if !(1..=MAX_RAW_METRIC_HOURS).contains(&self.raw_hours) {
+            return Err(format!(
+                "raw samples are kept 1 to {MAX_RAW_METRIC_HOURS} hours"
+            ));
+        }
+        for days in [self.m1_days, self.m5_days, self.h1_days] {
+            if !(1..=MAX_LOG_DAYS).contains(&days) {
+                return Err(format!("rollups are kept 1 to {MAX_LOG_DAYS} days"));
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RetentionSettings {
     /// Days to keep per log source.
     pub log_days: BTreeMap<String, u32>,
-    #[schema(value_type = Object)]
-    pub metrics: serde_json::Value,
+    pub metrics: MetricsRetention,
 }
 
 pub async fn load(pool: &PgPool) -> Result<RetentionSettings, sqlx::Error> {
@@ -31,7 +69,7 @@ pub async fn load(pool: &PgPool) -> Result<RetentionSettings, sqlx::Error> {
     }
     Ok(RetentionSettings {
         log_days,
-        metrics: row.metrics,
+        metrics: serde_json::from_value(row.metrics).unwrap_or_default(),
     })
 }
 
@@ -81,7 +119,12 @@ pub async fn run_once(pool: &PgPool) -> Result<RetentionReport, sqlx::Error> {
     .fetch_all(pool)
     .await?;
     let today = Utc::now().date_naive();
-    for name in rudder_core::partitions_to_drop(&names, today, keep.saturating_add(1)) {
+    for name in rudder_core::partitions_to_drop(
+        rudder_core::LOG_PARTITION_PREFIX,
+        &names,
+        today,
+        keep.saturating_add(1),
+    ) {
         let quoted = format!("\"{}\"", name.replace('"', "\"\""));
         sqlx::query(&format!("DROP TABLE IF EXISTS {quoted}"))
             .execute(pool)

@@ -197,8 +197,9 @@ pub fn escape_like(value: &str) -> String {
     out
 }
 
-pub fn partition_day(name: &str) -> Option<NaiveDate> {
-    let digits = name.strip_prefix(LOG_PARTITION_PREFIX)?;
+/// Day of a daily partition named `<prefix>YYYYMMDD`.
+pub fn partition_day(prefix: &str, name: &str) -> Option<NaiveDate> {
+    let digits = name.strip_prefix(prefix)?;
     if digits.len() != 8 {
         return None;
     }
@@ -206,11 +207,16 @@ pub fn partition_day(name: &str) -> Option<NaiveDate> {
 }
 
 /// Daily partitions that hold only rows older than `keep_days` before `today`.
-pub fn partitions_to_drop(names: &[String], today: NaiveDate, keep_days: u32) -> Vec<String> {
+pub fn partitions_to_drop(
+    prefix: &str,
+    names: &[String],
+    today: NaiveDate,
+    keep_days: u32,
+) -> Vec<String> {
     let cutoff = today - chrono::Duration::days(i64::from(keep_days));
     let mut out: Vec<String> = names
         .iter()
-        .filter(|name| partition_day(name).is_some_and(|day| day < cutoff))
+        .filter(|name| partition_day(prefix, name).is_some_and(|day| day < cutoff))
         .cloned()
         .collect();
     out.sort();
@@ -278,9 +284,12 @@ mod tests {
         .collect();
         let today = NaiveDate::from_ymd_opt(2026, 10, 11).unwrap();
         assert_eq!(
-            partitions_to_drop(&names, today, 6),
+            partitions_to_drop(LOG_PARTITION_PREFIX, &names, today, 6),
             vec!["log_entries_20261001".to_string()]
         );
-        assert_eq!(partitions_to_drop(&names, today, 0).len(), 3);
+        assert_eq!(
+            partitions_to_drop(LOG_PARTITION_PREFIX, &names, today, 0).len(),
+            3
+        );
     }
 }

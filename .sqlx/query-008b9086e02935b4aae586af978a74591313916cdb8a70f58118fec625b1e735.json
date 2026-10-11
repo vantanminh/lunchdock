@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO metrics_watermarks (resolution, done_until) VALUES ($1, $2)\n        ON CONFLICT (resolution) DO UPDATE SET done_until = EXCLUDED.done_until\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "008b9086e02935b4aae586af978a74591313916cdb8a70f58118fec625b1e735"
+}

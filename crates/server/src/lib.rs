@@ -18,6 +18,7 @@ mod error;
 mod events;
 mod gitkey;
 mod logs;
+mod monitor;
 mod nodes;
 mod openapi;
 mod publish;
@@ -37,6 +38,11 @@ pub use config::{Config, ConfigError, LogFormat};
 pub use db::ensure_partitions;
 pub use error::ApiError;
 pub use logs::retention::run_once as apply_log_retention;
+pub use monitor::notify::{deliver_once as deliver_notifications, sign as sign_webhook};
+pub use monitor::rollup::{
+    retention_once as apply_metrics_retention, rollup_once as rollup_metrics,
+};
+pub use monitor::{evaluate_alerts, insert_samples, Sample};
 pub use state::AppState;
 
 /// Bind the HTTP server, run migrations, and serve until shutdown.
@@ -84,6 +90,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
         }
     });
+    start_monitoring(&state);
     let watch_state = state.clone();
     let backup_state = state.clone();
     tokio::spawn(async move {
@@ -141,6 +148,32 @@ pub fn start_log_pipeline(state: &AppState) {
     tokio::spawn(logs::collector::run(state.clone()));
 }
 
+/// Start metrics sampling, alert evaluation, rollups, and notification delivery.
+pub fn start_monitoring(state: &AppState) {
+    tokio::spawn(monitor::run(state.clone()));
+    tokio::spawn(monitor::notify::run(
+        state.pool.clone(),
+        state.cipher.clone(),
+    ));
+    let pool = state.pool.clone();
+    tokio::spawn(async move {
+        let mut last_retention: Option<std::time::Instant> = None;
+        loop {
+            if let Err(error) = monitor::rollup::rollup_once(&pool, chrono::Utc::now()).await {
+                tracing::warn!(%error, "metrics rollup failed");
+            }
+            if last_retention.is_none_or(|at| at.elapsed() >= std::time::Duration::from_secs(3600))
+            {
+                last_retention = Some(std::time::Instant::now());
+                if let Err(error) = monitor::rollup::retention_once(&pool).await {
+                    tracing::warn!(%error, "metrics retention failed");
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        }
+    });
+}
+
 /// The OpenAPI document as pretty JSON, used to generate frontend types.
 pub fn openapi_json() -> String {
     openapi::document()
@@ -161,6 +194,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::stacks::router())
         .merge(routes::cache::router())
         .merge(routes::logs::router())
+        .merge(routes::monitoring::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

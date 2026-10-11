@@ -79,10 +79,10 @@ const badgeTone: Record<string, string> = {
   failed: "bg-red-500/15 text-red-700 dark:text-red-300",
 };
 
-export function Badge({ value }: { value: string }) {
+export function Badge({ value, tone }: { value: string; tone?: string }) {
   return (
     <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${badgeTone[value] ?? "bg-zinc-500/15 text-muted"}`}
+      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${badgeTone[tone ?? value] ?? "bg-zinc-500/15 text-muted"}`}
     >
       {value}
     </span>

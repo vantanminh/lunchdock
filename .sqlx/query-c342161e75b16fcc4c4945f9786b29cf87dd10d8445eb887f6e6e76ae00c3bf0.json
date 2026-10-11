@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE servers\n        SET status = 'online',\n            docker_version = $2,\n            os_info = $3,\n            cpu_count = $4,\n            memory_bytes = $5,\n            last_heartbeat_at = now(),\n            updated_at = now()\n        WHERE id = $1\n        RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,\n                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at\n        ",
+  "query": "\n        SELECT id, name, kind, status, public_ip, description, agent_version, docker_version,\n               os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,\n                  auto_prune, last_pruned_at\n        FROM servers\n        ORDER BY created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -67,16 +67,20 @@
         "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "auto_prune",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "last_pruned_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Int4",
-        "Int8"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -91,8 +95,10 @@
       true,
       true,
       true,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "a0a035648e2540cd6eef30d8e8394e84b6fc56202658251a5e2a2b67b0a10018"
+  "hash": "c342161e75b16fcc4c4945f9786b29cf87dd10d8445eb887f6e6e76ae00c3bf0"
 }

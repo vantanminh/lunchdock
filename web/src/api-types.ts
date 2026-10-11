@@ -21,6 +21,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alert-kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Supported alert kinds */
+        get: operations["get_v1_alert-kinds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List alert rules */
+        get: operations["get_v1_alerts"];
+        put?: never;
+        /** Create an alert rule */
+        post: operations["post_v1_alerts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update an alert rule */
+        put: operations["put_v1_alerts__id_"];
+        post?: never;
+        /** Delete an alert rule */
+        delete: operations["delete_v1_alerts__id_"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit": {
         parameters: {
             query?: never;
@@ -588,6 +641,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metric series for one server or service. Query: server_id or service_id, metrics (comma list), range (15m, 1h, 6h, 24h, 7d, 30d) */
+        get: operations["get_v1_metrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/metrics/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest usage of every server and the busiest services */
+        get: operations["get_v1_metrics_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notification-channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List notification channels without secrets (admin) */
+        get: operations["get_v1_notification-channels"];
+        put?: never;
+        /** Create a notification channel (admin) */
+        post: operations["post_v1_notification-channels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notification-channels/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a notification channel; empty secrets keep the stored value (admin) */
+        put: operations["put_v1_notification-channels__id_"];
+        post?: never;
+        /** Delete a notification channel (admin) */
+        delete: operations["delete_v1_notification-channels__id_"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notification-channels/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a test notification (admin) */
+        post: operations["post_v1_notification-channels__id__test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/panel": {
         parameters: {
             query?: never;
@@ -719,6 +859,40 @@ export interface paths {
         };
         /** Counters and usage from a server's cache */
         get: operations["get_v1_servers__id__cache_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/servers/{id}/prune": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove dangling images and build cache now */
+        post: operations["post_v1_servers__id__prune"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All services with their project and environment */
+        get: operations["get_v1_services"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1214,6 +1388,37 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AlertKindView: {
+            description: string;
+            kind: string;
+            needs_threshold: boolean;
+            /** @description `server`, `service`, or `events`. */
+            target: string;
+        };
+        AlertView: {
+            channel_ids: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: int32 */
+            duration_secs: number;
+            enabled: boolean;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            /** Format: date-time */
+            last_fired_at?: string | null;
+            /** Format: double */
+            last_value?: number | null;
+            name: string;
+            /** @description `ok`, `pending`, or `firing`. */
+            state: string;
+            /** Format: date-time */
+            state_since: string;
+            /** @description `server_id`, `service_id`, or `events` (patterns) and `min_severity`. */
+            target_spec: Record<string, never>;
+            /** Format: double */
+            threshold?: number | null;
+        };
         AuditView: {
             action: string;
             /** Format: uuid */
@@ -1392,6 +1597,17 @@ export interface components {
             /** Format: date-time */
             not_before?: string | null;
             sans: string[];
+        };
+        ChannelView: {
+            /** Format: date-time */
+            created_at: string;
+            enabled: boolean;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            name: string;
+            /** @description Non-secret description such as the chat id or webhook host. */
+            summary: string;
         };
         ConnectionView: {
             database: string;
@@ -1713,6 +1929,47 @@ export interface components {
         LogsView: {
             logs: string;
         };
+        MetricPoint: {
+            /** Format: double */
+            avg: number;
+            /** Format: double */
+            max: number;
+            /** Format: double */
+            min: number;
+            /** Format: date-time */
+            t: string;
+        };
+        MetricSeries: {
+            metric: string;
+            points: components["schemas"]["MetricPoint"][];
+        };
+        MetricsOverview: {
+            servers: components["schemas"]["ServerUsage"][];
+            services: components["schemas"]["ServiceUsage"][];
+        };
+        MetricsRetention: {
+            /** Format: int32 */
+            h1_days: number;
+            /**
+             * Format: int32
+             * @description Days to keep each rollup resolution, 1 to 365.
+             */
+            m1_days: number;
+            /** Format: int32 */
+            m5_days: number;
+            /**
+             * Format: int32
+             * @description Hours to keep 10-second samples, 1 to 168.
+             */
+            raw_hours: number;
+        };
+        MetricsView: {
+            /** @description `raw`, `1m`, `5m`, or `1h`. */
+            resolution: string;
+            series: components["schemas"]["MetricSeries"][];
+            /** Format: date-time */
+            since: string;
+        };
         PanelView: {
             acme_email?: string | null;
             matched_certificate_name?: string | null;
@@ -1736,6 +1993,10 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+        };
+        PruneResult: {
+            /** Format: int64 */
+            reclaimed_bytes: number;
         };
         PutEnvVar: {
             is_build_secret: boolean;
@@ -1767,7 +2028,7 @@ export interface components {
             log_days: {
                 [key: string]: number;
             };
-            metrics: Record<string, never>;
+            metrics: components["schemas"]["MetricsRetention"];
         };
         RollbackBody: {
             /** Format: uuid */
@@ -1851,6 +2112,17 @@ export interface components {
             /** Format: uuid */
             run_id: string;
         };
+        SaveAlert: {
+            channel_ids: string[];
+            /** Format: int32 */
+            duration_secs?: number | null;
+            enabled?: boolean | null;
+            kind: string;
+            name: string;
+            target_spec: Record<string, never>;
+            /** Format: double */
+            threshold?: number | null;
+        };
         SaveBackupJob: {
             /** Format: int64 */
             bandwidth_limit_bps?: number | null;
@@ -1897,6 +2169,17 @@ export interface components {
             /** @description Ordered rules; the first match wins. Defaults to the preset's rules on create. */
             rules?: components["schemas"]["CacheRule"][] | null;
         };
+        SaveChannel: {
+            /**
+             * @description `{"kind":"telegram","bot_token","chat_id"}`, `{"kind":"discord"|"slack","webhook_url"}`,
+             *     `{"kind":"webhook","url","secret"?}`, or
+             *     `{"kind":"smtp","host","port"?,"security":"starttls"|"tls"|"none","username"?,"password"?,"from","to":[]}`.
+             *     On update, empty secret fields keep the stored value.
+             */
+            config: Record<string, never>;
+            enabled?: boolean | null;
+            name: string;
+        };
         SaveDestination: {
             access_key_id?: string | null;
             bucket: string;
@@ -1906,8 +2189,26 @@ export interface components {
             region?: string | null;
             secret_access_key?: string | null;
         };
+        ServerUsage: {
+            /** Format: double */
+            cpu_percent?: number | null;
+            /** Format: double */
+            disk_percent?: number | null;
+            /** Format: double */
+            load1?: number | null;
+            /** Format: double */
+            memory_percent?: number | null;
+            name: string;
+            /** Format: date-time */
+            sampled_at?: string | null;
+            /** Format: uuid */
+            server_id: string;
+            status: string;
+        };
         ServerView: {
             agent_version?: string | null;
+            /** @description Remove dangling images and build cache once a day. */
+            auto_prune: boolean;
             /** Format: int32 */
             cpu_count?: number | null;
             /** Format: date-time */
@@ -1919,6 +2220,8 @@ export interface components {
             kind: string;
             /** Format: date-time */
             last_heartbeat_at?: string | null;
+            /** Format: date-time */
+            last_pruned_at?: string | null;
             /** Format: int64 */
             memory_bytes?: number | null;
             name: string;
@@ -1942,6 +2245,34 @@ export interface components {
             stats: components["schemas"]["CacheHostStats"][];
             /** @description Why stats are missing, such as an unreachable cache server. */
             stats_error?: string | null;
+        };
+        ServiceSummary: {
+            /** Format: uuid */
+            environment_id: string;
+            environment_name: string;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            name: string;
+            /** Format: uuid */
+            project_id: string;
+            project_name: string;
+            /** Format: uuid */
+            server_id: string;
+            status: string;
+        };
+        ServiceUsage: {
+            /** Format: double */
+            containers?: number | null;
+            /** Format: double */
+            cpu_percent?: number | null;
+            /** Format: double */
+            memory_bytes?: number | null;
+            name: string;
+            /** Format: uuid */
+            server_id: string;
+            /** Format: uuid */
+            service_id: string;
         };
         ServiceView: {
             /** Format: date-time */
@@ -2121,11 +2452,14 @@ export interface components {
         };
         UpdateRetention: {
             /** @description Days to keep per source, 1 to 365. Sources not listed keep their value. */
-            log_days: {
+            log_days?: {
                 [key: string]: number;
             };
+            metrics?: components["schemas"]["MetricsRetention"] | null;
         };
         UpdateServer: {
+            /** @description Prune dangling images and build cache once a day. */
+            auto_prune?: boolean | null;
             description?: string | null;
             name?: string | null;
             public_ip?: string | null;
@@ -2194,6 +2528,112 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
+            };
+        };
+    };
+    "get_v1_alert-kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supported alert kinds */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertKindView"];
+                };
+            };
+        };
+    };
+    get_v1_alerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List alert rules */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertView"];
+                };
+            };
+        };
+    };
+    post_v1_alerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveAlert"];
+            };
+        };
+        responses: {
+            /** @description Create an alert rule */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertView"];
+                };
+            };
+        };
+    };
+    put_v1_alerts__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveAlert"];
+            };
+        };
+        responses: {
+            /** @description Update an alert rule */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertView"];
+                };
+            };
+        };
+    };
+    delete_v1_alerts__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete an alert rule */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3025,6 +3465,152 @@ export interface operations {
             };
         };
     };
+    get_v1_metrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Metric series for one server or service. Query: server_id or service_id, metrics (comma list), range (15m, 1h, 6h, 24h, 7d, 30d) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricsView"];
+                };
+            };
+        };
+    };
+    get_v1_metrics_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Latest usage of every server and the busiest services */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricsOverview"];
+                };
+            };
+        };
+    };
+    "get_v1_notification-channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List notification channels without secrets (admin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelView"];
+                };
+            };
+        };
+    };
+    "post_v1_notification-channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveChannel"];
+            };
+        };
+        responses: {
+            /** @description Create a notification channel (admin) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelView"];
+                };
+            };
+        };
+    };
+    "put_v1_notification-channels__id_": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveChannel"];
+            };
+        };
+        responses: {
+            /** @description Update a notification channel; empty secrets keep the stored value (admin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelView"];
+                };
+            };
+        };
+    };
+    "delete_v1_notification-channels__id_": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a notification channel (admin) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "post_v1_notification-channels__id__test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Send a test notification (admin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestResult"];
+                };
+            };
+        };
+    };
     patch_v1_panel: {
         parameters: {
             query?: never;
@@ -3263,6 +3849,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CacheStats"];
+                };
+            };
+        };
+    };
+    post_v1_servers__id__prune: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Remove dangling images and build cache now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PruneResult"];
+                };
+            };
+        };
+    };
+    get_v1_services: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All services with their project and environment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceSummary"];
                 };
             };
         };

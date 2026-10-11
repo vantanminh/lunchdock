@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.id AS server_id, s.name, s.status,\n               latest.cpu AS cpu_percent, latest.mem AS memory_percent,\n               latest.disk AS disk_percent, latest.load1, latest.at AS sampled_at\n        FROM servers s\n        LEFT JOIN LATERAL (\n            SELECT max(sampled_at) AS at,\n                   avg(value) FILTER (WHERE metric = 'cpu_percent') AS cpu,\n                   avg(value) FILTER (WHERE metric = 'memory_percent') AS mem,\n                   avg(value) FILTER (WHERE metric = 'disk_percent') AS disk,\n                   avg(value) FILTER (WHERE metric = 'load1') AS load1\n            FROM metrics_samples\n            WHERE server_id = s.id AND service_id IS NULL\n              AND sampled_at > now() - INTERVAL '30 seconds'\n        ) latest ON TRUE\n        ORDER BY s.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "cpu_percent",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "memory_percent",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "disk_percent",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 6,
+        "name": "load1",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 7,
+        "name": "sampled_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "5bc9219f316ea4ef16519910ed89014c41b1f242ecb14a9725b6448b109ebb72"
+}

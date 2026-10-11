@@ -16,6 +16,7 @@ mod error;
 mod github_app;
 mod image_ref;
 mod logs;
+mod metrics;
 mod retention;
 mod rollout;
 mod schedule;
@@ -65,6 +66,12 @@ pub use logs::{
     escape_like, normalize_level, parse_docker_timestamp, parse_line, partition_day,
     partitions_to_drop, validate_source as validate_log_source, ParsedLog, LOG_LEVELS,
     LOG_PARTITION_PREFIX, LOG_SOURCES, MAX_LOG_MESSAGE,
+};
+pub use metrics::{
+    alert_needs_threshold, container_cpu_percent, cpu_percent, event_matches, parse_loadavg,
+    parse_meminfo, parse_net_dev, parse_proc_stat, percent, rate, read_host_stats, resolution_for,
+    step_alert, validate_alert_kind, AlertState, AlertTransition, CpuTimes, HostStats, Resolution,
+    ALERT_KINDS, SAMPLE_INTERVAL_SECS,
 };
 pub use retention::{expired_ids, BackupPoint, RetentionPolicy};
 pub use rollout::{

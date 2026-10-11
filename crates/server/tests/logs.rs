@@ -375,6 +375,26 @@ async fn ingest_search_export_and_retention_settings(pool: PgPool) {
             Some(json!({ "log_days": { "kernel": 3 } })),
         )
         .await;
+
+    assert_eq!(retention["metrics"]["raw_hours"], 24);
+    let metrics = client
+        .ok(
+            "PUT",
+            "/api/v1/settings/retention",
+            Some(json!({ "metrics": { "raw_hours": 48, "m1_days": 3, "m5_days": 10, "h1_days": 90 } })),
+        )
+        .await;
+    assert_eq!(metrics["metrics"]["raw_hours"], 48);
+    assert_eq!(metrics["metrics"]["h1_days"], 90);
+    assert_eq!(metrics["log_days"]["proxy"], 3);
+    client
+        .expect(
+            StatusCode::BAD_REQUEST,
+            "PUT",
+            "/api/v1/settings/retention",
+            Some(json!({ "metrics": { "raw_hours": 500, "m1_days": 3, "m5_days": 10, "h1_days": 90 } })),
+        )
+        .await;
 }
 
 #[sqlx::test(migrations = "./migrations")]

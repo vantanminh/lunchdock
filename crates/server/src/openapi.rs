@@ -7,7 +7,7 @@ use utoipa::{Modify, OpenApi as OpenApiDerive};
 
 use crate::backup::RestoreRequest;
 use crate::deploy::DeploymentView;
-use crate::logs::retention::RetentionSettings;
+use crate::logs::retention::{MetricsRetention, RetentionSettings};
 use crate::logs::LogView;
 use crate::routes::account::{
     AuditView, CreateToken, CreateUser, CreatedToken, LoginRequest, PasswordChange,
@@ -24,7 +24,7 @@ use crate::routes::cache::{
 };
 use crate::routes::catalog::{
     CreateEnvironment, CreateProject, CreateServer, CreateService, EnvVarView, EnvironmentView,
-    ProjectView, PutEnvVar, ServerView, ServiceView, UpdateServer, UpdateService,
+    ProjectView, PutEnvVar, ServerView, ServiceSummary, ServiceView, UpdateServer, UpdateService,
 };
 use crate::routes::databases::{
     ConnectionView, CreateDatabase, DatabaseEngineView, LifecycleView, LogsView, UpdateDatabase,
@@ -38,6 +38,10 @@ use crate::routes::git::{
 };
 use crate::routes::health::HealthResponse;
 use crate::routes::logs::{IngestEntry, IngestRequest, IngestResult, LogPage, UpdateRetention};
+use crate::routes::monitoring::{
+    AlertKindView, AlertView, ChannelView, MetricPoint, MetricSeries, MetricsOverview, MetricsView,
+    PruneResult, SaveAlert, SaveChannel, ServerUsage, ServiceUsage,
+};
 use crate::routes::stacks::{
     CreateStack, DeployTemplate, GeneratedValue, StackLogsView, StackServiceView, StackView,
     TemplateDeployed, TemplateDetail, TemplateVariableView, TemplateView, UpdateStack,
@@ -79,6 +83,7 @@ use rudder_core::{
         EnvironmentView,
         CreateEnvironment,
         ServiceView,
+        ServiceSummary,
         CreateService,
         UpdateService,
         EnvVarView,
@@ -149,7 +154,20 @@ use rudder_core::{
         IngestRequest,
         IngestResult,
         RetentionSettings,
-        UpdateRetention
+        MetricsRetention,
+        UpdateRetention,
+        MetricPoint,
+        MetricSeries,
+        MetricsView,
+        ServerUsage,
+        ServiceUsage,
+        MetricsOverview,
+        AlertKindView,
+        AlertView,
+        SaveAlert,
+        ChannelView,
+        SaveChannel,
+        PruneResult
     )),
     modifiers(&SecurityAddon),
     tags(
@@ -162,7 +180,8 @@ use rudder_core::{
         (name = "backups", description = "S3 destinations, backup jobs, runs, and restores"),
         (name = "stacks", description = "Docker Compose stacks and app templates"),
         (name = "cache", description = "HTTP cache policies, purge, and stats"),
-        (name = "logs", description = "Central logs, live tail, retention, and the container terminal")
+        (name = "logs", description = "Central logs, live tail, retention, and the container terminal"),
+        (name = "monitoring", description = "Metrics, alerts, notification channels, and Docker prune")
     )
 )]
 struct ApiDoc;
@@ -406,6 +425,15 @@ const ROUTES: &[Route] = &[
         request: Some("CreateService"),
         response: Some("ServiceView"),
         status: 201,
+    },
+    Route {
+        path: "/api/v1/services",
+        method: HttpMethod::Get,
+        tag: "catalog",
+        summary: "All services with their project and environment",
+        request: None,
+        response: Some("ServiceSummary"),
+        status: 200,
     },
     Route {
         path: "/api/v1/services/{id}/env",
@@ -982,6 +1010,123 @@ const ROUTES: &[Route] = &[
         request: None,
         response: None,
         status: 101,
+    },
+    Route {
+        path: "/api/v1/metrics",
+        method: HttpMethod::Get,
+        tag: "monitoring",
+        summary: "Metric series for one server or service. Query: server_id or service_id, metrics (comma list), range (15m, 1h, 6h, 24h, 7d, 30d)",
+        request: None,
+        response: Some("MetricsView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/metrics/overview",
+        method: HttpMethod::Get,
+        tag: "monitoring",
+        summary: "Latest usage of every server and the busiest services",
+        request: None,
+        response: Some("MetricsOverview"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/alert-kinds",
+        method: HttpMethod::Get,
+        tag: "monitoring",
+        summary: "Supported alert kinds",
+        request: None,
+        response: Some("AlertKindView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/alerts",
+        method: HttpMethod::Get,
+        tag: "monitoring",
+        summary: "List alert rules",
+        request: None,
+        response: Some("AlertView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/alerts",
+        method: HttpMethod::Post,
+        tag: "monitoring",
+        summary: "Create an alert rule",
+        request: Some("SaveAlert"),
+        response: Some("AlertView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/alerts/{id}",
+        method: HttpMethod::Put,
+        tag: "monitoring",
+        summary: "Update an alert rule",
+        request: Some("SaveAlert"),
+        response: Some("AlertView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/alerts/{id}",
+        method: HttpMethod::Delete,
+        tag: "monitoring",
+        summary: "Delete an alert rule",
+        request: None,
+        response: None,
+        status: 204,
+    },
+    Route {
+        path: "/api/v1/notification-channels",
+        method: HttpMethod::Get,
+        tag: "monitoring",
+        summary: "List notification channels without secrets (admin)",
+        request: None,
+        response: Some("ChannelView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/notification-channels",
+        method: HttpMethod::Post,
+        tag: "monitoring",
+        summary: "Create a notification channel (admin)",
+        request: Some("SaveChannel"),
+        response: Some("ChannelView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/notification-channels/{id}",
+        method: HttpMethod::Put,
+        tag: "monitoring",
+        summary: "Update a notification channel; empty secrets keep the stored value (admin)",
+        request: Some("SaveChannel"),
+        response: Some("ChannelView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/notification-channels/{id}",
+        method: HttpMethod::Delete,
+        tag: "monitoring",
+        summary: "Delete a notification channel (admin)",
+        request: None,
+        response: None,
+        status: 204,
+    },
+    Route {
+        path: "/api/v1/notification-channels/{id}/test",
+        method: HttpMethod::Post,
+        tag: "monitoring",
+        summary: "Send a test notification (admin)",
+        request: None,
+        response: Some("TestResult"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/servers/{id}/prune",
+        method: HttpMethod::Post,
+        tag: "monitoring",
+        summary: "Remove dangling images and build cache now",
+        request: None,
+        response: Some("PruneResult"),
+        status: 200,
     },
 ];
 

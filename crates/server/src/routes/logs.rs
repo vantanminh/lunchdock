@@ -23,7 +23,7 @@ use uuid::Uuid;
 use crate::audit;
 use crate::auth::AuthUser;
 use crate::error::ApiError;
-use crate::logs::retention::{self, RetentionSettings, MAX_LOG_DAYS};
+use crate::logs::retention::{self, MetricsRetention, RetentionSettings, MAX_LOG_DAYS};
 use crate::logs::{insert_batch, search, LogFilter, LogView, NewLog, Page};
 use crate::nodes::driver_for;
 use crate::state::AppState;
@@ -93,7 +93,10 @@ pub struct IngestResult {
 #[derive(Deserialize, ToSchema)]
 pub struct UpdateRetention {
     /// Days to keep per source, 1 to 365. Sources not listed keep their value.
+    #[serde(default)]
     pub log_days: HashMap<String, u32>,
+    /// Replaces the metric retention when present.
+    pub metrics: Option<MetricsRetention>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -522,11 +525,20 @@ async fn update_retention(
         }
         current.log_days.insert(source.clone(), *days);
     }
+    if let Some(metrics) = body.metrics {
+        metrics
+            .validate()
+            .map_err(|message| bad("invalid_days", message))?;
+        current.metrics = metrics;
+    }
     let value = serde_json::to_value(&current.log_days)
         .map_err(|_| bad("invalid", "retention settings"))?;
+    let metrics =
+        serde_json::to_value(current.metrics).map_err(|_| bad("invalid", "retention settings"))?;
     sqlx::query!(
-        "UPDATE retention_settings SET log_days = $1, updated_at = now() WHERE id",
-        value
+        "UPDATE retention_settings SET log_days = $1, metrics = $2, updated_at = now() WHERE id",
+        value,
+        metrics
     )
     .execute(&state.pool)
     .await
@@ -537,7 +549,7 @@ async fn update_retention(
         "settings.retention",
         "settings",
         None,
-        json!({ "log_days": &current.log_days }),
+        json!({ "log_days": &current.log_days, "metrics": current.metrics }),
         None,
     )
     .await;

@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, kind, severity, title, message, server_id, service_id, payload, created_at,\n               delivery_attempts, delivered_channels\n        FROM system_events\n        WHERE delivered_at IS NULL\n        ORDER BY id\n        LIMIT 50\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "severity",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "service_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "payload",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "delivery_attempts",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "delivered_channels",
+        "type_info": "UuidArray"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "43f6187ec3c24b5bcee2192a5228de29b2d01989e2f1a9d3160037b3cb300c70"
+}

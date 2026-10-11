@@ -51,6 +51,8 @@ async-compression = { version = "0.4.50", features = ["tokio", "gzip", "zstd"] }
 tokio-util = { version = "0.7.20", features = ["io", "io-util"] }
 tar = "0.4.46"
 globset = "0.4"
+lettre = { version = "0.11.23", default-features = false, features = ["builder", "hostname", "smtp-transport", "tokio1", "tokio1-rustls", "aws-lc-rs", "rustls-platform-verifier"] }
+hmac = "0.13"
 rand_core06 = { version = "0.6", package = "rand_core", features = ["getrandom"] }
 
 [dev-dependencies]

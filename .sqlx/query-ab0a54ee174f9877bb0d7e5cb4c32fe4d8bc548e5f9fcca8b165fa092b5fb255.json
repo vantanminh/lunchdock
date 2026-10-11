@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE alerts SET channel_ids = array_remove(channel_ids, $1) WHERE $1 = ANY(channel_ids)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ab0a54ee174f9877bb0d7e5cb4c32fe4d8bc548e5f9fcca8b165fa092b5fb255"
+}

@@ -3,17 +3,10 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { Button, Card, Field, TextInput } from "../components/ui";
+import { formatBytes, formatTime } from "../format";
+import type { Schemas } from "../types";
 
-interface Server {
-  id: string;
-  name: string;
-  kind: string;
-  status: string;
-  public_ip: string | null;
-  description: string;
-  docker_version: string | null;
-  os_info: string | null;
-}
+type Server = Schemas["ServerView"];
 
 interface CreatedServer extends Server {
   join_token: string | null;
@@ -47,7 +40,8 @@ export function ServersPage() {
       toast.success("Server added");
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not add server"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not add server"),
   });
 
   const remove = useMutation({
@@ -55,7 +49,8 @@ export function ServersPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not remove server"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not remove server"),
   });
 
   const probe = useMutation({
@@ -65,6 +60,29 @@ export function ServersPage() {
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
     },
     onError: (error) => toast.error(error instanceof ApiError ? error.message : "Probe failed"),
+  });
+
+  const prune = useMutation({
+    mutationFn: (id: string) =>
+      api<Schemas["PruneResult"]>(`/api/v1/servers/${id}/prune`, { method: "POST" }),
+    onSuccess: async (result) => {
+      toast.success(`Reclaimed ${formatBytes(result.reclaimed_bytes)}`);
+      await queryClient.invalidateQueries({ queryKey: ["servers"] });
+    },
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Prune failed"),
+  });
+
+  const autoPrune = useMutation({
+    mutationFn: (server: Server) =>
+      api(`/api/v1/servers/${server.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ auto_prune: !server.auto_prune }),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["servers"] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not update server"),
   });
 
   function onSubmit(event: FormEvent) {
@@ -100,7 +118,9 @@ export function ServersPage() {
           </div>
         </form>
         {created?.join_command ? (
-          <p className="mt-4 break-all rounded-md bg-paper p-3 font-mono text-sm">{created.join_command}</p>
+          <p className="mt-4 break-all rounded-md bg-paper p-3 font-mono text-sm">
+            {created.join_command}
+          </p>
         ) : null}
       </Card>
       <Card title="Fleet">
@@ -115,9 +135,27 @@ export function ServersPage() {
                   {server.status}
                   {server.docker_version ? ` · Docker ${server.docker_version}` : ""}
                   {server.public_ip ? ` · ${server.public_ip}` : ""}
+                  {server.last_pruned_at ? ` · pruned ${formatTime(server.last_pruned_at)}` : ""}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2 text-sm text-muted">
+                  <input
+                    type="checkbox"
+                    checked={server.auto_prune}
+                    disabled={autoPrune.isPending}
+                    onChange={() => autoPrune.mutate(server)}
+                  />
+                  Daily prune
+                </label>
+                <Button
+                  quiet
+                  disabled={prune.isPending}
+                  title="Remove dangling images and build cache"
+                  onClick={() => prune.mutate(server.id)}
+                >
+                  Prune
+                </Button>
                 {server.kind === "local" ? (
                   <Button quiet onClick={() => probe.mutate(server.id)}>
                     Probe

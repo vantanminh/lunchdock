@@ -47,6 +47,8 @@ pub struct LocalDriver {
     root: PathBuf,
     socket: Option<PathBuf>,
     cache_admin: String,
+    host_proc: PathBuf,
+    cpu_previous: std::sync::Mutex<Option<rudder_core::CpuTimes>>,
 }
 
 impl LocalDriver {
@@ -73,7 +75,14 @@ impl LocalDriver {
             root: root.into(),
             socket: socket.map(std::path::Path::to_path_buf),
             cache_admin: DEFAULT_CACHE_ADMIN.into(),
+            host_proc: PathBuf::from("/proc"),
+            cpu_previous: std::sync::Mutex::new(None),
         }
+    }
+
+    pub fn with_host_proc(mut self, path: &Path) -> Self {
+        self.host_proc = path.to_path_buf();
+        self
     }
 
     /// Base URL of the local cache server's admin listener.
@@ -717,6 +726,94 @@ impl NodeDriver for LocalDriver {
         tokio::fs::read(&path).await.map_err(Self::node)
     }
 
+    async fn container_stats(&self) -> Result<Vec<rudder_core::ContainerStats>, Error> {
+        let docker = self.docker()?;
+        let mut filters = HashMap::new();
+        filters.insert("label".to_owned(), vec!["rudder.managed=true".to_owned()]);
+        let options = bollard::query_parameters::ListContainersOptionsBuilder::new()
+            .all(false)
+            .filters(&filters)
+            .build();
+        let summaries = docker
+            .list_containers(Some(options))
+            .await
+            .map_err(Self::node)?;
+        let reads = summaries.into_iter().filter_map(|summary| {
+            let id = summary.id?;
+            let name = summary
+                .names
+                .as_ref()
+                .and_then(|names| names.first())
+                .map(|name| name.trim_start_matches('/').to_owned())
+                .unwrap_or_default();
+            let labels: Vec<(String, String)> =
+                summary.labels.unwrap_or_default().into_iter().collect();
+            Some(async move {
+                let options = bollard::query_parameters::StatsOptionsBuilder::new()
+                    .stream(false)
+                    .one_shot(false)
+                    .build();
+                let stats = docker.stats(&id, Some(options)).next().await?.ok()?;
+                let restart_count = docker
+                    .inspect_container(&id, None)
+                    .await
+                    .ok()
+                    .and_then(|info| info.restart_count)
+                    .unwrap_or(0);
+                Some(container_stats_from(id, name, labels, restart_count, stats))
+            })
+        });
+        Ok(futures_util::future::join_all(reads)
+            .await
+            .into_iter()
+            .flatten()
+            .collect())
+    }
+
+    async fn prune(&self) -> Result<u64, Error> {
+        let docker = self.docker()?;
+        let mut filters = HashMap::new();
+        filters.insert("dangling".to_owned(), vec!["true".to_owned()]);
+        let images = docker
+            .prune_images(Some(
+                bollard::query_parameters::PruneImagesOptionsBuilder::new()
+                    .filters(&filters)
+                    .build(),
+            ))
+            .await
+            .map_err(Self::node)?;
+        let build = docker
+            .prune_build(None::<bollard::query_parameters::PruneBuildOptions>)
+            .await
+            .map_err(Self::node)?;
+        let reclaimed = images.space_reclaimed.unwrap_or(0) + build.space_reclaimed.unwrap_or(0);
+        Ok(u64::try_from(reclaimed).unwrap_or(0))
+    }
+
+    async fn host_stats(&self) -> Result<rudder_core::HostStats, Error> {
+        let proc_root = self.host_proc.clone();
+        let disk = self.root.clone();
+        let previous = *self
+            .cpu_previous
+            .lock()
+            .map_err(|_| Error::Node("host stats lock".into()))?;
+        let (stats, next) = tokio::task::spawn_blocking(move || {
+            let mut previous = previous;
+            let disk = if disk.exists() {
+                disk
+            } else {
+                PathBuf::from("/")
+            };
+            rudder_core::read_host_stats(&proc_root, &disk, &mut previous).map(|s| (s, previous))
+        })
+        .await
+        .map_err(Self::node)??;
+        if let Ok(mut slot) = self.cpu_previous.lock() {
+            *slot = next;
+        }
+        Ok(stats)
+    }
+
     async fn list_containers(&self) -> Result<Vec<ContainerInfo>, Error> {
         let options = bollard::query_parameters::ListContainersOptionsBuilder::new()
             .all(false)
@@ -1113,6 +1210,80 @@ pub fn confined_path(root: &Path, relative: &str) -> Result<PathBuf, Error> {
         return Err(Error::Validation("path escapes the data directory".into()));
     }
     Ok(root.join(relative))
+}
+
+fn container_stats_from(
+    id: String,
+    name: String,
+    labels: Vec<(String, String)>,
+    restart_count: i64,
+    stats: bollard::models::ContainerStatsResponse,
+) -> rudder_core::ContainerStats {
+    let cpu = stats.cpu_stats.as_ref();
+    let precpu = stats.precpu_stats.as_ref();
+    let total = |c: Option<&bollard::models::ContainerCpuStats>| {
+        c.and_then(|c| c.cpu_usage.as_ref())
+            .and_then(|u| u.total_usage)
+            .unwrap_or(0)
+    };
+    let system = |c: Option<&bollard::models::ContainerCpuStats>| {
+        c.and_then(|c| c.system_cpu_usage).unwrap_or(0)
+    };
+    let memory = stats.memory_stats.as_ref();
+    // Match `docker stats`: page cache that can be reclaimed is not counted.
+    let cache = memory
+        .and_then(|m| m.stats.as_ref())
+        .and_then(|s| {
+            s.get("inactive_file")
+                .or_else(|| s.get("total_inactive_file"))
+        })
+        .copied()
+        .unwrap_or(0);
+    let usage = memory
+        .and_then(|m| m.usage)
+        .unwrap_or(0)
+        .saturating_sub(cache);
+    let (rx, tx) = stats
+        .networks
+        .as_ref()
+        .map(|nets| {
+            nets.values().fold((0u64, 0u64), |(rx, tx), n| {
+                (rx + n.rx_bytes.unwrap_or(0), tx + n.tx_bytes.unwrap_or(0))
+            })
+        })
+        .unwrap_or((0, 0));
+    let (read, write) = stats
+        .blkio_stats
+        .as_ref()
+        .and_then(|b| b.io_service_bytes_recursive.as_ref())
+        .map(|entries| {
+            entries.iter().fold((0u64, 0u64), |(r, w), e| {
+                match e.op.as_deref().map(str::to_ascii_lowercase).as_deref() {
+                    Some("read") => (r + e.value.unwrap_or(0), w),
+                    Some("write") => (r, w + e.value.unwrap_or(0)),
+                    _ => (r, w),
+                }
+            })
+        })
+        .unwrap_or((0, 0));
+    rudder_core::ContainerStats {
+        id,
+        name,
+        cpu_percent: rudder_core::container_cpu_percent(
+            total(cpu),
+            total(precpu),
+            system(cpu),
+            system(precpu),
+        ),
+        memory_bytes: usage,
+        memory_limit_bytes: memory.and_then(|m| m.limit).unwrap_or(0),
+        net_rx_bytes: rx,
+        net_tx_bytes: tx,
+        block_read_bytes: read,
+        block_write_bytes: write,
+        restart_count,
+        labels,
+    }
 }
 
 #[cfg(test)]

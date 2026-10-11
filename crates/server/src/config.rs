@@ -40,6 +40,8 @@ pub struct Config {
     pub docker_socket: Option<PathBuf>,
     /// Admin listener of the local cache server.
     pub cache_admin_url: String,
+    /// procfs of the host, for server metrics. `/host/proc` when the panel runs in a container.
+    pub host_proc: PathBuf,
 }
 
 impl Config {
@@ -120,6 +122,10 @@ impl Config {
                 reason: "expected an http:// or https:// URL".into(),
             });
         }
+        let host_proc = vars
+            .get("RUDDER_HOST_PROC")
+            .filter(|v| !v.is_empty())
+            .map_or_else(|| PathBuf::from("/proc"), PathBuf::from);
         Ok(Self {
             database_url,
             bind,
@@ -132,6 +138,7 @@ impl Config {
             trust_proxy,
             docker_socket,
             cache_admin_url,
+            host_proc,
         })
     }
 }
@@ -151,6 +158,7 @@ impl fmt::Debug for Config {
             .field("trust_proxy", &self.trust_proxy)
             .field("docker_socket", &self.docker_socket)
             .field("cache_admin_url", &self.cache_admin_url)
+            .field("host_proc", &self.host_proc)
             .finish()
     }
 }

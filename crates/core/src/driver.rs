@@ -317,6 +317,11 @@ pub trait NodeDriver: Send + Sync {
     }
 
     /// Counters and usage from the node's HTTP cache.
+    /// Server-wide CPU, memory, disk, load, and network counters.
+    async fn host_stats(&self) -> Result<crate::HostStats, Error> {
+        Err(unsupported("host_stats"))
+    }
+
     async fn cache_stats(&self) -> Result<crate::CacheStats, Error> {
         Err(unsupported("cache_stats"))
     }
