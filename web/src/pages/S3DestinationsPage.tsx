@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../api";
-import { Button, Card, Empty, Field, TextInput } from "../components/ui";
+import { Button, Card, Empty, Field, PickField, QuickPick, TextInput } from "../components/ui";
 import { errorMessage, formatTime } from "../format";
+import { useT } from "../i18n";
+import { S3_PROVIDERS, S3_REGIONS } from "../presets";
 import type { Schemas } from "../types";
 
 type Destination = Schemas["DestinationView"];
@@ -18,7 +20,10 @@ const blank = {
   path_style: true,
 };
 
+const slug = (label: string) => label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
 export function S3DestinationsPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const destinations = useQuery({
     queryKey: ["s3-destinations"],
@@ -84,6 +89,17 @@ export function S3DestinationsPage() {
     });
   }
 
+  const pickProvider = (label: string) => {
+    const provider = S3_PROVIDERS.find((item) => item.label === label);
+    if (!provider) return;
+    setForm({
+      ...form,
+      name: form.name || `${slug(provider.label)}-backups`,
+      endpoint: provider.endpoint,
+      region: provider.region,
+      path_style: provider.path_style,
+    });
+  };
   const set = (key: keyof typeof blank) => (event: { target: { value: string } }) =>
     setForm({ ...form, [key]: event.target.value });
 
@@ -102,17 +118,54 @@ export function S3DestinationsPage() {
             save.mutate();
           }}
         >
+          <div className="md:col-span-2">
+            <PickField
+              label="Provider"
+              hint={t(
+                "Fills in the endpoint, region, and addressing style. You can still edit them.",
+              )}
+              options={S3_PROVIDERS.map((provider) => ({
+                label: provider.label,
+                value: provider.label,
+              }))}
+              value={
+                S3_PROVIDERS.find(
+                  (item) => item.endpoint === form.endpoint && item.region === form.region,
+                )?.label ?? ""
+              }
+              onPick={pickProvider}
+            />
+          </div>
           <Field label="Name">
             <TextInput required value={form.name} onChange={set("name")} />
           </Field>
-          <Field label="Endpoint (empty for AWS)">
+          <Field
+            label="Endpoint (empty for AWS)"
+            hint={
+              form.endpoint.includes("<")
+                ? t("Replace the <…> part with your own value before saving.")
+                : undefined
+            }
+          >
             <TextInput
               value={form.endpoint}
               placeholder="https://<account>.r2.cloudflarestorage.com"
+              pattern="[^<>]*"
+              title={t("Replace the <…> part with your own value.")}
               onChange={set("endpoint")}
             />
           </Field>
-          <Field label="Region">
+          <Field
+            label="Region"
+            presets={
+              <QuickPick
+                label={t("Region presets")}
+                options={S3_REGIONS}
+                value={form.region}
+                onPick={(region) => setForm({ ...form, region })}
+              />
+            }
+          >
             <TextInput required value={form.region} onChange={set("region")} />
           </Field>
           <Field label="Bucket">

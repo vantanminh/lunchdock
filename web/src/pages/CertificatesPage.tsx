@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
-import { Button, Card, Field, TextArea, TextInput } from "../components/ui";
+import { Button, Card, Field, PickField, TextArea, TextInput } from "../components/ui";
+import { SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
 
 type Certificate = Schemas["CertificateView"];
@@ -129,17 +130,7 @@ export function CertificatesPage() {
               placeholder="panel.example.com"
             />
           </Field>
-          <Field label="SSL">
-            <select
-              className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-              value={sslMode}
-              onChange={(event) => setSslMode(event.target.value)}
-            >
-              <option value="letsencrypt">Let's Encrypt</option>
-              <option value="custom">Uploaded certificate</option>
-              <option value="none">None</option>
-            </select>
-          </Field>
+          <PickField label="SSL" options={SSL_MODES} value={sslMode} onPick={setSslMode} />
           <Field label="ACME email">
             <TextInput value={email} onChange={(event) => setEmail(event.target.value)} />
           </Field>

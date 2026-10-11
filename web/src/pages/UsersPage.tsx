@@ -3,7 +3,8 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
-import { Button, Card, Field, TextInput } from "../components/ui";
+import { Button, Card, Field, PickField, TextInput } from "../components/ui";
+import { ROLES } from "../presets";
 import type { Role, User } from "../types";
 
 export function UsersPage() {
@@ -88,16 +89,12 @@ export function UsersPage() {
               onChange={(event) => setPassword(event.target.value)}
             />
           </Field>
-          <Field label="Role">
-            <select
-              className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-              value={role}
-              onChange={(event) => setRole(event.target.value as Role)}
-            >
-              <option value="viewer">viewer</option>
-              <option value="admin">admin</option>
-            </select>
-          </Field>
+          <PickField
+            label="Role"
+            options={ROLES}
+            value={role}
+            onPick={(next) => setRole(next as Role)}
+          />
           <div className="flex items-end">
             <Button type="submit" disabled={create.isPending}>
               Create

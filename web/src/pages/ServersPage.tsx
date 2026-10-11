@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
-import { Badge, Button, Card, Field, TextInput } from "../components/ui";
+import { Badge, Button, Card, Field, PickField, QuickPick, TextInput } from "../components/ui";
 import { formatBytes, formatTime } from "../format";
+import { useT } from "../i18n";
+import { SERVER_KINDS, SERVER_NAMES } from "../presets";
 import type { Schemas } from "../types";
 
 type Server = Schemas["ServerView"];
@@ -63,6 +65,7 @@ function agentSummary(server: Server): string {
 }
 
 export function ServersPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const servers = useQuery({
     queryKey: ["servers"],
@@ -155,19 +158,20 @@ export function ServersPage() {
       <h1 className="text-2xl font-semibold">Servers</h1>
       <Card title="Add server">
         <form className="grid gap-3 md:grid-cols-4" onSubmit={onSubmit}>
-          <Field label="Name">
+          <Field
+            label="Name"
+            presets={
+              <QuickPick
+                label={t("Name suggestions")}
+                options={SERVER_NAMES}
+                value={name}
+                onPick={setName}
+              />
+            }
+          >
             <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
-          <Field label="Kind">
-            <select
-              className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-              value={kind}
-              onChange={(event) => setKind(event.target.value)}
-            >
-              <option value="local">local</option>
-              <option value="remote">remote</option>
-            </select>
-          </Field>
+          <PickField label="Kind" options={SERVER_KINDS} value={kind} onPick={setKind} />
           <Field label="Public IP">
             <TextInput value={publicIp} onChange={(event) => setPublicIp(event.target.value)} />
           </Field>

@@ -2,10 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
-import { Button, Card, Field, TextInput } from "../components/ui";
+import { Button, Card, Field, PickField, QuickPick, TextInput } from "../components/ui";
+import { useT } from "../i18n";
+import { TOKEN_NAMES, TOKEN_SCOPES } from "../presets";
 import type { CreatedToken, TokenView } from "../types";
 
 export function TokensPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const tokens = useQuery({
     queryKey: ["tokens"],
@@ -53,17 +56,25 @@ export function TokensPage() {
       <h1 className="text-2xl font-semibold">API tokens</h1>
       <Card title="New token">
         <form className="grid gap-3 md:grid-cols-[1fr_auto_auto]" onSubmit={onSubmit}>
-          <Field label="Name">
+          <Field
+            label="Name"
+            presets={
+              <QuickPick
+                label={t("Name suggestions")}
+                options={TOKEN_NAMES}
+                value={name}
+                onPick={setName}
+              />
+            }
+          >
             <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
-          <label className="flex items-end gap-2 pb-2 text-sm">
-            <input
-              type="checkbox"
-              checked={write}
-              onChange={(event) => setWrite(event.target.checked)}
-            />
-            write scope
-          </label>
+          <PickField
+            label="Access"
+            options={TOKEN_SCOPES}
+            value={write ? "write" : "read"}
+            onPick={(scope) => setWrite(scope === "write")}
+          />
           <div className="flex items-end">
             <Button type="submit" disabled={create.isPending}>
               Create

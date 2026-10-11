@@ -322,3 +322,81 @@ volumes:
 `,
   },
 ];
+
+/** Fixed choices, shown as chips so every option is visible at once. */
+export const SSL_MODES: PickOption[] = [
+  {
+    label: "Let's Encrypt",
+    value: "letsencrypt",
+    hint: msg("Free certificate, issued and renewed automatically"),
+  },
+  {
+    label: msg("Uploaded certificate"),
+    value: "custom",
+    hint: msg("Use a certificate from the Certificates page"),
+  },
+  { label: msg("None"), value: "none", hint: msg("Plain HTTP only") },
+];
+
+export const BUILD_STRATEGIES: PickOption[] = [
+  { label: "Dockerfile", value: "dockerfile", hint: msg("Build with the repository's Dockerfile") },
+  {
+    label: "Nixpacks",
+    value: "nixpacks",
+    hint: msg("Detect the language and build without a Dockerfile"),
+  },
+  { label: msg("Static site"), value: "static", hint: msg("Serve a folder of built files") },
+];
+
+export const ROLES: PickOption[] = [
+  { label: msg("viewer"), value: "viewer", hint: msg("Can look but not change anything") },
+  { label: msg("admin"), value: "admin", hint: msg("Can manage everything") },
+];
+
+export const SERVER_KINDS: PickOption[] = [
+  { label: msg("local"), value: "local", hint: msg("The machine running the panel") },
+  {
+    label: msg("remote"),
+    value: "remote",
+    hint: msg("Another machine that runs the Rudder agent"),
+  },
+];
+
+export const TOKEN_SCOPES: PickOption[] = [
+  { label: msg("Read only"), value: "read", hint: msg("Can list and view, never change") },
+  {
+    label: msg("Read and write"),
+    value: "write",
+    hint: msg("Can also deploy and change settings"),
+  },
+];
+
+export const SERVICE_KINDS: PickOption[] = [
+  {
+    label: msg("application"),
+    value: "application",
+    hint: msg("A container image or a Git repository"),
+  },
+  { label: msg("database"), value: "database", hint: msg("PostgreSQL, MySQL, Redis and more") },
+  {
+    label: msg("compose stack"),
+    value: "compose",
+    hint: msg("Several containers from one docker-compose file"),
+  },
+];
+
+export const STACK_SOURCES: PickOption[] = [
+  { label: msg("Paste YAML"), value: "inline" },
+  { label: msg("Git repository (local server)"), value: "git" },
+];
+
+export const UPDATE_CHANNELS: PickOption[] = [
+  { label: msg("Stable releases"), value: "stable" },
+  { label: msg("Include pre-releases"), value: "prerelease" },
+];
+
+export const SEVERITIES: PickOption[] = [
+  { label: msg("info"), value: "info" },
+  { label: msg("warning"), value: "warning" },
+  { label: msg("critical"), value: "critical" },
+];

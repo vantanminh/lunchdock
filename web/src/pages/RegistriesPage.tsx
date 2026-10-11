@@ -2,12 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
-import { Button, Card, Field, TextInput } from "../components/ui";
+import { Button, Card, Field, PickField, TextInput } from "../components/ui";
+import { useT } from "../i18n";
+import { REGISTRIES } from "../presets";
 import type { Schemas } from "../types";
 
 type Registry = Schemas["RegistryView"];
 
 export function RegistriesPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const registries = useQuery({
     queryKey: ["registries"],
@@ -42,6 +45,23 @@ export function RegistriesPage() {
       <h1 className="text-2xl font-semibold">Registries</h1>
       <Card title="Add credentials">
         <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
+          <div className="md:col-span-2">
+            <PickField
+              label="Registry"
+              hint={t(
+                "Fills in the name and host. For Docker Hub and GitHub, use an access token as the password.",
+              )}
+              options={REGISTRIES.map((registry) => ({
+                label: registry.label,
+                value: registry.url,
+              }))}
+              value={url}
+              onPick={(next) => {
+                setUrl(next);
+                if (!name) setName(REGISTRIES.find((item) => item.url === next)?.label ?? "");
+              }}
+            />
+          </div>
           <Field label="Name">
             <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>

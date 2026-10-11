@@ -2,12 +2,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
-import { Button, Card, Field, TextArea, TextInput } from "../components/ui";
+import { Button, Card, Field, PickField, TextArea, TextInput } from "../components/ui";
+import { msg, useT } from "../i18n";
 import type { Schemas } from "../types";
 
 type GitProvider = Schemas["GitProviderView"];
 
+const KINDS = [
+  { value: "github_pat", label: msg("GitHub token"), name: "GitHub" },
+  { value: "github_app", label: msg("GitHub App"), name: "GitHub App" },
+  { value: "gitlab_pat", label: msg("GitLab token"), name: "GitLab" },
+  { value: "generic_ssh", label: msg("SSH deploy key"), name: "Deploy key" },
+];
+
 export function GitProvidersPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const providers = useQuery({
     queryKey: ["git-providers"],
@@ -56,18 +65,27 @@ export function GitProvidersPage() {
             <Field label="Name">
               <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
             </Field>
-            <Field label="Kind">
-              <select
-                className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                value={kind}
-                onChange={(event) => setKind(event.target.value)}
-              >
-                <option value="github_pat">GitHub personal access token</option>
-                <option value="github_app">GitHub App</option>
-                <option value="gitlab_pat">GitLab personal access token</option>
-                <option value="generic_ssh">SSH deploy key</option>
-              </select>
-            </Field>
+            <PickField
+              label="Kind"
+              hint={
+                kind === "github_pat"
+                  ? t("A personal access token with read access to the repositories.")
+                  : kind === "generic_ssh"
+                    ? t(
+                        "Each service gets its own key; its public key is shown after you save the service source.",
+                      )
+                    : undefined
+              }
+              options={KINDS}
+              value={kind}
+              onPick={(next) => {
+                const previous = KINDS.find((item) => item.value === kind);
+                setKind(next);
+                if (!name || name === previous?.name) {
+                  setName(KINDS.find((item) => item.value === next)?.name ?? "");
+                }
+              }}
+            />
           </div>
           {kind === "github_pat" || kind === "gitlab_pat" ? (
             <Field label="Token">
