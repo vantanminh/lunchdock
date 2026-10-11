@@ -19,12 +19,15 @@ use bollard::query_parameters::{
 use bollard::Docker;
 use futures_util::StreamExt;
 use rudder_core::{
-    compose_args, validate_env_key, validate_image_ref, validate_name, ComposeAction,
-    ContainerSpec, DockerInfo, Error, ExecOutput, HealthState, NodeDriver, RegistryAuth,
-    PROXY_NETWORK,
+    compose_args, validate_env_key, validate_image_ref, validate_name, ArchiveSource, ByteStream,
+    ComposeAction, ContainerSpec, DockerInfo, Error, ExecOutput, ExecSpec, HealthState, NodeDriver,
+    RegistryAuth, VolumeMount, PROXY_NETWORK,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
+
+/// Small image with `tar` used to read and write volumes and host paths.
+pub const HELPER_IMAGE: &str = "alpine:3.20";
 
 pub struct LocalDriver {
     docker: Option<Docker>,
@@ -98,6 +101,9 @@ impl NodeDriver for LocalDriver {
     async fn create_container(&self, spec: &ContainerSpec) -> Result<String, Error> {
         validate_name(&spec.name)?;
         validate_image_ref(&spec.image)?;
+        if spec.network.as_deref() == Some(PROXY_NETWORK) {
+            self.ensure_network(PROXY_NETWORK).await?;
+        }
         let mut env = Vec::new();
         for (key, value) in &spec.env {
             validate_env_key(key)?;
@@ -431,9 +437,372 @@ impl NodeDriver for LocalDriver {
             .filter(|id| !id.is_empty())
             .ok_or_else(|| Error::Node("image has no digest".into()))
     }
+
+    async fn exec_read(&self, id: &str, spec: ExecSpec) -> Result<ByteStream, Error> {
+        let docker = self.docker()?.clone();
+        let tool = check_exec(&spec)?;
+        let created = docker
+            .create_exec(id, exec_options(&spec, false))
+            .await
+            .map_err(Self::node)?;
+        let started = docker
+            .start_exec(&created.id, None)
+            .await
+            .map_err(Self::node)?;
+        let StartExecResults::Attached { output, mut input } = started else {
+            return Err(Error::Node("exec did not attach".into()));
+        };
+        input.shutdown().await.ok();
+        drop(input);
+        let state = ReadState::Running {
+            output,
+            stderr: Vec::new(),
+            docker,
+            exec_id: created.id,
+            tool,
+        };
+        let stream = futures_util::stream::unfold(state, |state| async move {
+            let ReadState::Running {
+                mut output,
+                mut stderr,
+                docker,
+                exec_id,
+                tool,
+            } = state
+            else {
+                return None;
+            };
+            loop {
+                match output.next().await {
+                    Some(Ok(LogOutput::StdOut { message })) => {
+                        return Some((
+                            Ok(message),
+                            ReadState::Running {
+                                output,
+                                stderr,
+                                docker,
+                                exec_id,
+                                tool,
+                            },
+                        ));
+                    }
+                    Some(Ok(LogOutput::StdErr { message })) => push_tail(&mut stderr, &message),
+                    Some(Ok(_)) => {}
+                    Some(Err(error)) => {
+                        return Some((Err(Error::Node(error.to_string())), ReadState::Done))
+                    }
+                    None => {
+                        let code = docker
+                            .inspect_exec(&exec_id)
+                            .await
+                            .ok()
+                            .and_then(|inspect| inspect.exit_code)
+                            .unwrap_or(-1);
+                        if code == 0 {
+                            return None;
+                        }
+                        return Some((Err(exit_error(&tool, code, &stderr)), ReadState::Done));
+                    }
+                }
+            }
+        });
+        Ok(Box::pin(stream))
+    }
+
+    async fn exec_write(
+        &self,
+        id: &str,
+        spec: ExecSpec,
+        mut data: ByteStream,
+    ) -> Result<ExecOutput, Error> {
+        let docker = self.docker()?.clone();
+        let tool = check_exec(&spec)?;
+        let created = docker
+            .create_exec(id, exec_options(&spec, true))
+            .await
+            .map_err(Self::node)?;
+        let started = docker
+            .start_exec(&created.id, None)
+            .await
+            .map_err(Self::node)?;
+        let StartExecResults::Attached {
+            mut output,
+            mut input,
+        } = started
+        else {
+            return Err(Error::Node("exec did not attach".into()));
+        };
+        let writer = tokio::spawn(async move {
+            let mut failure = None;
+            while let Some(chunk) = data.next().await {
+                match chunk {
+                    Ok(bytes) => {
+                        if let Err(error) = input.write_all(&bytes).await {
+                            failure = Some(Error::Node(format!("stdin closed early: {error}")));
+                            break;
+                        }
+                    }
+                    Err(error) => {
+                        failure = Some(error);
+                        break;
+                    }
+                }
+            }
+            input.shutdown().await.ok();
+            failure
+        });
+        let mut text = Vec::new();
+        while let Some(item) = output.next().await {
+            match item.map_err(Self::node)? {
+                LogOutput::StdOut { message } | LogOutput::StdErr { message } => {
+                    push_tail(&mut text, &message)
+                }
+                _ => {}
+            }
+        }
+        let input_error = writer
+            .await
+            .map_err(|error| Error::Node(format!("stdin task failed: {error}")))?;
+        let code = docker
+            .inspect_exec(&created.id)
+            .await
+            .map_err(Self::node)?
+            .exit_code
+            .unwrap_or(-1);
+        if code != 0 {
+            return Err(exit_error(&tool, code, &text));
+        }
+        if let Some(error) = input_error {
+            return Err(error);
+        }
+        Ok(ExecOutput {
+            exit_code: code,
+            output: String::from_utf8_lossy(&text).into_owned(),
+        })
+    }
+
+    async fn archive_read(&self, source: &ArchiveSource) -> Result<ByteStream, Error> {
+        source.validate()?;
+        let helper = self.start_helper(source, true).await?;
+        let spec = ExecSpec {
+            command: vec![
+                "tar".into(),
+                "-C".into(),
+                "/data".into(),
+                "-cf".into(),
+                "-".into(),
+                ".".into(),
+            ],
+            ..ExecSpec::default()
+        };
+        let stream = match self.exec_read(&helper.id, spec).await {
+            Ok(stream) => stream,
+            Err(error) => {
+                drop(helper);
+                return Err(error);
+            }
+        };
+        Ok(Box::pin(stream.map(move |item| {
+            let _keep = &helper;
+            item
+        })))
+    }
+
+    async fn archive_write(&self, target: &ArchiveSource, data: ByteStream) -> Result<(), Error> {
+        target.validate()?;
+        let helper = self.start_helper(target, false).await?;
+        let spec = ExecSpec {
+            command: vec![
+                "tar".into(),
+                "-C".into(),
+                "/data".into(),
+                "-xf".into(),
+                "-".into(),
+            ],
+            ..ExecSpec::default()
+        };
+        let result = self.exec_write(&helper.id, spec, data).await;
+        drop(helper);
+        result.map(|_| ())
+    }
+
+    async fn remove_volume(&self, name: &str) -> Result<(), Error> {
+        ArchiveSource::Volume {
+            name: name.to_owned(),
+        }
+        .validate()?;
+        self.docker()?
+            .remove_volume(name, None::<bollard::query_parameters::RemoveVolumeOptions>)
+            .await
+            .map_err(Self::node)
+    }
+
+    async fn read_file(&self, relative_path: &str) -> Result<Vec<u8>, Error> {
+        let path = confined_path(&self.root, relative_path)?;
+        tokio::fs::read(&path).await.map_err(Self::node)
+    }
+}
+
+enum ReadState {
+    Running {
+        output: std::pin::Pin<
+            Box<dyn futures_util::Stream<Item = Result<LogOutput, bollard::errors::Error>> + Send>,
+        >,
+        stderr: Vec<u8>,
+        docker: Docker,
+        exec_id: String,
+        tool: String,
+    },
+    Done,
+}
+
+/// Removes a helper container when the last stream handle is dropped.
+struct Helper {
+    docker: Docker,
+    id: String,
+}
+
+impl Drop for Helper {
+    fn drop(&mut self) {
+        let docker = self.docker.clone();
+        let id = std::mem::take(&mut self.id);
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(async move {
+                let options = RemoveContainerOptionsBuilder::default().force(true).build();
+                if let Err(error) = docker.remove_container(&id, Some(options)).await {
+                    tracing::warn!(%error, container = %id, "helper container was not removed");
+                }
+            });
+        }
+    }
+}
+
+const TAIL_LIMIT: usize = 8 * 1024;
+
+fn push_tail(buffer: &mut Vec<u8>, bytes: &[u8]) {
+    buffer.extend_from_slice(bytes);
+    if buffer.len() > TAIL_LIMIT {
+        let cut = buffer.len() - TAIL_LIMIT;
+        buffer.drain(..cut);
+    }
+}
+
+fn exit_error(tool: &str, code: i64, stderr: &[u8]) -> Error {
+    let detail = String::from_utf8_lossy(stderr).trim().to_owned();
+    if code == 126 || code == 127 {
+        return Error::Node(format!(
+            "{tool} is not available in the container (exit {code}): {detail}"
+        ));
+    }
+    Error::Node(format!("{tool} exited with code {code}: {detail}"))
+}
+
+fn check_exec(spec: &ExecSpec) -> Result<String, Error> {
+    let Some(first) = spec.command.first() else {
+        return Err(Error::Validation("exec command is empty".into()));
+    };
+    if spec.command.iter().any(|part| part.contains('\0')) {
+        return Err(Error::Validation(
+            "exec arguments cannot contain NUL".into(),
+        ));
+    }
+    for (key, value) in &spec.env {
+        validate_env_key(key)?;
+        if value.contains('\0') {
+            return Err(Error::Validation("exec env cannot contain NUL".into()));
+        }
+    }
+    Ok(first.clone())
+}
+
+fn exec_options(spec: &ExecSpec, stdin: bool) -> CreateExecOptions<String> {
+    CreateExecOptions {
+        cmd: Some(spec.command.clone()),
+        env: if spec.env.is_empty() {
+            None
+        } else {
+            Some(
+                spec.env
+                    .iter()
+                    .map(|(key, value)| format!("{key}={value}"))
+                    .collect(),
+            )
+        },
+        user: spec.user.clone(),
+        attach_stdin: Some(stdin),
+        attach_stdout: Some(true),
+        attach_stderr: Some(true),
+        ..CreateExecOptions::default()
+    }
 }
 
 impl LocalDriver {
+    async fn ensure_network(&self, name: &str) -> Result<(), Error> {
+        let docker = self.docker()?;
+        if docker.inspect_network(name, None).await.is_ok() {
+            return Ok(());
+        }
+        let created = docker
+            .create_network(bollard::models::NetworkCreateRequest {
+                name: name.to_owned(),
+                driver: Some("bridge".into()),
+                ..Default::default()
+            })
+            .await;
+        match created {
+            Ok(_) => Ok(()),
+            Err(error) if docker.inspect_network(name, None).await.is_ok() => {
+                tracing::debug!(%error, "network was created concurrently");
+                Ok(())
+            }
+            Err(error) => Err(Self::node(error)),
+        }
+    }
+
+    async fn ensure_image(&self, image: &str) -> Result<(), Error> {
+        if self.docker()?.inspect_image(image).await.is_ok() {
+            return Ok(());
+        }
+        self.pull_image(image, None).await
+    }
+
+    /// Start a throwaway `alpine` container with `source` mounted at `/data`.
+    async fn start_helper(&self, source: &ArchiveSource, read_only: bool) -> Result<Helper, Error> {
+        self.ensure_image(HELPER_IMAGE).await?;
+        let mount = match source {
+            ArchiveSource::Volume { name } => name.clone(),
+            ArchiveSource::HostPath { path } => path.clone(),
+        };
+        let name = format!(
+            "rudder-helper-{}",
+            hex::encode(rudder_core::random_bytes::<6>())
+        );
+        let spec = ContainerSpec {
+            name,
+            image: HELPER_IMAGE.into(),
+            env: Vec::new(),
+            command: vec!["sleep".into(), "3600".into()],
+            ports: Vec::new(),
+            volumes: vec![VolumeMount {
+                source: mount,
+                target: "/data".into(),
+                read_only,
+            }],
+            memory_bytes: None,
+            nano_cpus: None,
+            restart: "no".into(),
+            network: Some("none".into()),
+            labels: vec![("rudder.helper".into(), "true".into())],
+        };
+        let id = self.create_container(&spec).await?;
+        let helper = Helper {
+            docker: self.docker()?.clone(),
+            id: id.clone(),
+        };
+        self.start_container(&id).await?;
+        Ok(helper)
+    }
+
     async fn inspect(&self, id: &str) -> Result<bollard::models::ContainerInspectResponse, Error> {
         self.docker()?
             .inspect_container(id, None)

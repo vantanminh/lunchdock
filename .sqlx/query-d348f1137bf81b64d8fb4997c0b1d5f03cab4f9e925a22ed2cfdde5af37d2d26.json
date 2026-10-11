@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO backup_runs (job_id, status, kind, trigger)\n        VALUES ($1, 'queued', 'backup', $2)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d348f1137bf81b64d8fb4997c0b1d5f03cab4f9e925a22ed2cfdde5af37d2d26"
+}

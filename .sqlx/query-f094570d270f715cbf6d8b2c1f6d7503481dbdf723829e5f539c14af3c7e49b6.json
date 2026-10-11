@@ -1,0 +1,173 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT j.id, j.name, j.server_id, j.service_id, j.target_kind, j.target_spec,\n               j.schedule_cron, j.timezone, j.destination_ids, j.path_prefix,\n               j.filename_template, j.retention_spec, j.compression, j.compression_level,\n               (j.encryption_passphrase_enc IS NOT NULL) AS \"encrypted!\", j.tool_options,\n               j.consistency_spec, j.timeout_secs, j.retries, j.bandwidth_limit_bps,\n               j.verify_after_upload, j.notify_on_success, j.enabled, j.created_at,\n               last.status AS \"last_status?\", last.created_at AS \"last_run_at?\"\n        FROM backup_jobs j\n        LEFT JOIN LATERAL (\n            SELECT r.status, r.created_at FROM backup_runs r\n            WHERE r.job_id = j.id AND r.kind = 'backup'\n            ORDER BY r.created_at DESC LIMIT 1\n        ) last ON TRUE\n        WHERE ($1::uuid IS NULL OR j.id = $1) AND ($2::uuid IS NULL OR j.service_id = $2)\n        ORDER BY j.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "service_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "target_kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "target_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "schedule_cron",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "timezone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "destination_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 9,
+        "name": "path_prefix",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "filename_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "retention_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 12,
+        "name": "compression",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "compression_level",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 14,
+        "name": "encrypted!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 15,
+        "name": "tool_options",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 16,
+        "name": "consistency_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 17,
+        "name": "timeout_secs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 18,
+        "name": "retries",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 19,
+        "name": "bandwidth_limit_bps",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 20,
+        "name": "verify_after_upload",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 21,
+        "name": "notify_on_success",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 22,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 23,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 24,
+        "name": "last_status?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
+        "name": "last_run_at?",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f094570d270f715cbf6d8b2c1f6d7503481dbdf723829e5f539c14af3c7e49b6"
+}

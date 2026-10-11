@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
@@ -6,10 +7,16 @@ use governor::middleware::NoOpMiddleware;
 use governor::state::keyed::DefaultKeyedStateStore;
 use governor::{Quota, RateLimiter};
 use sqlx::PgPool;
+use tokio::sync::{Mutex, Semaphore};
+use uuid::Uuid;
 
+use crate::agents::AgentRegistry;
 use crate::driver::LocalDriver;
 use crate::Config;
 use rudder_core::Cipher;
+
+/// Per-server backup concurrency limit and its semaphore.
+pub type BackupSlots = Mutex<HashMap<Uuid, (usize, Arc<Semaphore>)>>;
 
 pub type LoginLimiter =
     RateLimiter<String, DefaultKeyedStateStore<String>, DefaultClock, NoOpMiddleware>;
@@ -22,6 +29,8 @@ pub struct AppState {
     pub cipher: Arc<Cipher>,
     pub login_limiter: Arc<LoginLimiter>,
     pub local_driver: Arc<LocalDriver>,
+    pub agents: Arc<AgentRegistry>,
+    pub backup_slots: Arc<BackupSlots>,
 }
 
 impl AppState {
@@ -36,6 +45,8 @@ impl AppState {
             cipher,
             login_limiter,
             local_driver,
+            agents: Arc::new(AgentRegistry::default()),
+            backup_slots: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }

@@ -95,6 +95,17 @@ pub async fn recover_interrupted(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .execute(pool)
     .await?;
+    sqlx::query!(
+        r#"
+        UPDATE backup_runs
+        SET status = 'failed',
+            error = 'interrupted by process restart',
+            finished_at = COALESCE(finished_at, now())
+        WHERE status IN ('queued', 'running')
+        "#
+    )
+    .execute(pool)
+    .await?;
     Ok(())
 }
 

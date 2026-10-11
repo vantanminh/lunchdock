@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, server_id, service_id, target_kind, target_spec, destination_ids,\n               path_prefix, filename_template, retention_spec, compression, compression_level,\n               encryption_passphrase_enc, tool_options, consistency_spec, timeout_secs, retries,\n               bandwidth_limit_bps, verify_after_upload, notify_on_success\n        FROM backup_jobs\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "service_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "target_kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "target_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "destination_ids",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 7,
+        "name": "path_prefix",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "filename_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "retention_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 10,
+        "name": "compression",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "compression_level",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "encryption_passphrase_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 13,
+        "name": "tool_options",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 14,
+        "name": "consistency_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 15,
+        "name": "timeout_secs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
+        "name": "retries",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 17,
+        "name": "bandwidth_limit_bps",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 18,
+        "name": "verify_after_upload",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 19,
+        "name": "notify_on_success",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "05d8eb952491951c41068d7458dec9aaad894eb81ec203828b96ff4e6e41290b"
+}

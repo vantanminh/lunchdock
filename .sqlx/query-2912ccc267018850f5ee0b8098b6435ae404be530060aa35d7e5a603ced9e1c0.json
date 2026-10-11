@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE s3_destinations\n        SET name = $2, endpoint = $3, region = $4, bucket = $5,\n            access_key_id_enc = COALESCE($6, access_key_id_enc),\n            secret_access_key_enc = COALESCE($7, secret_access_key_enc),\n            path_style = $8, updated_at = now()\n        WHERE id = $1\n        RETURNING id, name, endpoint, region, bucket, path_style, access_key_id_enc, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "endpoint",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "region",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "bucket",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "path_style",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "access_key_id_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bytea",
+        "Bytea",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2912ccc267018850f5ee0b8098b6435ae404be530060aa35d7e5a603ced9e1c0"
+}

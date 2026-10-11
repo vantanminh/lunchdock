@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT j.id, j.schedule_cron AS \"schedule_cron!\", j.timezone, j.created_at,\n               (SELECT MAX(r.created_at) FROM backup_runs r\n                WHERE r.job_id = j.id AND r.kind = 'backup') AS \"last_run: DateTime<Utc>\",\n               EXISTS (SELECT 1 FROM backup_runs r\n                       WHERE r.job_id = j.id AND r.status IN ('queued', 'running')) AS \"busy!\"\n        FROM backup_jobs j\n        WHERE j.enabled AND j.schedule_cron IS NOT NULL AND j.schedule_cron <> ''\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "schedule_cron!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "timezone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_run: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "busy!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "adfea6c50596e275deb17038ff75598e1b6df42b66d2c19ef15206301141de1f"
+}

@@ -3,21 +3,30 @@
 //! Infrastructure crates depend on this crate. It does not talk to Docker,
 //! PostgreSQL, or the network.
 
+mod backup;
 mod buildspec;
 mod certs;
 mod compose;
 mod crypto;
 mod database;
 mod driver;
+mod envelope;
 mod error;
 mod github_app;
 mod image_ref;
 mod retention;
 mod rollout;
+mod schedule;
 mod traefik;
 mod validate;
 mod webhook;
 
+pub use backup::{
+    dump_command, dump_extension, filter_databases, mysql_list_databases_command, object_key,
+    redis_bgsave_command, redis_persistence_command, restore_command, retry_backoff_secs,
+    validate_extra_args, validate_prefix, validate_tool_options, Compression, Consistency,
+    DumpCredentials, KeyVars, RedisPersistence, RetentionSpec, ToolCommand, ToolOptions,
+};
 pub use buildspec::{
     can_start, docker_build_argv, git_clone_argv, nixpacks_argv, redact, static_dockerfile,
     validate_branch, validate_git_url, validate_rel_path, BuildPlan, BuildStrategy,
@@ -30,9 +39,10 @@ pub use compose::{compose_args, ComposeAction};
 pub use crypto::Cipher;
 pub use database::{connection_string, database_runtime, DatabaseRequest, DatabaseRuntime, Engine};
 pub use driver::{
-    ContainerSpec, DockerInfo, ExecOutput, HealthState, NodeDriver, PortMapping, RegistryAuth,
-    VolumeMount,
+    validate_host_path, ArchiveSource, ByteStream, ContainerSpec, ContainerStats, DockerInfo,
+    ExecOutput, ExecSpec, HealthState, NodeDriver, PortMapping, RegistryAuth, VolumeMount,
 };
+pub use envelope::{Decryptor, Encryptor};
 pub use error::Error;
 pub use github_app::github_app_jwt;
 pub use image_ref::{
@@ -43,6 +53,7 @@ pub use retention::{expired_ids, BackupPoint, RetentionPolicy};
 pub use rollout::{
     retire_container, rollout, HealthKind, HealthSpec, RolloutOutput, RolloutPlan, StartedContainer,
 };
+pub use schedule::{is_due, next_after, parse_timezone, validate_schedule, PRESETS};
 pub use traefik::{
     preview_hostname, render_dynamic_config, validate_host, validate_path_prefix, ProxyRoute,
     TlsMaterial, TlsMode, PROXY_NETWORK, TRAEFIK_CERT_DIR,

@@ -3,8 +3,10 @@
 //! The binary in `main.rs` loads configuration, initializes tracing, and calls
 //! [`run`]. Tests construct an [`AppState`] and the [`router`] directly.
 
+mod agents;
 mod audit;
 mod auth;
+mod backup;
 mod build_queue;
 mod config;
 mod db;
@@ -12,10 +14,13 @@ mod deploy;
 mod driver;
 mod embed;
 mod error;
+mod events;
 mod gitkey;
+mod nodes;
 mod openapi;
 mod publish;
 mod routes;
+mod s3;
 mod state;
 pub mod telemetry;
 
@@ -56,6 +61,17 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     let addr = config.bind;
     let state = AppState::new(pool, config);
     let watch_state = state.clone();
+    let backup_state = state.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            match backup::schedule_once(&backup_state).await {
+                Ok(0) => {}
+                Ok(started) => tracing::info!(started, "scheduled backups started"),
+                Err(error) => tracing::warn!(%error, "backup scheduler query failed"),
+            }
+        }
+    });
     let build_state = state.clone();
     tokio::spawn(async move {
         loop {
@@ -103,6 +119,8 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::catalog::router())
         .merge(routes::edge::router())
         .merge(routes::git::router())
+        .merge(routes::databases::router())
+        .merge(routes::backups::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

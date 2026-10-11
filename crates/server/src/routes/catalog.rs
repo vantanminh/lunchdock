@@ -981,6 +981,22 @@ fn service_from_row(row: ServiceRow) -> ServiceView {
     }
 }
 
+pub(crate) async fn load_service_view(state: &AppState, id: Uuid) -> Result<ServiceView, ApiError> {
+    let row = sqlx::query_as!(
+        ServiceRow,
+        r#"
+        SELECT id, environment_id, server_id, name, kind, status, spec, created_at
+        FROM services WHERE id = $1
+        "#,
+        id
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?
+    .ok_or_else(|| not_found("service not found"))?;
+    Ok(service_from_row(row))
+}
+
 fn checked_spec(spec: Value) -> Result<Value, ApiError> {
     if !spec.is_object() {
         return Err(bad("invalid_spec", "service spec must be a JSON object"));
