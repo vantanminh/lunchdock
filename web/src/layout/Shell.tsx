@@ -4,6 +4,7 @@ import { api, setCsrf } from "../api";
 import { useAuth } from "../auth";
 import { Icon, KnotreeMark, type IconName } from "../components/icons";
 import { Avatar, Skeleton } from "../components/ui";
+import { setDarkTheme, useDarkTheme } from "../theme";
 
 type NavItem = readonly [to: string, label: string, icon: IconName];
 
@@ -258,7 +259,7 @@ function UserCard() {
 }
 
 function ThemeToggle() {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const dark = useDarkTheme();
   const label = dark ? "Use light theme" : "Use dark theme";
   return (
     <button
@@ -266,12 +267,7 @@ function ThemeToggle() {
       aria-label={label}
       title={label}
       className="inline-flex size-9 items-center justify-center rounded-control text-ink-soft transition-colors hover:bg-sunken hover:text-ink"
-      onClick={() => {
-        const next = !dark;
-        document.documentElement.classList.toggle("dark", next);
-        localStorage.setItem("rudder_theme", next ? "dark" : "light");
-        setDark(next);
-      }}
+      onClick={() => setDarkTheme(!dark)}
     >
       <Icon name={dark ? "sun" : "moon"} size={18} />
     </button>

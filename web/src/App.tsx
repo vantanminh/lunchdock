@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "./auth";
 import { Shell } from "./layout/Shell";
+import { useDarkTheme } from "./theme";
 import { DashboardPage } from "./pages/Dashboard";
 import { LoginPage, SetupPage } from "./pages/AuthPages";
 
@@ -109,13 +110,14 @@ function AppRoutes() {
 
 export function App() {
   const [client] = useState(() => new QueryClient());
+  const dark = useDarkTheme();
   return (
     <QueryClientProvider client={client}>
       <AuthProvider>
         <BrowserRouter>
           <AppRoutes />
         </BrowserRouter>
-        <Toaster theme={document.documentElement.classList.contains("dark") ? "dark" : "light"} />
+        <Toaster theme={dark ? "dark" : "light"} />
       </AuthProvider>
     </QueryClientProvider>
   );

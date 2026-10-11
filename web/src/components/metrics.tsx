@@ -29,6 +29,24 @@ export interface ChartSpec {
 
 const COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2"];
 
+// Recharts paints its own white tooltip and grey ticks; route them through the theme tokens
+// so text stays readable in both light and dark mode.
+const TICK = { fontSize: 11, fill: "var(--muted)" };
+const AXIS_LINE = { stroke: "var(--line-strong)" };
+const TOOLTIP_STYLES = {
+  contentStyle: {
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--line-strong)",
+    borderRadius: 8,
+    boxShadow: "var(--shadow-raised)",
+    color: "var(--ink)",
+    fontSize: 12,
+  },
+  labelStyle: { color: "var(--ink-soft)", marginBottom: 4 },
+  itemStyle: { color: "var(--ink)" },
+  cursor: { stroke: "var(--faint)" },
+} as const;
+
 export function formatValue(value: number | null | undefined, unit: Unit): string {
   if (value == null || Number.isNaN(value)) {
     return "—";
@@ -115,23 +133,28 @@ function MetricChart({
       ) : (
         <ResponsiveContainer width="100%" height={176}>
           <AreaChart data={points} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.1} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
             <XAxis
               dataKey="t"
               type="number"
               scale="time"
               domain={["dataMin", "dataMax"]}
               tickFormatter={(value: number) => tickTime(value, range)}
-              tick={{ fontSize: 11 }}
+              tick={TICK}
+              axisLine={AXIS_LINE}
+              tickLine={AXIS_LINE}
               minTickGap={32}
             />
             <YAxis
               width={64}
-              tick={{ fontSize: 11 }}
+              tick={TICK}
+              axisLine={AXIS_LINE}
+              tickLine={AXIS_LINE}
               domain={spec.unit === "percent" ? [0, 100] : [0, "auto"]}
               tickFormatter={(value: number) => formatValue(value, spec.unit)}
             />
             <Tooltip
+              {...TOOLTIP_STYLES}
               labelFormatter={(value) => new Date(Number(value)).toLocaleString()}
               formatter={(value, name) => [
                 formatValue(Number(value), spec.unit),
@@ -141,7 +164,7 @@ function MetricChart({
             {spec.metrics.length > 1 ? (
               <Legend
                 formatter={(value: string) => spec.labels?.[value] ?? value}
-                wrapperStyle={{ fontSize: 12 }}
+                wrapperStyle={{ fontSize: 12, color: "var(--ink-soft)" }}
               />
             ) : null}
             {spec.metrics.map((metric, index) => (
