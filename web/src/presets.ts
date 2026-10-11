@@ -400,3 +400,50 @@ export const SEVERITIES: PickOption[] = [
   { label: msg("warning"), value: "warning" },
   { label: msg("critical"), value: "critical" },
 ];
+
+export interface MetricRetentionPreset {
+  label: string;
+  hint: string;
+  values: { raw_hours: string; m1_days: string; m5_days: string; h1_days: string };
+}
+
+/** How long metric samples and their rollups are kept; "Standard" is the panel default. */
+export const METRIC_RETENTION: MetricRetentionPreset[] = [
+  {
+    label: msg("Light"),
+    hint: msg("Smallest database: 6 hours of detail, 3 days of 1-minute rollups"),
+    values: { raw_hours: "6", m1_days: "3", m5_days: "7", h1_days: "14" },
+  },
+  {
+    label: msg("Standard"),
+    hint: msg("The default: 1 day of detail, 7 days of 1-minute rollups"),
+    values: { raw_hours: "24", m1_days: "7", m5_days: "14", h1_days: "30" },
+  },
+  {
+    label: msg("Long"),
+    hint: msg("3 days of detail and a year of hourly history"),
+    values: { raw_hours: "72", m1_days: "30", m5_days: "90", h1_days: "365" },
+  },
+];
+
+export const LOG_DAYS: PickOption[] = [
+  { label: msg("7 days"), value: "7" },
+  { label: msg("14 days"), value: "14" },
+  { label: msg("30 days"), value: "30" },
+  { label: msg("90 days"), value: "90" },
+];
+
+export const YES_NO: PickOption[] = [
+  { label: msg("Yes"), value: "true" },
+  { label: msg("No"), value: "false" },
+];
+
+export const MEMORY_LIMITS_MIB: PickOption[] = [
+  { label: msg("No limit"), value: "" },
+  ...plain([256, 512, 1024, 2048]),
+];
+
+export const CPU_LIMITS: PickOption[] = [
+  { label: msg("No limit"), value: "" },
+  ...plain([0.5, 1, 2, 4]),
+];

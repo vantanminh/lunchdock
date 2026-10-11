@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../api";
-import { Badge, Button, Card, Empty, Field, Select, TextInput } from "../components/ui";
+import { Badge, Button, Card, Empty, Field, PickField, Select, TextInput } from "../components/ui";
 import { errorMessage } from "../format";
+import { YES_NO } from "../presets";
 import type { Schemas } from "../types";
 
 type Template = Schemas["TemplateView"];
@@ -243,20 +244,20 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
         <Field label="Service name">
           <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
-        {template.variables.map((variable) => (
-          <Field
-            key={variable.name}
-            label={`${variable.label}${variable.required ? " *" : ""}${variable.kind === "secret" ? " (empty = generate)" : ""}`}
-          >
-            {variable.kind === "boolean" ? (
-              <Select
-                value={values[variable.name] ?? ""}
-                onChange={(event) => setValues({ ...values, [variable.name]: event.target.value })}
-              >
-                <option value="true">true</option>
-                <option value="false">false</option>
-              </Select>
-            ) : (
+        {template.variables.map((variable) =>
+          variable.kind === "boolean" ? (
+            <PickField
+              key={variable.name}
+              label={`${variable.label}${variable.required ? " *" : ""}`}
+              options={YES_NO}
+              value={values[variable.name] ?? ""}
+              onPick={(value) => setValues({ ...values, [variable.name]: value })}
+            />
+          ) : (
+            <Field
+              key={variable.name}
+              label={`${variable.label}${variable.required ? " *" : ""}${variable.kind === "secret" ? " (empty = generate)" : ""}`}
+            >
               <TextInput
                 required={variable.required}
                 type={
@@ -273,9 +274,9 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
                 value={values[variable.name] ?? ""}
                 onChange={(event) => setValues({ ...values, [variable.name]: event.target.value })}
               />
-            )}
-          </Field>
-        ))}
+            </Field>
+          ),
+        )}
         <div className="flex items-end gap-2 md:col-span-2">
           <Button type="submit" disabled={!environment || !server || deploy.isPending}>
             Deploy {template.name}

@@ -4,8 +4,10 @@ import { toast } from "sonner";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { errorMessage } from "../format";
+import { useT } from "../i18n";
+import { CPU_LIMITS, MEMORY_LIMITS_MIB } from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Card, Field, TextInput } from "./ui";
+import { Badge, Button, Card, Field, QuickPick, TextInput } from "./ui";
 
 interface DatabaseSpec {
   engine?: string;
@@ -21,6 +23,7 @@ interface DatabaseSpec {
 }
 
 export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const spec = (service.spec ?? {}) as DatabaseSpec;
@@ -133,13 +136,53 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
             update.mutate();
           }}
         >
-          <Field label="Public port (empty = internal)">
+          <Field
+            label="Public port (empty = internal)"
+            presets={
+              <QuickPick
+                label={t("Public port presets")}
+                options={[
+                  { label: t("Internal only"), value: "" },
+                  ...(spec.port
+                    ? [
+                        {
+                          label: t("Default ({port})", { port: spec.port }),
+                          value: String(spec.port),
+                        },
+                      ]
+                    : []),
+                ]}
+                value={publicPort}
+                onPick={setPublicPort}
+              />
+            }
+          >
             <TextInput value={publicPort} onChange={(event) => setPublicPort(event.target.value)} />
           </Field>
-          <Field label="Memory (MiB)">
+          <Field
+            label="Memory (MiB)"
+            presets={
+              <QuickPick
+                label={t("Memory limit presets")}
+                options={MEMORY_LIMITS_MIB}
+                value={memoryMb}
+                onPick={setMemoryMb}
+              />
+            }
+          >
             <TextInput value={memoryMb} onChange={(event) => setMemoryMb(event.target.value)} />
           </Field>
-          <Field label="CPUs">
+          <Field
+            label="CPUs"
+            presets={
+              <QuickPick
+                label={t("CPU limit presets")}
+                options={CPU_LIMITS}
+                value={cpus}
+                onPick={setCpus}
+              />
+            }
+          >
             <TextInput value={cpus} onChange={(event) => setCpus(event.target.value)} />
           </Field>
           <div className="flex items-end">

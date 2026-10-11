@@ -5,8 +5,10 @@ import { toast } from "sonner";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { formatValue, MetricsGrid, SERVER_CHARTS } from "../components/metrics";
-import { Badge, Button, Card, Empty, Field, Select, TextInput } from "../components/ui";
+import { Badge, Button, Card, Empty, Field, QuickPick, Select, TextInput } from "../components/ui";
 import { errorMessage, formatTime } from "../format";
+import { useT } from "../i18n";
+import { METRIC_RETENTION } from "../presets";
 import type { Schemas } from "../types";
 
 type MetricsRetention = Schemas["MetricsRetention"];
@@ -18,7 +20,11 @@ const RETENTION_FIELDS: [keyof MetricsRetention, string, number][] = [
   ["h1_days", "Hourly rollups (days)", 365],
 ];
 
+const retentionKey = (values: Record<string, string>) =>
+  RETENTION_FIELDS.map(([key]) => values[key] ?? "").join("|");
+
 function MetricsRetentionCard() {
+  const t = useT();
   const queryClient = useQueryClient();
   const retention = useQuery({
     queryKey: ["retention"],
@@ -57,6 +63,22 @@ function MetricsRetentionCard() {
           save.mutate();
         }}
       >
+        <div className="space-y-1.5 md:col-span-4">
+          <span className="text-[13px] font-medium text-ink-soft">{t("Preset")}</span>
+          <QuickPick
+            label={t("Metric retention presets")}
+            options={METRIC_RETENTION.map((preset) => ({
+              label: preset.label,
+              value: retentionKey(preset.values),
+              hint: preset.hint,
+            }))}
+            value={retentionKey(values)}
+            onPick={(_, option) => {
+              const preset = METRIC_RETENTION.find((item) => item.label === option.label);
+              if (preset) setValues({ ...values, ...preset.values });
+            }}
+          />
+        </div>
         {RETENTION_FIELDS.map(([key, label, max]) => (
           <Field key={key} label={label}>
             <TextInput

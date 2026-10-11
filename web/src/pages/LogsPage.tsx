@@ -4,8 +4,10 @@ import { toast } from "sonner";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { LOG_SOURCES, LogViewer } from "../components/logs";
-import { Button, Card, Field, TextInput } from "../components/ui";
+import { Button, Card, Field, QuickPick, TextInput } from "../components/ui";
 import { errorMessage } from "../format";
+import { useT } from "../i18n";
+import { LOG_DAYS } from "../presets";
 import type { Schemas } from "../types";
 
 type Retention = Schemas["RetentionSettings"];
@@ -27,6 +29,7 @@ export function LogsPage() {
 }
 
 function RetentionCard() {
+  const t = useT();
   const queryClient = useQueryClient();
   const retention = useQuery({
     queryKey: ["retention"],
@@ -72,6 +75,26 @@ function RetentionCard() {
           save.mutate();
         }}
       >
+        <div className="space-y-1.5 md:col-span-6">
+          <span className="text-[13px] font-medium text-ink-soft">
+            {t("Apply to every source")}
+          </span>
+          <QuickPick
+            label={t("Log retention presets")}
+            options={LOG_DAYS}
+            value={
+              new Set(LOG_SOURCES.map((source) => days[source])).size === 1
+                ? days[LOG_SOURCES[0]]
+                : null
+            }
+            onPick={(value) =>
+              setDays({
+                ...days,
+                ...Object.fromEntries(LOG_SOURCES.map((source) => [source, value])),
+              })
+            }
+          />
+        </div>
         {LOG_SOURCES.map((source) => (
           <Field key={source} label={source}>
             <TextInput
