@@ -2,11 +2,13 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError, setCsrf } from "../api";
 import { useAuth } from "../auth";
-import { Button, Card, Field, TextInput } from "../components/ui";
+import { Button, Card, Field, Segmented, TextInput } from "../components/ui";
+import { LANGUAGES, translate, useLanguage, type Language } from "../i18n";
 import type { Schemas } from "../types";
 
 export function AccountPage() {
   const { user, refresh } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [setup, setSetup] = useState<{ secret: string; otpauth_url: string } | null>(null);
@@ -25,10 +27,10 @@ export function AccountPage() {
         }),
       });
       setCsrf(null);
-      toast.success("Password changed. Sign in again.");
+      toast.success(t("Password changed. Sign in again."));
       await refresh();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Could not change password");
+      toast.error(error instanceof ApiError ? error.message : t("Could not change password"));
     }
   }
 
@@ -40,7 +42,7 @@ export function AccountPage() {
       setSetup(body);
     } catch (error) {
       toast.error(
-        error instanceof ApiError ? error.message : "Could not start authenticator setup",
+        error instanceof ApiError ? error.message : t("Could not start authenticator setup"),
       );
     }
   }
@@ -54,10 +56,10 @@ export function AccountPage() {
       });
       setSetup(null);
       setCode("");
-      toast.success("Authenticator enabled");
+      toast.success(t("Authenticator enabled"));
       await refresh();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Code did not match");
+      toast.error(error instanceof ApiError ? error.message : t("Code did not match"));
     }
   }
 
@@ -68,19 +70,36 @@ export function AccountPage() {
         method: "POST",
         body: JSON.stringify({ password: disablePassword, code: disableCode }),
       });
-      toast.success("Authenticator disabled");
+      toast.success(t("Authenticator disabled"));
       await refresh();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Could not disable authenticator");
+      toast.error(
+        error instanceof ApiError ? error.message : t("Could not disable authenticator"),
+      );
     }
   }
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Account</h1>
-      <Card title="Password">
+      <h1 className="text-2xl font-semibold">{t("Account")}</h1>
+      <Card
+        title={t("Language")}
+        description={t("Choose the language used for menus, forms, and messages in this browser.")}
+      >
+        <Segmented
+          label={t("Language")}
+          value={language}
+          options={LANGUAGES.map((item) => [item.code, item.label] as const)}
+          onChange={(next: Language) => {
+            setLanguage(next);
+            // Translate with the new language, since this render still holds the old one.
+            toast.success(String(translate(next, "Language changed")));
+          }}
+        />
+      </Card>
+      <Card title={t("Password")}>
         <form className="grid max-w-md gap-3" onSubmit={(event) => void changePassword(event)}>
-          <Field label="Current password">
+          <Field label={t("Current password")}>
             <TextInput
               type="password"
               required
@@ -88,7 +107,7 @@ export function AccountPage() {
               onChange={(event) => setCurrentPassword(event.target.value)}
             />
           </Field>
-          <Field label="New password">
+          <Field label={t("New password")}>
             <TextInput
               type="password"
               required
@@ -97,14 +116,14 @@ export function AccountPage() {
               onChange={(event) => setNewPassword(event.target.value)}
             />
           </Field>
-          <Button type="submit">Change password</Button>
+          <Button type="submit">{t("Change password")}</Button>
         </form>
       </Card>
-      <Card title="Authenticator">
+      <Card title={t("Authenticator")}>
         {user?.totp_enabled ? (
           <form className="grid max-w-md gap-3" onSubmit={(event) => void disableTotp(event)}>
-            <p className="text-sm text-muted">Authenticator codes are required at sign-in.</p>
-            <Field label="Password">
+            <p className="text-sm text-muted">{t("Authenticator codes are required at sign-in.")}</p>
+            <Field label={t("Password")}>
               <TextInput
                 type="password"
                 required
@@ -112,7 +131,7 @@ export function AccountPage() {
                 onChange={(event) => setDisablePassword(event.target.value)}
               />
             </Field>
-            <Field label="Current code">
+            <Field label={t("Current code")}>
               <TextInput
                 required
                 value={disableCode}
@@ -120,28 +139,28 @@ export function AccountPage() {
               />
             </Field>
             <Button type="submit" quiet>
-              Disable authenticator
+              {t("Disable authenticator")}
             </Button>
           </form>
         ) : (
           <div className="space-y-4">
             <Button quiet onClick={() => void startTotp()}>
-              Set up authenticator
+              {t("Set up authenticator")}
             </Button>
             {setup ? (
               <form className="grid max-w-md gap-3" onSubmit={(event) => void enableTotp(event)}>
                 <p className="break-all font-mono text-sm">{setup.secret}</p>
                 <a className="text-sm text-accent underline" href={setup.otpauth_url}>
-                  Open in authenticator app
+                  {t("Open in authenticator app")}
                 </a>
-                <Field label="Code">
+                <Field label={t("Code")}>
                   <TextInput
                     required
                     value={code}
                     onChange={(event) => setCode(event.target.value)}
                   />
                 </Field>
-                <Button type="submit">Enable</Button>
+                <Button type="submit">{t("Enable")}</Button>
               </form>
             ) : null}
           </div>

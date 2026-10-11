@@ -3,6 +3,7 @@ import { lazy, useState, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "./auth";
+import { LanguageProvider, useT } from "./i18n";
 import { Shell } from "./layout/Shell";
 import { useDarkTheme } from "./theme";
 import { DashboardPage } from "./pages/Dashboard";
@@ -59,8 +60,9 @@ const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default:
 
 function Guard({ children }: { children: ReactNode }) {
   const { user, loading, needsSetup } = useAuth();
+  const t = useT();
   if (loading) {
-    return <p className="p-6 text-sm text-muted">Loading Rudder…</p>;
+    return <p className="p-6 text-sm text-muted">{t("Loading Rudder…")}</p>;
   }
   if (needsSetup) {
     return <Navigate to="/setup" replace />;
@@ -113,12 +115,14 @@ export function App() {
   const dark = useDarkTheme();
   return (
     <QueryClientProvider client={client}>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-        <Toaster theme={dark ? "dark" : "light"} />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+          <Toaster theme={dark ? "dark" : "light"} />
+        </AuthProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

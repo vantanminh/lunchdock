@@ -7,6 +7,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
+import { useT } from "../i18n";
 import { Icon, type IconName } from "./icons";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "danger-solid";
@@ -237,6 +238,7 @@ export function Badge({
   tone?: string;
   dot?: boolean;
 }) {
+  const t = useT();
   const resolved: Tone =
     tone && tone in toneClass ? (tone as Tone) : toneOf(tone ?? value);
   const showDot = dot ?? (resolved !== "neutral" && resolved !== "outline");
@@ -249,7 +251,7 @@ export function Badge({
           className={`size-1.5 rounded-full bg-current ${resolved === "live" ? "animate-live" : ""}`}
         />
       ) : null}
-      {value.replace(/_/g, " ")}
+      {t(value.replace(/_/g, " "))}
     </span>
   );
 }

@@ -5,9 +5,11 @@ import { api, ApiError } from "../api";
 import { rememberSession, useAuth } from "../auth";
 import { Icon, KnotreeMark } from "../components/icons";
 import { Button, Field, TextInput } from "../components/ui";
+import { LANGUAGES, useLanguage, useT } from "../i18n";
 import type { SessionResponse } from "../types";
 
 export function SetupPage() {
+  const t = useT();
   const { needsSetup, loading, refresh, user } = useAuth();
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -36,16 +38,19 @@ export function SetupPage() {
       rememberSession(body);
       await refresh();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Setup failed");
+      toast.error(error instanceof ApiError ? error.message : t("Setup failed"));
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <AuthFrame title="Create the owner" subtitle="This account administers the panel.">
+    <AuthFrame
+      title={t("Create the owner")}
+      subtitle={t("This account administers the panel.")}
+    >
       <form className="grid gap-4" onSubmit={(event) => void onSubmit(event)}>
-        <Field label="Email">
+        <Field label={t("Email")}>
           <TextInput
             type="email"
             required
@@ -53,10 +58,13 @@ export function SetupPage() {
             onChange={(event) => setEmail(event.target.value)}
           />
         </Field>
-        <Field label="Display name">
+        <Field label={t("Display name")}>
           <TextInput value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
         </Field>
-        <Field label="Password" hint="Use at least 12 characters. A short phrase works well.">
+        <Field
+          label={t("Password")}
+          hint={t("Use at least 12 characters. A short phrase works well.")}
+        >
           <TextInput
             type="password"
             required
@@ -66,7 +74,7 @@ export function SetupPage() {
           />
         </Field>
         <Button type="submit" size="lg" disabled={pending} className="mt-2 w-full">
-          {pending ? "Creating…" : "Create owner"}
+          {pending ? t("Creating…") : t("Create owner")}
         </Button>
       </form>
     </AuthFrame>
@@ -74,6 +82,7 @@ export function SetupPage() {
 }
 
 export function LoginPage() {
+  const t = useT();
   const { needsSetup, loading, refresh, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -105,9 +114,9 @@ export function LoginPage() {
     } catch (error) {
       if (error instanceof ApiError && error.code === "totp_required") {
         setNeedsTotp(true);
-        toast.message("Enter the authenticator code");
+        toast.message(t("Enter the authenticator code"));
       } else {
-        toast.error(error instanceof ApiError ? error.message : "Sign-in failed");
+        toast.error(error instanceof ApiError ? error.message : t("Sign-in failed"));
       }
     } finally {
       setPending(false);
@@ -115,9 +124,9 @@ export function LoginPage() {
   }
 
   return (
-    <AuthFrame title="Sign in" subtitle="Use your Rudder panel account.">
+    <AuthFrame title={t("Sign in")} subtitle={t("Use your Rudder panel account.")}>
       <form className="grid gap-4" onSubmit={(event) => void onSubmit(event)}>
-        <Field label="Email">
+        <Field label={t("Email")}>
           <TextInput
             type="email"
             required
@@ -125,7 +134,7 @@ export function LoginPage() {
             onChange={(event) => setEmail(event.target.value)}
           />
         </Field>
-        <Field label="Password">
+        <Field label={t("Password")}>
           <TextInput
             type="password"
             required
@@ -134,7 +143,7 @@ export function LoginPage() {
           />
         </Field>
         {needsTotp ? (
-          <Field label="Authenticator code">
+          <Field label={t("Authenticator code")}>
             <TextInput
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -146,7 +155,7 @@ export function LoginPage() {
           </Field>
         ) : null}
         <Button type="submit" size="lg" disabled={pending} className="mt-2 w-full">
-          {pending ? "Signing in…" : "Sign in"}
+          {pending ? t("Signing in…") : t("Sign in")}
         </Button>
       </form>
     </AuthFrame>
@@ -162,6 +171,8 @@ function AuthFrame({
   subtitle: string;
   children: React.ReactNode;
 }) {
+  const t = useT();
+  const { language, setLanguage } = useLanguage();
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center gap-2.5 px-5 py-5 sm:px-8">
@@ -179,8 +190,21 @@ function AuthFrame({
           {children}
         </div>
       </main>
-      <footer className="px-5 py-5 text-center text-xs text-faint sm:px-8">
-        Self-hosted deployment panel
+      <footer className="flex flex-col items-center gap-2 px-5 py-5 text-center text-xs text-faint sm:px-8">
+        <span>{t("Self-hosted deployment panel")}</span>
+        <div role="group" aria-label={t("Language")} className="flex items-center gap-1">
+          {LANGUAGES.map((item) => (
+            <button
+              key={item.code}
+              type="button"
+              aria-pressed={language === item.code}
+              onClick={() => setLanguage(item.code)}
+              className={`rounded-control px-2 py-1 transition-colors hover:text-ink ${language === item.code ? "bg-sunken font-medium text-ink" : ""}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </footer>
     </div>
   );
