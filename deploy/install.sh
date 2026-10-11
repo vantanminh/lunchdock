@@ -317,7 +317,7 @@ done
 if [ -n "$restore" ]; then
 	info "restored; sign in with the accounts from the backup at $public_url"
 else
-	info "Rudder is running at $public_url; open it to create the first admin account"
+	info "Rudder is running at $public_url; open it to sign in, or to create the first admin account on a new install"
 fi
 [ -z "$domain" ] || info "set the panel domain to $domain under Certificates so Traefik serves it over HTTPS"
 info "back up $ETC/master.key, or run: sh install.sh --backup rudder-panel.tar.zst.enc"
