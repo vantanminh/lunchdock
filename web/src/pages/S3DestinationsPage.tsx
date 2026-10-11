@@ -51,12 +51,12 @@ export function S3DestinationsPage() {
           });
     },
     onSuccess: async () => {
-      toast.success(editing ? "Destination updated" : "Destination added");
+      toast.success(editing ? t("Destination updated") : t("Destination added"));
       setForm(blank);
       setEditing(null);
       await queryClient.invalidateQueries({ queryKey: ["s3-destinations"] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save destination")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save destination"))),
   });
 
   const test = useMutation({
@@ -64,16 +64,16 @@ export function S3DestinationsPage() {
       api<Schemas["TestResult"]>(`/api/v1/s3-destinations/${id}/test`, { method: "POST" }),
     onSuccess: (result) =>
       result.ok ? toast.success(result.message) : toast.error(result.message),
-    onError: (error) => toast.error(errorMessage(error, "Test failed")),
+    onError: (error) => toast.error(errorMessage(error, t("Test failed"))),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api(`/api/v1/s3-destinations/${id}`, { method: "DELETE" }),
     onSuccess: async () => {
-      toast.success("Destination removed");
+      toast.success(t("Destination removed"));
       await queryClient.invalidateQueries({ queryKey: ["s3-destinations"] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not remove destination")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not remove destination"))),
   });
 
   function edit(destination: Destination) {
@@ -105,12 +105,13 @@ export function S3DestinationsPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">S3 destinations</h1>
+      <h1 className="text-2xl font-semibold">{t("S3 destinations")}</h1>
       <p className="text-sm text-muted">
-        Any S3-compatible bucket: AWS S3, Cloudflare R2, Backblaze B2, Wasabi, RustFS, Garage, or
-        MinIO. Keys are encrypted at rest and never shown again.
+        {t(
+          "Any S3-compatible bucket: AWS S3, Cloudflare R2, Backblaze B2, Wasabi, RustFS, Garage, or MinIO. Keys are encrypted at rest and never shown again.",
+        )}
       </p>
-      <Card title={editing ? "Edit destination" : "New destination"}>
+      <Card title={editing ? t("Edit destination") : t("New destination")}>
         <form
           className="grid gap-3 md:grid-cols-2"
           onSubmit={(event) => {
@@ -120,7 +121,7 @@ export function S3DestinationsPage() {
         >
           <div className="md:col-span-2">
             <PickField
-              label="Provider"
+              label={t("Provider")}
               hint={t(
                 "Fills in the endpoint, region, and addressing style. You can still edit them.",
               )}
@@ -136,11 +137,11 @@ export function S3DestinationsPage() {
               onPick={pickProvider}
             />
           </div>
-          <Field label="Name">
+          <Field label={t("Name")}>
             <TextInput required value={form.name} onChange={set("name")} />
           </Field>
           <Field
-            label="Endpoint (empty for AWS)"
+            label={t("Endpoint (empty for AWS)")}
             hint={
               form.endpoint.includes("<")
                 ? t("Replace the <…> part with your own value before saving.")
@@ -156,7 +157,7 @@ export function S3DestinationsPage() {
             />
           </Field>
           <Field
-            label="Region"
+            label={t("Region")}
             presets={
               <QuickPick
                 label={t("Region presets")}
@@ -168,10 +169,10 @@ export function S3DestinationsPage() {
           >
             <TextInput required value={form.region} onChange={set("region")} />
           </Field>
-          <Field label="Bucket">
+          <Field label={t("Bucket")}>
             <TextInput required value={form.bucket} onChange={set("bucket")} />
           </Field>
-          <Field label={editing ? "Access key ID (leave empty to keep)" : "Access key ID"}>
+          <Field label={editing ? t("Access key ID (leave empty to keep)") : t("Access key ID")}>
             <TextInput
               required={!editing}
               autoComplete="off"
@@ -179,7 +180,9 @@ export function S3DestinationsPage() {
               onChange={set("access_key_id")}
             />
           </Field>
-          <Field label={editing ? "Secret access key (leave empty to keep)" : "Secret access key"}>
+          <Field
+            label={editing ? t("Secret access key (leave empty to keep)") : t("Secret access key")}
+          >
             <TextInput
               required={!editing}
               type="password"
@@ -194,11 +197,11 @@ export function S3DestinationsPage() {
               checked={form.path_style}
               onChange={(event) => setForm({ ...form, path_style: event.target.checked })}
             />
-            Path-style addressing (needed by most self-hosted servers)
+            {t("Path-style addressing (needed by most self-hosted servers)")}
           </label>
           <div className="flex items-end gap-2">
             <Button type="submit" disabled={save.isPending}>
-              {editing ? "Save" : "Add destination"}
+              {editing ? t("Save") : t("Add destination")}
             </Button>
             {editing ? (
               <Button
@@ -209,36 +212,37 @@ export function S3DestinationsPage() {
                   setForm(blank);
                 }}
               >
-                Cancel
+                {t("Cancel")}
               </Button>
             ) : null}
           </div>
         </form>
       </Card>
-      <Card title="Destinations">
+      <Card title={t("Destinations")}>
         <ul className="divide-y divide-line text-sm">
           {(destinations.data ?? []).map((destination) => (
             <li key={destination.id} className="flex flex-wrap items-center gap-3 py-3">
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{destination.name}</p>
                 <p className="truncate text-muted">
-                  {destination.endpoint ?? "AWS S3"} · {destination.bucket} · {destination.region} ·
-                  key {destination.access_key_hint} · added {formatTime(destination.created_at)}
+                  {destination.endpoint ?? "AWS S3"} · {destination.bucket} · {destination.region} ·{" "}
+                  {t("key {hint}", { hint: destination.access_key_hint })} ·{" "}
+                  {t("added {time}", { time: formatTime(destination.created_at) })}
                 </p>
               </div>
               <Button quiet onClick={() => test.mutate(destination.id)} disabled={test.isPending}>
-                Test
+                {t("Test")}
               </Button>
               <Button quiet onClick={() => edit(destination)}>
-                Edit
+                {t("Edit")}
               </Button>
               <Button quiet onClick={() => remove.mutate(destination.id)}>
-                Remove
+                {t("Remove")}
               </Button>
             </li>
           ))}
         </ul>
-        {destinations.data?.length === 0 ? <Empty>No destinations yet.</Empty> : null}
+        {destinations.data?.length === 0 ? <Empty>{t("No destinations yet.")}</Empty> : null}
       </Card>
     </>
   );

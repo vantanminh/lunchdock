@@ -19,6 +19,7 @@ import {
 } from "../components/ui";
 import { errorMessage, formatBytes, formatRelative, formatTime } from "../format";
 import type { Schemas } from "../types";
+import { useT } from "../i18n";
 
 type Server = Schemas["ServerView"];
 type Service = Schemas["ServiceSummary"];
@@ -51,6 +52,7 @@ function isIssue(status: string) {
 }
 
 export function DashboardPage() {
+  const t = useT();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
@@ -104,21 +106,27 @@ export function DashboardPage() {
   if (failing.length) {
     issues.push(
       <span key="svc">
-        {failing.length} {failing.length === 1 ? "service needs" : "services need"} a look
+        {failing.length === 1
+          ? t("{count} service needs a look", { count: failing.length })
+          : t("{count} services need a look", { count: failing.length })}
       </span>,
     );
   }
   if (offline.length) {
     issues.push(
       <Link key="srv" to="/servers">
-        {offline.length === 1 ? `${offline[0]?.name} is offline` : `${offline.length} servers are offline`}
+        {offline.length === 1
+          ? t("{name} is offline", { name: offline[0]?.name ?? "" })
+          : t("{count} servers are offline", { count: offline.length })}
       </Link>,
     );
   }
   if (firing.length) {
     issues.push(
       <Link key="alr" to="/alerts">
-        {firing.length} {firing.length === 1 ? "alert is" : "alerts are"} firing
+        {firing.length === 1
+          ? t("{count} alert is firing", { count: firing.length })
+          : t("{count} alerts are firing", { count: firing.length })}
       </Link>,
     );
   }
@@ -126,22 +134,31 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader
-        title="Overview"
+        title={t("Overview")}
         description={
           loading
-            ? "Checking your servers…"
-            : `${serviceList.length} ${serviceList.length === 1 ? "service" : "services"} on ${serverList.length} ${serverList.length === 1 ? "server" : "servers"}. Refreshes every 10 seconds.`
+            ? t("Checking your servers…")
+            : t("{services} on {servers}. Refreshes every 10 seconds.", {
+                services:
+                  serviceList.length === 1
+                    ? t("{count} service", { count: serviceList.length })
+                    : t("{count} services", { count: serviceList.length }),
+                servers:
+                  serverList.length === 1
+                    ? t("{count} server", { count: serverList.length })
+                    : t("{count} servers", { count: serverList.length }),
+              })
         }
         actions={
           isAdmin ? (
             <>
               <Link to="/templates" className={buttonClass({ variant: "secondary" })}>
                 <Icon name="layers" />
-                Deploy a template
+                {t("Deploy a template")}
               </Link>
               <Link to="/projects" className={buttonClass()}>
                 <Icon name="plus" />
-                New project
+                {t("New project")}
               </Link>
             </>
           ) : null
@@ -149,13 +166,17 @@ export function DashboardPage() {
       />
 
       {services.error || servers.error ? (
-        <Alert tone="error" title="Couldn't load the overview">
-          {errorMessage(services.error ?? servers.error, "The panel did not answer.")}
+        <Alert tone="error" title={t("Couldn't load the overview")}>
+          {errorMessage(services.error ?? servers.error, t("The panel did not answer."))}
         </Alert>
       ) : issues.length ? (
         <Alert
           tone={offline.length || firing.length ? "error" : "warning"}
-          title={issues.length === 1 ? "One thing needs attention" : `${issues.length} things need attention`}
+          title={
+            issues.length === 1
+              ? t("One thing needs attention")
+              : t("{count} things need attention", { count: issues.length })
+          }
         >
           <span className="flex flex-wrap gap-x-1.5">
             {issues.map((issue, index) => (
@@ -172,59 +193,63 @@ export function DashboardPage() {
         <StatTile
           to="/servers"
           icon="server"
-          label="Servers online"
+          label={t("Servers online")}
           loading={servers.isLoading}
           value={online}
           total={serverList.length}
           caption={
             offline.length
-              ? `${offline.length} offline`
+              ? t("{count} offline", { count: offline.length })
               : serverList.length
-                ? "All reachable"
-                : "None added yet"
+                ? t("All reachable")
+                : t("None added yet")
           }
           warn={offline.length > 0}
         />
         <StatTile
           to="/projects"
           icon="rocket"
-          label="Services running"
+          label={t("Services running")}
           loading={services.isLoading}
           value={running}
           total={serviceList.length}
           caption={
             failing.length
-              ? `${failing.length} with problems`
+              ? t("{count} with problems", { count: failing.length })
               : serviceList.length - running
-                ? `${serviceList.length - running} stopped`
+                ? t("{count} stopped", { count: serviceList.length - running })
                 : serviceList.length
-                  ? "Everything is up"
-                  : "Nothing deployed yet"
+                  ? t("Everything is up")
+                  : t("Nothing deployed yet")
           }
           warn={failing.length > 0}
         />
         <StatTile
           to="/projects"
           icon="folder"
-          label="Projects"
+          label={t("Projects")}
           loading={projects.isLoading && services.isLoading}
           value={projectCount}
-          caption={`${activeProjects} with running services`}
+          caption={t("{count} with running services", { count: activeProjects })}
         />
         <StatTile
           to="/alerts"
           icon="bell"
-          label="Alerts firing"
+          label={t("Alerts firing")}
           loading={alerts.isLoading}
           value={firing.length}
           caption={
             firing[0]
               ? firing.length > 1
-                ? `${firing[0].name} and ${firing.length - 1} more`
+                ? t("{name} and {count} more", { name: firing[0].name, count: firing.length - 1 })
                 : firing[0].name
               : alertList.length
-                ? `${alertList.length} ${alertList.length === 1 ? "rule" : "rules"}${pendingAlerts.length ? ` · ${pendingAlerts.length} pending` : ""}`
-                : "No rules yet"
+                ? `${
+                    alertList.length === 1
+                      ? t("{count} rule", { count: alertList.length })
+                      : t("{count} rules", { count: alertList.length })
+                  }${pendingAlerts.length ? ` · ${t("{count} pending", { count: pendingAlerts.length })}` : ""}`
+                : t("No rules yet")
           }
           warn={firing.length > 0}
         />
@@ -269,6 +294,7 @@ function StatTile({
   loading: boolean;
   warn?: boolean;
 }) {
+  const t = useT();
   const ratio = total ? (value / total) * 100 : null;
   return (
     <Link
@@ -295,13 +321,15 @@ function StatTile({
           <span className="text-[28px] leading-none font-semibold tracking-[-0.02em] text-ink">
             {value}
           </span>
-          {total != null ? <span className="text-sm text-muted">of {total}</span> : null}
+          {total != null ? (
+            <span className="text-sm text-muted">{t("of {total}", { total })}</span>
+          ) : null}
         </p>
       )}
       {total != null ? (
         <Meter
           value={loading ? null : ratio}
-          label={`${label} ratio`}
+          label={t("{label} ratio", { label })}
           className="mt-3 [&>div]:bg-pine!"
         />
       ) : null}
@@ -326,6 +354,7 @@ function ServicesCard({
   loading: boolean;
   isAdmin: boolean;
 }) {
+  const t = useT();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -365,24 +394,24 @@ function ServicesCard({
 
   if (!loading && services.length === 0) {
     return (
-      <Card title="Services">
+      <Card title={t("Services")}>
         <Empty
           icon="rocket"
-          title="Deploy your first service"
+          title={t("Deploy your first service")}
           action={
             isAdmin ? (
               <>
                 <Link to="/templates" className={buttonClass({ variant: "secondary", size: "sm" })}>
-                  Browse templates
+                  {t("Browse templates")}
                 </Link>
                 <Link to="/projects" className={buttonClass({ size: "sm" })}>
-                  Create a project
+                  {t("Create a project")}
                 </Link>
               </>
             ) : null
           }
         >
-          Apps, databases and Compose stacks appear here once a project has them.
+          {t("Apps, databases and Compose stacks appear here once a project has them.")}
         </Empty>
       </Card>
     );
@@ -390,15 +419,24 @@ function ServicesCard({
 
   return (
     <Card
-      title="Services"
-      description="Apps, databases and stacks across every project."
+      title={t("Services")}
+      description={t("Apps, databases and stacks across every project.")}
       flush
       footer={
         <>
           <span>
             {loading
-              ? "Loading…"
-              : `Showing ${shown.length} of ${visible.length}${visible.length !== services.length ? ` (${services.length} total)` : ""}`}
+              ? t("Loading…")
+              : visible.length !== services.length
+                ? t("Showing {shown} of {visible} ({total} total)", {
+                    shown: shown.length,
+                    visible: visible.length,
+                    total: services.length,
+                  })
+                : t("Showing {shown} of {visible}", {
+                    shown: shown.length,
+                    visible: visible.length,
+                  })}
           </span>
           <span className="flex items-center gap-3">
             {visible.length > PAGE ? (
@@ -407,11 +445,11 @@ function ServicesCard({
                 className="font-medium text-ink-soft hover:text-ink"
                 onClick={() => setExpanded((value) => !value)}
               >
-                {expanded ? "Show fewer" : `Show all ${visible.length}`}
+                {expanded ? t("Show fewer") : t("Show all {count}", { count: visible.length })}
               </button>
             ) : null}
             <Link to="/projects" className="inline-flex items-center gap-1 font-medium text-pine">
-              Projects <Icon name="arrowRight" size={14} />
+              {t("Projects")} <Icon name="arrowRight" size={14} />
             </Link>
           </span>
         </>
@@ -419,7 +457,7 @@ function ServicesCard({
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 pb-4 sm:px-6">
         <label className="relative min-w-0 flex-1 basis-48">
-          <span className="sr-only">Search services</span>
+          <span className="sr-only">{t("Search services")}</span>
           <Icon
             name="search"
             className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-faint"
@@ -428,20 +466,20 @@ function ServicesCard({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name, project or kind"
+            placeholder={t("Search by name, project or kind")}
             className="h-8 w-full rounded-control border border-line-strong bg-surface pr-3 pl-8 text-sm text-ink outline-none placeholder:text-faint focus:border-pine focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--pine)_14%,transparent)]"
           />
         </label>
         <div className="max-w-full overflow-x-auto">
           <Segmented<Filter>
-            label="Filter services by status"
+            label={t("Filter services by status")}
             value={filter}
             onChange={setFilter}
             options={[
-              ["all", "All", counts.all],
-              ["running", "Running", counts.running],
-              ["issues", "Issues", counts.issues],
-              ["stopped", "Stopped", counts.stopped],
+              ["all", t("All"), counts.all],
+              ["running", t("Running"), counts.running],
+              ["issues", t("Issues"), counts.issues],
+              ["stopped", t("Stopped"), counts.stopped],
             ]}
           />
         </div>
@@ -460,8 +498,8 @@ function ServicesCard({
           ))}
         </ul>
       ) : visible.length === 0 ? (
-        <Empty icon="search" title="No matching services">
-          Try another name or clear the filter.
+        <Empty icon="search" title={t("No matching services")}>
+          {t("Try another name or clear the filter.")}
         </Empty>
       ) : (
         <ul className="divide-y divide-line">
@@ -487,7 +525,9 @@ function ServicesCard({
                 </span>
                 <span className="hidden truncate text-[13px] text-muted md:flex md:items-center md:gap-1.5">
                   <Icon name="server" size={14} className="shrink-0 text-faint" />
-                  <span className="truncate">{serverName.get(service.server_id) ?? "Unknown"}</span>
+                  <span className="truncate">
+                    {serverName.get(service.server_id) ?? t("Unknown")}
+                  </span>
                 </span>
                 <span className="flex items-center justify-end gap-2">
                   <Badge value={service.status} />
@@ -515,13 +555,14 @@ function ServersCard({
   usage: Map<string, Usage>;
   loading: boolean;
 }) {
+  const t = useT();
   return (
     <Card
-      title="Servers"
+      title={t("Servers")}
       flush
       actions={
         <Link to="/monitoring" className={buttonClass({ variant: "ghost", size: "sm" })}>
-          Monitoring
+          {t("Monitoring")}
           <Icon name="arrowRight" size={14} />
         </Link>
       }
@@ -532,8 +573,8 @@ function ServersCard({
           <Skeleton className="h-16 w-full" />
         </div>
       ) : servers.length === 0 ? (
-        <Empty icon="server" title="No servers yet">
-          <Link to="/servers">Add a server</Link> to start deploying.
+        <Empty icon="server" title={t("No servers yet")}>
+          {t("{link} to start deploying.", { link: <Link to="/servers">{t("Add a server")}</Link> })}
         </Empty>
       ) : (
         <ul className="divide-y divide-line border-t border-line">
@@ -556,17 +597,17 @@ function ServersCard({
                 </div>
                 {row && server.status === "online" ? (
                   <dl className="mt-3 grid grid-cols-3 gap-3 pl-4">
-                    <Gauge label="CPU" value={row.cpu_percent} />
-                    <Gauge label="Memory" value={row.memory_percent} />
-                    <Gauge label="Disk" value={row.disk_percent} />
+                    <Gauge label={t("CPU")} value={row.cpu_percent} />
+                    <Gauge label={t("Memory")} value={row.memory_percent} />
+                    <Gauge label={t("Disk")} value={row.disk_percent} />
                   </dl>
                 ) : (
                   <p className="mt-2 pl-4 text-xs text-muted">
                     {server.last_heartbeat_at
-                      ? `Last seen ${formatRelative(server.last_heartbeat_at)}`
+                      ? t("Last seen {time}", { time: formatRelative(server.last_heartbeat_at) })
                       : server.memory_bytes
                         ? `${server.cpu_count ?? "?"} vCPU · ${formatBytes(server.memory_bytes)}`
-                        : "No samples yet"}
+                        : t("No samples yet")}
                   </p>
                 )}
               </li>
@@ -579,6 +620,7 @@ function ServersCard({
 }
 
 function Gauge({ label, value }: { label: string; value: number | null | undefined }) {
+  const t = useT();
   return (
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-1 text-xs">
@@ -587,7 +629,7 @@ function Gauge({ label, value }: { label: string; value: number | null | undefin
           {value == null ? "—" : `${Math.round(value)}%`}
         </dd>
       </div>
-      <Meter value={value} label={`${label} usage`} className="mt-1.5" />
+      <Meter value={value} label={t("{label} usage", { label })} className="mt-1.5" />
     </div>
   );
 }
@@ -610,13 +652,14 @@ function ActivityCard({
   loading: boolean;
   serverName: Map<string, string>;
 }) {
+  const t = useT();
   return (
     <Card
-      title="Recent activity"
+      title={t("Recent activity")}
       flush
       actions={
         <Link to="/logs" className={buttonClass({ variant: "ghost", size: "sm" })}>
-          Logs
+          {t("Logs")}
           <Icon name="arrowRight" size={14} />
         </Link>
       }
@@ -628,8 +671,8 @@ function ActivityCard({
           <Skeleton className="h-10 w-full" />
         </div>
       ) : events.length === 0 ? (
-        <Empty icon="history" title="All quiet">
-          Deploys, backups and alerts will show up here.
+        <Empty icon="history" title={t("All quiet")}>
+          {t("Deploys, backups and alerts will show up here.")}
         </Empty>
       ) : (
         <ol className="border-t border-line px-5 py-2 sm:px-6">

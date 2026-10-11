@@ -48,6 +48,7 @@ export function useStack(serviceId: string, enabled = true) {
 }
 
 export function StackOverview({ serviceId }: { serviceId: string }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const stack = useStack(serviceId);
@@ -57,71 +58,79 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
         method: "POST",
       }),
     onSuccess: async (_deployment, name) => {
-      toast.success(`docker compose ${name} started; follow it under Deployments`);
+      toast.success(t("docker compose {name} started; follow it under Deployments", { name }));
       await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
       await queryClient.invalidateQueries({ queryKey: ["deployments", serviceId] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Stack action failed")),
+    onError: (error) => toast.error(errorMessage(error, t("Stack action failed"))),
   });
   const remove = useMutation({
     mutationFn: (volumes: boolean) =>
       api(`/api/v1/services/${serviceId}/stack?volumes=${volumes}`, { method: "DELETE" }),
     onSuccess: () => {
-      toast.success("Stack deleted");
+      toast.success(t("Stack deleted"));
       navigate("/projects");
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not delete the stack")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not delete the stack"))),
   });
   const view = stack.data;
   if (stack.error) {
-    return <Empty>{errorMessage(stack.error, "Could not load the stack")}</Empty>;
+    return <Empty>{errorMessage(stack.error, t("Could not load the stack"))}</Empty>;
   }
   if (!view) {
-    return <Empty>Loading stack…</Empty>;
+    return <Empty>{t("Loading stack…")}</Empty>;
   }
   const busy = view.service.status === "deploying" || action.isPending;
   return (
     <>
-      <Card title="Stack">
+      <Card title={t("Stack")}>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted">Project</span>
+          <span className="text-muted">{t("Project")}</span>
           <span className="font-mono">{view.project}</span>
-          {view.template ? <Badge value={`template: ${view.template}`} /> : null}
-          <span className="text-muted">· {view.source === "git" ? "Git" : "pasted YAML"}</span>
+          {view.template ? <Badge value={t("template: {name}", { name: view.template })} /> : null}
+          <span className="text-muted">
+            · {view.source === "git" ? t("Git") : t("pasted YAML")}
+          </span>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button disabled={busy} onClick={() => action.mutate("up")}>
-            Deploy (up)
+            {t("Deploy (up)")}
           </Button>
           <Button quiet disabled={busy} onClick={() => action.mutate("restart")}>
-            Restart
+            {t("Restart")}
           </Button>
           <Button quiet disabled={busy} onClick={() => action.mutate("pull")}>
-            Pull images
+            {t("Pull images")}
           </Button>
           <Button quiet disabled={busy} onClick={() => action.mutate("down")}>
-            Stop (down)
+            {t("Stop (down)")}
           </Button>
           <Button
             quiet
             className="ml-auto"
             disabled={busy}
             onClick={() => {
-              if (!window.confirm(`Delete ${view.service.name}? Containers are removed.`)) {
+              if (
+                !window.confirm(
+                  t("Delete {name}? Containers are removed.", { name: view.service.name }),
+                )
+              ) {
                 return;
               }
               const volumes = window.confirm(
-                "Also delete the stack's named volumes? This erases its data. Cancel keeps them.",
+                t(
+                  "Also delete the stack's named volumes? This erases its data. Cancel keeps them.",
+                ),
               );
               remove.mutate(volumes);
             }}
           >
-            Delete stack
+            {t("Delete stack")}
           </Button>
         </div>
         {view.missing_variables.length > 0 ? (
           <p className="mt-4 text-sm text-amber">
-            Not set under Environment: {view.missing_variables.join(", ")}
+            {t("Not set under Environment: {names}", { names: view.missing_variables.join(", ") })}
           </p>
         ) : null}
         {view.warnings.length > 0 ? (
@@ -132,18 +141,18 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
           </ul>
         ) : null}
       </Card>
-      <Card title="Services">
+      <Card title={t("Services")}>
         {view.services.length === 0 ? (
-          <Empty>The compose file is read from Git on the first deploy.</Empty>
+          <Empty>{t("The compose file is read from Git on the first deploy.")}</Empty>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-muted">
                 <tr>
-                  <th className="py-2 pr-4 font-medium">Service</th>
-                  <th className="py-2 pr-4 font-medium">Image</th>
-                  <th className="py-2 pr-4 font-medium">Container</th>
-                  <th className="py-2 pr-4 font-medium">State</th>
+                  <th className="py-2 pr-4 font-medium">{t("Service")}</th>
+                  <th className="py-2 pr-4 font-medium">{t("Image")}</th>
+                  <th className="py-2 pr-4 font-medium">{t("Container")}</th>
+                  <th className="py-2 pr-4 font-medium">{t("State")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -152,10 +161,10 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
                     <td className="py-2 pr-4 font-medium">
                       {service.name}
                       {service.routed ? (
-                        <span className="ml-2 text-xs text-muted">routed</span>
+                        <span className="ml-2 text-xs text-muted">{t("routed")}</span>
                       ) : null}
                     </td>
-                    <td className="py-2 pr-4 font-mono text-xs">{service.image ?? "build"}</td>
+                    <td className="py-2 pr-4 font-mono text-xs">{service.image ?? t("build")}</td>
                     <td className="py-2 pr-4 font-mono text-xs">{service.container}</td>
                     <td className="py-2 pr-4">
                       <Badge
@@ -175,13 +184,19 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
           </div>
         )}
       </Card>
-      <Card title="Generated compose file">
+      <Card title={t("Generated compose file")}>
         <p className="mb-3 text-sm text-muted">
-          What Rudder runs{view.compose_path ? ` from ${view.compose_path}` : ""}: your file with
-          the project name, rudder labels, and the rudder-proxy network for routed services.
+          {view.compose_path
+            ? t(
+                "What Rudder runs from {path}: your file with the project name, rudder labels, and the rudder-proxy network for routed services.",
+                { path: view.compose_path },
+              )
+            : t(
+                "What Rudder runs: your file with the project name, rudder labels, and the rudder-proxy network for routed services.",
+              )}
         </p>
         <pre className="max-h-[28rem] overflow-auto rounded-md bg-paper p-3 text-xs">
-          {view.generated_yaml || "Not generated yet."}
+          {view.generated_yaml || t("Not generated yet.")}
         </pre>
       </Card>
     </>
@@ -189,13 +204,16 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
 }
 
 export function StackSourceEditor({ serviceId }: { serviceId: string }) {
+  const t = useT();
   const stack = useStack(serviceId);
   const providers = useQuery({
     queryKey: ["git-providers"],
     queryFn: () => api<GitProvider[]>("/api/v1/git-providers"),
   });
   if (!stack.data) {
-    return <Empty>{stack.error ? errorMessage(stack.error, "Could not load") : "Loading…"}</Empty>;
+    return (
+      <Empty>{stack.error ? errorMessage(stack.error, t("Could not load")) : t("Loading…")}</Empty>
+    );
   }
   return (
     <SourceForm
@@ -263,14 +281,14 @@ function SourceForm({
         return view;
       }),
     onSuccess: async (_view, deploy) => {
-      toast.success(deploy ? "Saved; docker compose up started" : "Compose source saved");
+      toast.success(deploy ? t("Saved; docker compose up started") : t("Compose source saved"));
       await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
       await queryClient.invalidateQueries({ queryKey: ["deployments", serviceId] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save the stack")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save the stack"))),
   });
   return (
-    <Card title="Compose source">
+    <Card title={t("Compose source")}>
       <form
         className="space-y-3"
         onSubmit={(event) => {
@@ -279,9 +297,14 @@ function SourceForm({
         }}
       >
         <div className="grid gap-3 md:grid-cols-2">
-          <PickField label="Source" options={STACK_SOURCES} value={source} onPick={setSource} />
+          <PickField
+            label={t("Source")}
+            options={STACK_SOURCES}
+            value={source}
+            onPick={setSource}
+          />
           <Field
-            label="Main service (default domain target)"
+            label={t("Main service (default domain target)")}
             presets={
               <QuickPick
                 label={t("Main service presets")}
@@ -312,16 +335,20 @@ function SourceForm({
           <GitFields git={git} providers={providers} onChange={setGit} />
         )}
         <p className="text-sm text-muted">
-          Use <span className="font-mono">{"${NAME}"}</span> for values from the Environment tab;
-          Rudder writes them to a mode 0600 <span className="font-mono">.env</span> next to the
-          generated file.
+          {t(
+            "Use {variable} for values from the Environment tab; Rudder writes them to a mode 0600 {file} next to the generated file.",
+            {
+              variable: <span className="font-mono">{"${NAME}"}</span>,
+              file: <span className="font-mono">.env</span>,
+            },
+          )}
         </p>
         <div className="flex gap-2">
           <Button type="submit" disabled={save.isPending}>
-            Save
+            {t("Save")}
           </Button>
           <Button quiet type="button" disabled={save.isPending} onClick={() => save.mutate(true)}>
-            Save and deploy
+            {t("Save and deploy")}
           </Button>
         </div>
       </form>
@@ -341,13 +368,13 @@ function GitFields({
   const t = useT();
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <Field label="Provider">
+      <Field label={t("Provider")}>
         <Select
           required
           value={git.provider_id}
           onChange={(event) => onChange({ ...git, provider_id: event.target.value })}
         >
-          <option value="">Choose</option>
+          <option value="">{t("Choose")}</option>
           {providers.map((provider) => (
             <option key={provider.id} value={provider.id}>
               {provider.name} ({provider.kind})
@@ -355,7 +382,7 @@ function GitFields({
           ))}
         </Select>
       </Field>
-      <Field label="Repository">
+      <Field label={t("Repository")}>
         <TextInput
           required
           value={git.repo}
@@ -364,7 +391,7 @@ function GitFields({
         />
       </Field>
       <Field
-        label="Branch"
+        label={t("Branch")}
         presets={
           <QuickPick
             label={t("Branch presets")}
@@ -381,7 +408,7 @@ function GitFields({
         />
       </Field>
       <Field
-        label="Compose file path"
+        label={t("Compose file path")}
         presets={
           <QuickPick
             label={t("Compose file presets")}
@@ -402,6 +429,7 @@ function GitFields({
 }
 
 export function StackLogs({ serviceId }: { serviceId: string }) {
+  const t = useT();
   const stack = useStack(serviceId);
   const names = stack.data?.services.map((service) => service.name) ?? [];
   const [selected, setSelected] = useState("");
@@ -418,7 +446,7 @@ export function StackLogs({ serviceId }: { serviceId: string }) {
     retry: false,
   });
   return (
-    <Card title="Service logs">
+    <Card title={t("Service logs")}>
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
         <div className="w-48">
           <Select value={service} onChange={(event) => setSelected(event.target.value)}>
@@ -429,7 +457,7 @@ export function StackLogs({ serviceId }: { serviceId: string }) {
             ))}
           </Select>
         </div>
-        <span className="text-muted">Lines</span>
+        <span className="text-muted">{t("Lines")}</span>
         {[100, 200, 1000].map((count) => (
           <Button key={count} quiet={tail !== count} onClick={() => setTail(count)}>
             {count}
@@ -437,12 +465,12 @@ export function StackLogs({ serviceId }: { serviceId: string }) {
         ))}
       </div>
       {!service ? (
-        <Empty>Deploy the stack to see logs.</Empty>
+        <Empty>{t("Deploy the stack to see logs.")}</Empty>
       ) : logs.error ? (
-        <Empty>{errorMessage(logs.error, "No logs available")}</Empty>
+        <Empty>{errorMessage(logs.error, t("No logs available"))}</Empty>
       ) : (
         <pre className="max-h-[32rem] overflow-auto rounded-md bg-paper p-3 text-xs whitespace-pre-wrap">
-          {logs.data?.logs || "No output yet."}
+          {logs.data?.logs || t("No output yet.")}
         </pre>
       )}
     </Card>
@@ -466,9 +494,15 @@ export function CreateStackFields({
   onYaml: (yaml: string) => void;
   onGit: (git: StackGit) => void;
 }) {
+  const t = useT();
   return (
     <div className="space-y-3 md:col-span-2">
-      <PickField label="Compose source" options={STACK_SOURCES} value={source} onPick={onSource} />
+      <PickField
+        label={t("Compose source")}
+        options={STACK_SOURCES}
+        value={source}
+        onPick={onSource}
+      />
       {source === "inline" ? (
         <Field label="docker-compose.yml" presets={<YamlStarters yaml={yaml} onPick={onYaml} />}>
           <TextArea

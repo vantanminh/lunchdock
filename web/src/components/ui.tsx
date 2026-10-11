@@ -455,6 +455,7 @@ export function Tabs<T extends string>({
   active: T;
   onChange: (tab: T) => void;
 }) {
+  const t = useT();
   return (
     <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-line">
       {tabs.map(([key, label]) => (
@@ -466,7 +467,7 @@ export function Tabs<T extends string>({
           className={`-mb-px border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors ${active === key ? "border-pine font-medium text-ink" : "border-transparent text-muted hover:text-ink"}`}
           onClick={() => onChange(key)}
         >
-          {label}
+          {t(label)}
         </button>
       ))}
     </div>

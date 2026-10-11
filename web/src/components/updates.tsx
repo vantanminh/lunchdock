@@ -40,6 +40,7 @@ function useRestartWatch(from: string | null, onBack: (version: string) => void)
 }
 
 export function UpdatesCard() {
+  const t = useT();
   const queryClient = useQueryClient();
   const [restartingFrom, setRestartingFrom] = useState<string | null>(null);
   const overview = useQuery({
@@ -55,7 +56,7 @@ export function UpdatesCard() {
 
   useRestartWatch(restartingFrom, (version) => {
     setRestartingFrom(null);
-    toast.success(`The panel is back on ${version}`);
+    toast.success(t("The panel is back on {version}", { version }));
     void queryClient.invalidateQueries();
   });
 
@@ -67,41 +68,43 @@ export function UpdatesCard() {
       if (result.error) {
         toast.error(result.error);
       } else if (result.latest) {
-        toast.success(`Rudder ${result.latest.version} is available`);
+        toast.success(t("Rudder {version} is available", { version: result.latest.version }));
       } else {
-        toast.success("Rudder is up to date");
+        toast.success(t("Rudder is up to date"));
       }
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not check for updates")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not check for updates"))),
   });
   const apply = useMutation({
     mutationFn: () =>
       api<Schemas["UpdateStarted"]>("/api/v1/system/updates/apply", { method: "POST" }),
     onSuccess: () => {
-      toast.success("Update started: backing up, then the panel restarts");
+      toast.success(t("Update started: backing up, then the panel restarts"));
       setRestartingFrom(overview.data?.current_version ?? null);
       void refresh();
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not start the update")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not start the update"))),
   });
   const components = useMutation({
     mutationFn: () =>
       api<Schemas["ComponentsStarted"]>("/api/v1/system/updates/components", { method: "POST" }),
     onSuccess: (result) => {
       toast.success(
-        result.queued === 0 ? "Every agent and cache is current" : `Updating ${result.queued}`,
+        result.queued === 0
+          ? t("Every agent and cache is current")
+          : t("Updating {count}", { count: result.queued }),
       );
       void refresh();
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not update components")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not update components"))),
   });
 
   const data = overview.data;
   if (!data) {
     return (
-      <Card title="Updates">
+      <Card title={t("Updates")}>
         <p className="text-sm text-muted">
-          {restartingFrom ? "The panel is restarting…" : "Loading…"}
+          {restartingFrom ? t("The panel is restarting…") : t("Loading…")}
         </p>
       </Card>
     );
@@ -114,18 +117,19 @@ export function UpdatesCard() {
 
   return (
     <>
-      <Card title="Updates">
+      <Card title={t("Updates")}>
         {restartingFrom ? (
           <p className="mb-3 rounded-md border border-line bg-sunken p-3 text-sm">
-            Updating from {restartingFrom}. The panel backs itself up, restarts on the new version,
-            and rolls back if the new version does not become healthy. This page reconnects on its
-            own.
+            {t(
+              "Updating from {version}. The panel backs itself up, restarts on the new version, and rolls back if the new version does not become healthy. This page reconnects on its own.",
+              { version: restartingFrom },
+            )}
           </p>
         ) : null}
         <dl className="grid gap-2 text-sm sm:grid-cols-[180px_1fr]">
-          <dt className="text-muted">Installed</dt>
+          <dt className="text-muted">{t("Installed")}</dt>
           <dd>{data.current_version}</dd>
-          <dt className="text-muted">Releases from</dt>
+          <dt className="text-muted">{t("Releases from")}</dt>
           <dd>
             <a
               className="underline"
@@ -136,9 +140,9 @@ export function UpdatesCard() {
               github.com/{data.repository}
             </a>
           </dd>
-          <dt className="text-muted">Last checked</dt>
-          <dd>{data.last_check ? formatTime(data.last_check.checked_at) : "never"}</dd>
-          <dt className="text-muted">Latest release</dt>
+          <dt className="text-muted">{t("Last checked")}</dt>
+          <dd>{data.last_check ? formatTime(data.last_check.checked_at) : t("never")}</dd>
+          <dt className="text-muted">{t("Latest release")}</dt>
           <dd className="flex flex-wrap items-center gap-2">
             {latest ? (
               <>
@@ -150,12 +154,12 @@ export function UpdatesCard() {
               </>
             ) : data.last_check ? (
               data.last_check.error ? (
-                "unknown"
+                t("unknown")
               ) : (
-                "you are on the newest release"
+                t("you are on the newest release")
               )
             ) : (
-              "not checked yet"
+              t("not checked yet")
             )}
           </dd>
         </dl>
@@ -165,7 +169,7 @@ export function UpdatesCard() {
         {latest?.notes ? (
           <details className="mt-3 text-sm">
             <summary className="cursor-pointer text-muted">
-              Release notes for {latest.version}
+              {t("Release notes for {version}", { version: latest.version })}
             </summary>
             <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-sunken p-3 font-sans">
               {latest.notes}
@@ -174,13 +178,16 @@ export function UpdatesCard() {
         ) : null}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button quiet onClick={() => check.mutate()} disabled={check.isPending}>
-            {check.isPending ? "Checking…" : "Check now"}
+            {check.isPending ? t("Checking…") : t("Check now")}
           </Button>
           <Button
             onClick={() => {
               if (
                 window.confirm(
-                  `Update the panel to ${latest?.version}? A backup is taken first, and the panel is unavailable for about a minute.`,
+                  t(
+                    "Update the panel to {version}? A backup is taken first, and the panel is unavailable for about a minute.",
+                    { version: latest?.version ?? "" },
+                  ),
                 )
               ) {
                 apply.mutate();
@@ -188,7 +195,7 @@ export function UpdatesCard() {
             }}
             disabled={!canApply || apply.isPending || restartingFrom !== null}
           >
-            {latest ? `Update to ${latest.version}` : "Update now"}
+            {latest ? t("Update to {version}", { version: latest.version }) : t("Update now")}
           </Button>
           {data.apply_blocker ? (
             <span className="text-sm text-muted">{data.apply_blocker}</span>
@@ -196,19 +203,19 @@ export function UpdatesCard() {
         </div>
         <UpdateSettingsForm data={data} onSaved={refresh} />
       </Card>
-      <Card title="Agents and caches">
+      <Card title={t("Agents and caches")}>
         <p className="mb-3 text-sm text-muted">
-          Agents get the binary bundled with this panel and restart; one that cannot reach the panel
-          afterwards puts its previous binary back. Caches are recreated from the release image and
-          rolled back if they fail their health check.
+          {t(
+            "Agents get the binary bundled with this panel and restart; one that cannot reach the panel afterwards puts its previous binary back. Caches are recreated from the release image and rolled back if they fail their health check.",
+          )}
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-muted">
               <tr>
-                <th className="py-2 pr-3 font-medium">Server</th>
-                <th className="py-2 pr-3 font-medium">Agent</th>
-                <th className="py-2 pr-3 font-medium">Cache image</th>
+                <th className="py-2 pr-3 font-medium">{t("Server")}</th>
+                <th className="py-2 pr-3 font-medium">{t("Agent")}</th>
+                <th className="py-2 pr-3 font-medium">{t("Cache image")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -220,10 +227,10 @@ export function UpdatesCard() {
                   </td>
                   <td className="py-2 pr-3">
                     {component.kind === "local" ? (
-                      <span className="text-muted">panel host</span>
+                      <span className="text-muted">{t("panel host")}</span>
                     ) : (
                       <span className="flex items-center gap-2">
-                        {component.agent_version ?? "unknown"}
+                        {component.agent_version ?? t("unknown")}
                         {component.agent_outdated ? (
                           <Badge value="outdated" tone="partial" />
                         ) : null}
@@ -232,7 +239,7 @@ export function UpdatesCard() {
                   </td>
                   <td className="py-2 pr-3">
                     <span className="flex items-center gap-2 break-all font-mono text-xs">
-                      {component.cache_image ?? "not installed"}
+                      {component.cache_image ?? t("not installed")}
                       {component.cache_outdated ? <Badge value="outdated" tone="partial" /> : null}
                     </span>
                   </td>
@@ -241,7 +248,7 @@ export function UpdatesCard() {
             </tbody>
           </table>
         </div>
-        {data.components.length === 0 ? <Empty>No servers yet.</Empty> : null}
+        {data.components.length === 0 ? <Empty>{t("No servers yet.")}</Empty> : null}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button
             quiet
@@ -249,17 +256,19 @@ export function UpdatesCard() {
             disabled={components.isPending || outdated.length === 0}
           >
             {outdated.length === 0
-              ? "Everything is current"
-              : `Update ${outdated.length} server(s)`}
+              ? t("Everything is current")
+              : t("Update {count} server(s)", { count: outdated.length })}
           </Button>
           {data.target_cache_image ? null : (
             <span className="text-sm text-muted">
-              No signed release is known for {data.current_version}, so caches are left as they are.
+              {t("No signed release is known for {version}, so caches are left as they are.", {
+                version: data.current_version,
+              })}
             </span>
           )}
         </div>
       </Card>
-      <Card title="Update history">
+      <Card title={t("Update history")}>
         <ul className="divide-y divide-line text-sm">
           {data.history.map((entry) => (
             <li key={entry.id} className="py-2">
@@ -268,7 +277,7 @@ export function UpdatesCard() {
                   <Badge value={entry.status.replace("_", " ")} tone={entry.status} />
                   <span className="font-medium">
                     {entry.component}
-                    {entry.server_name ? ` on ${entry.server_name}` : ""}
+                    {entry.server_name ? ` ${t("on {name}", { name: entry.server_name })}` : ""}
                   </span>
                   <span className="text-muted">
                     {entry.from_version ?? "?"} → {entry.to_version}
@@ -276,13 +285,13 @@ export function UpdatesCard() {
                   <span className="ml-auto text-xs text-muted">{formatTime(entry.started_at)}</span>
                 </summary>
                 <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-sunken p-3 text-xs">
-                  {entry.logs || "No output yet."}
+                  {entry.logs || t("No output yet.")}
                 </pre>
               </details>
             </li>
           ))}
         </ul>
-        {data.history.length === 0 ? <Empty>No updates yet.</Empty> : null}
+        {data.history.length === 0 ? <Empty>{t("No updates yet.")}</Empty> : null}
       </Card>
     </>
   );
@@ -304,10 +313,10 @@ function UpdateSettingsForm({ data, onSaved }: { data: Overview; onSaved: () => 
         }),
       }),
     onSuccess: () => {
-      toast.success("Update settings saved");
+      toast.success(t("Update settings saved"));
       onSaved();
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save update settings")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save update settings"))),
   });
   return (
     <form
@@ -317,9 +326,14 @@ function UpdateSettingsForm({ data, onSaved }: { data: Overview; onSaved: () => 
         save.mutate();
       }}
     >
-      <PickField label="Channel" options={UPDATE_CHANNELS} value={channel} onPick={setChannel} />
+      <PickField
+        label={t("Channel")}
+        options={UPDATE_CHANNELS}
+        value={channel}
+        onPick={setChannel}
+      />
       <Field
-        label="Maintenance window (UTC)"
+        label={t("Maintenance window (UTC)")}
         presets={
           <QuickPick
             label={t("Maintenance window presets")}
@@ -343,10 +357,10 @@ function UpdateSettingsForm({ data, onSaved }: { data: Overview; onSaved: () => 
             checked={autoUpdate}
             onChange={(event) => setAutoUpdate(event.target.checked)}
           />
-          Install verified releases automatically
+          {t("Install verified releases automatically")}
         </label>
         <Button type="submit" quiet disabled={save.isPending}>
-          Save
+          {t("Save")}
         </Button>
       </div>
     </form>

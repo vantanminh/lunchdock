@@ -82,7 +82,7 @@ export function ProjectsPage() {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not create project"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not create project")),
   });
 
   const createEnvironment = useMutation({
@@ -92,11 +92,11 @@ export function ProjectsPage() {
         body: JSON.stringify({ name: environmentName }),
       }),
     onSuccess: async () => {
-      toast.success("Environment created");
+      toast.success(t("Environment created"));
       await queryClient.invalidateQueries({ queryKey: ["environments", selected] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not create environment"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not create environment")),
   });
 
   const createService = useMutation({
@@ -136,15 +136,15 @@ export function ProjectsPage() {
       setServiceName("");
       toast.success(
         kind === "database"
-          ? "Database created with a generated password"
+          ? t("Database created with a generated password")
           : kind === "compose"
-            ? "Stack saved; deploy it from its page"
-            : "Service created",
+            ? t("Stack saved; deploy it from its page")
+            : t("Service created"),
       );
       await queryClient.invalidateQueries({ queryKey: ["services", environmentId] });
     },
     onError: async (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Could not create service");
+      toast.error(error instanceof ApiError ? error.message : t("Could not create service"));
       await queryClient.invalidateQueries({ queryKey: ["services", environmentId] });
     },
   });
@@ -156,17 +156,17 @@ export function ProjectsPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Projects</h1>
-      <Card title="New project">
+      <h1 className="text-2xl font-semibold">{t("Projects")}</h1>
+      <Card title={t("New project")}>
         <form className="flex flex-wrap items-end gap-3" onSubmit={onProject}>
-          <Field label="Name">
+          <Field label={t("Name")}>
             <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
-          <Button type="submit">Create</Button>
+          <Button type="submit">{t("Create")}</Button>
         </form>
       </Card>
       <div className="grid gap-4 md:grid-cols-[220px_1fr]">
-        <Card title="All">
+        <Card title={t("All")}>
           <ul className="space-y-1">
             {(projects.data ?? []).map((project) => (
               <li key={project.id}>
@@ -183,7 +183,7 @@ export function ProjectsPage() {
         </Card>
         {selected ? (
           <div className="space-y-4">
-            <Card title="Environment">
+            <Card title={t("Environment")}>
               <form
                 className="flex flex-wrap items-end gap-3"
                 onSubmit={(event) => {
@@ -192,7 +192,7 @@ export function ProjectsPage() {
                 }}
               >
                 <Field
-                  label="Name"
+                  label={t("Name")}
                   presets={
                     <QuickPick
                       label={t("Environment name presets")}
@@ -208,14 +208,14 @@ export function ProjectsPage() {
                     onChange={(event) => setEnvironmentName(event.target.value)}
                   />
                 </Field>
-                <Button type="submit">Add environment</Button>
+                <Button type="submit">{t("Add environment")}</Button>
               </form>
               <p className="mt-3 text-sm text-muted">
                 {(environments.data ?? []).map((environment) => environment.name).join(", ") ||
-                  "None yet"}
+                  t("None yet")}
               </p>
             </Card>
-            <Card title="Service">
+            <Card title={t("Service")}>
               <form
                 className="grid gap-3 md:grid-cols-2"
                 onSubmit={(event) => {
@@ -223,21 +223,26 @@ export function ProjectsPage() {
                   createService.mutate();
                 }}
               >
-                <Field label="Name">
+                <Field label={t("Name")}>
                   <TextInput
                     required
                     value={serviceName}
                     onChange={(event) => setServiceName(event.target.value)}
                   />
                 </Field>
-                <PickField label="Kind" options={SERVICE_KINDS} value={kind} onPick={setKind} />
-                <Field label="Server">
+                <PickField
+                  label={t("Kind")}
+                  options={SERVICE_KINDS}
+                  value={kind}
+                  onPick={setKind}
+                />
+                <Field label={t("Server")}>
                   <select
                     className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
                     value={serverId}
                     onChange={(event) => setServerId(event.target.value)}
                   >
-                    <option value="">Select</option>
+                    <option value="">{t("Select")}</option>
                     {(servers.data ?? []).map((server) => (
                       <option key={server.id} value={server.id}>
                         {server.name}
@@ -248,7 +253,7 @@ export function ProjectsPage() {
                 {kind === "database" ? (
                   <>
                     <PickField
-                      label="Engine"
+                      label={t("Engine")}
                       options={(engines.data ?? []).map((item) => ({
                         label: item.engine,
                         value: item.engine,
@@ -260,7 +265,7 @@ export function ProjectsPage() {
                       }}
                     />
                     <PickField
-                      label="Version"
+                      label={t("Version")}
                       options={engineVersions.map((item) => ({ label: item, value: item }))}
                       value={version || engineVersions[0] || ""}
                       onPick={setVersion}
@@ -269,7 +274,7 @@ export function ProjectsPage() {
                 ) : kind === "compose" ? (
                   <>
                     <Field
-                      label="Main service (receives domains)"
+                      label={t("Main service (receives domains)")}
                       presets={
                         <QuickPick
                           label={t("Main service presets")}
@@ -297,7 +302,7 @@ export function ProjectsPage() {
                   </>
                 ) : (
                   <Field
-                    label="Image"
+                    label={t("Image")}
                     presets={
                       <QuickPick
                         label={t("Image suggestions")}
@@ -311,14 +316,17 @@ export function ProjectsPage() {
                   </Field>
                 )}
                 <Button type="submit" disabled={!environmentId}>
-                  Add service
+                  {t("Add service")}
                 </Button>
               </form>
               <p className="mt-3 text-sm text-muted">
-                Or start from a ready-made app in{" "}
-                <Link className="text-accent" to="/templates">
-                  Templates
-                </Link>
+                {t("Or start from a ready-made app in {link}.", {
+                  link: (
+                    <Link className="text-accent" to="/templates">
+                      {t("Templates")}
+                    </Link>
+                  ),
+                })}
                 .
               </p>
               <ul className="mt-4 divide-y divide-line text-sm">
@@ -334,7 +342,7 @@ export function ProjectsPage() {
             </Card>
           </div>
         ) : (
-          <p className="text-sm text-muted">Select a project.</p>
+          <p className="text-sm text-muted">{t("Select a project.")}</p>
         )}
       </div>
     </>

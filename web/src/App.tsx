@@ -110,9 +110,14 @@ function AppRoutes() {
   );
 }
 
+function ThemedToaster() {
+  const t = useT();
+  const dark = useDarkTheme();
+  return <Toaster theme={dark ? "dark" : "light"} containerAriaLabel={t("Notifications")} />;
+}
+
 export function App() {
   const [client] = useState(() => new QueryClient());
-  const dark = useDarkTheme();
   return (
     <QueryClientProvider client={client}>
       <LanguageProvider>
@@ -120,7 +125,7 @@ export function App() {
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
-          <Toaster theme={dark ? "dark" : "light"} />
+          <ThemedToaster />
         </AuthProvider>
       </LanguageProvider>
     </QueryClientProvider>

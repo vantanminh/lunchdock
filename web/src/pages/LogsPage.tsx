@@ -13,12 +13,15 @@ import type { Schemas } from "../types";
 type Retention = Schemas["RetentionSettings"];
 
 export function LogsPage() {
+  const t = useT();
   const { user } = useAuth();
   return (
     <>
-      <h1 className="text-2xl font-semibold">Logs</h1>
+      <h1 className="text-2xl font-semibold">{t("Logs")}</h1>
       <p className="text-sm text-muted">
-        Application, proxy, cache, and panel logs from every server, with live tail and export.
+        {t(
+          "Application, proxy, cache, and panel logs from every server, with live tail and export.",
+        )}
       </p>
       <Card>
         <LogViewer />
@@ -56,17 +59,18 @@ function RetentionCard() {
         }),
       }),
     onSuccess: async () => {
-      toast.success("Retention saved");
+      toast.success(t("Retention saved"));
       await queryClient.invalidateQueries({ queryKey: ["retention"] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save retention")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save retention"))),
   });
 
   return (
-    <Card title="Retention">
+    <Card title={t("Retention")}>
       <p className="mb-3 text-sm text-muted">
-        Days to keep per source (1–365). Expired lines are removed hourly; whole daily partitions
-        are dropped once every source has expired them.
+        {t(
+          "Days to keep per source (1–365). Expired lines are removed hourly; whole daily partitions are dropped once every source has expired them.",
+        )}
       </p>
       <form
         className="grid gap-3 md:grid-cols-6"
@@ -108,7 +112,7 @@ function RetentionCard() {
         ))}
         <div className="md:col-span-6">
           <Button type="submit" disabled={save.isPending || !retention.data}>
-            Save retention
+            {t("Save retention")}
           </Button>
         </div>
       </form>

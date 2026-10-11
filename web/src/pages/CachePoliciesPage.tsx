@@ -34,6 +34,7 @@ function fromMiB(value: string): number | null {
 }
 
 export function CachePoliciesPage() {
+  const t = useT();
   const policies = usePolicies();
   const presets = useQuery({
     queryKey: ["cache-presets"],
@@ -44,38 +45,53 @@ export function CachePoliciesPage() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Cache</h1>
+        <h1 className="text-2xl font-semibold">{t("Cache")}</h1>
         <p className="text-sm text-muted">
-          Policies are ordered rules: the first rule that matches a request decides whether it is
-          cached and for how long. Turn caching on per domain in a service&apos;s Cache tab.
+          {t(
+            "Policies are ordered rules: the first rule that matches a request decides whether it is cached and for how long. Turn caching on per domain in a service's Cache tab.",
+          )}
         </p>
       </div>
       <CacheServers />
-      <Card title="Policies">
+      <Card title={t("Policies")}>
         <div className="mb-4">
-          <Button onClick={() => setEditing("new")}>New policy</Button>
+          <Button onClick={() => setEditing("new")}>{t("New policy")}</Button>
         </div>
-        {policies.data?.length === 0 ? <Empty>No policies yet. Start from a preset.</Empty> : null}
+        {policies.data?.length === 0 ? (
+          <Empty>{t("No policies yet. Start from a preset.")}</Empty>
+        ) : null}
         <ul className="space-y-3">
           {(policies.data ?? []).map((policy) => (
             <li key={policy.id} className="rounded-md border border-line p-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{policy.name}</span>
                 <span className="text-muted">
-                  {policy.domains} domain{policy.domains === 1 ? "" : "s"} · memory{" "}
-                  {policy.memory_max_bytes ? formatBytes(policy.memory_max_bytes) : "default"} · max
-                  object {policy.max_object_bytes ? formatBytes(policy.max_object_bytes) : "16 MiB"}
+                  {policy.domains === 1
+                    ? t("{count} domain", { count: policy.domains })
+                    : t("{count} domains", { count: policy.domains })}{" "}
+                  ·{" "}
+                  {t("memory {size}", {
+                    size: policy.memory_max_bytes
+                      ? formatBytes(policy.memory_max_bytes)
+                      : t("default"),
+                  })}{" "}
+                  ·{" "}
+                  {t("max object {size}", {
+                    size: policy.max_object_bytes ? formatBytes(policy.max_object_bytes) : "16 MiB",
+                  })}
                 </span>
                 <Button quiet className="ml-auto" onClick={() => setEditing(policy)}>
-                  Edit
+                  {t("Edit")}
                 </Button>
               </div>
               {policy.description ? <p className="mt-1 text-muted">{policy.description}</p> : null}
               <ol className="mt-2 list-decimal space-y-0.5 pl-5 text-muted">
                 {policy.rules.map((rule, index) => (
                   <li key={index}>
-                    <span className="text-ink">{rule.name || `Rule ${index + 1}`}</span>:{" "}
-                    {ruleSummary(rule)}
+                    <span className="text-ink">
+                      {rule.name || t("Rule {number}", { number: index + 1 })}
+                    </span>
+                    : {ruleSummary(rule)}
                   </li>
                 ))}
               </ol>
@@ -145,25 +161,25 @@ function PolicyEditor({
         : api("/api/v1/cache-policies", { method: "POST", body });
     },
     onSuccess: async () => {
-      toast.success(policy ? "Policy saved and published" : "Policy created");
+      toast.success(policy ? t("Policy saved and published") : t("Policy created"));
       await queryClient.invalidateQueries({ queryKey: ["cache-policies"] });
       onDone();
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save the policy")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save the policy"))),
   });
 
   const remove = useMutation({
     mutationFn: () => api(`/api/v1/cache-policies/${policy?.id}`, { method: "DELETE" }),
     onSuccess: async () => {
-      toast.success("Policy deleted");
+      toast.success(t("Policy deleted"));
       await queryClient.invalidateQueries({ queryKey: ["cache-policies"] });
       onDone();
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not delete the policy")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not delete the policy"))),
   });
 
   return (
-    <Card title={policy ? `Edit ${policy.name}` : "New policy"}>
+    <Card title={policy ? t("Edit {name}", { name: policy.name }) : t("New policy")}>
       <form
         className="grid gap-3 md:grid-cols-2"
         onSubmit={(event) => {
@@ -174,7 +190,7 @@ function PolicyEditor({
         {!policy ? (
           <div className="md:col-span-2">
             <PickField
-              label="Start from preset"
+              label={t("Start from preset")}
               hint={presets.find((item) => item.slug === preset)?.description}
               options={presets.map((item) => ({ label: item.name, value: item.slug }))}
               value={preset}
@@ -182,14 +198,14 @@ function PolicyEditor({
             />
           </div>
         ) : null}
-        <Field label="Name">
+        <Field label={t("Name")}>
           <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
-        <Field label="Description">
+        <Field label={t("Description")}>
           <TextInput value={description} onChange={(event) => setDescription(event.target.value)} />
         </Field>
         <Field
-          label="Memory budget (MiB, blank for default)"
+          label={t("Memory budget (MiB, blank for default)")}
           presets={
             <QuickPick
               label={t("Memory presets")}
@@ -206,7 +222,7 @@ function PolicyEditor({
           />
         </Field>
         <Field
-          label="Largest object (MiB, blank for 16)"
+          label={t("Largest object (MiB, blank for 16)")}
           presets={
             <QuickPick
               label={t("Object size presets")}
@@ -223,7 +239,7 @@ function PolicyEditor({
           />
         </Field>
         <div className="md:col-span-2">
-          <Field label="Rules (JSON, first match wins)">
+          <Field label={t("Rules (JSON, first match wins)")}>
             <TextArea
               className="min-h-72"
               value={rulesText}
@@ -231,17 +247,16 @@ function PolicyEditor({
             />
           </Field>
           <p className="mt-1 text-xs text-muted">
-            Each rule has <code>match</code> (path_prefixes, extensions, path_glob) and{" "}
-            <code>action</code> (mode cache|bypass, ttl_secs, respect_origin,
-            stale_while_revalidate_secs, stale_if_error_secs, ignore_query, query_keys,
-            bypass_cookies, statuses). Responses with Set-Cookie, private, or no-store are never
-            stored.
+            {t(
+              "Each rule has {match} (path_prefixes, extensions, path_glob) and {action} (mode cache|bypass, ttl_secs, respect_origin, stale_while_revalidate_secs, stale_if_error_secs, ignore_query, query_keys, bypass_cookies, statuses). Responses with Set-Cookie, private, or no-store are never stored.",
+              { match: <code>match</code>, action: <code>action</code> },
+            )}
           </p>
         </div>
         <div className="flex gap-2 md:col-span-2">
-          <Button type="submit">Save</Button>
+          <Button type="submit">{t("Save")}</Button>
           <Button quiet type="button" onClick={onDone}>
-            Cancel
+            {t("Cancel")}
           </Button>
           {policy ? (
             <Button
@@ -249,12 +264,16 @@ function PolicyEditor({
               type="button"
               className="ml-auto"
               onClick={() => {
-                if (window.confirm(`Delete ${policy.name}? Its domains use the default policy.`)) {
+                if (
+                  window.confirm(
+                    t("Delete {name}? Its domains use the default policy.", { name: policy.name }),
+                  )
+                ) {
                   remove.mutate();
                 }
               }}
             >
-              Delete
+              {t("Delete")}
             </Button>
           ) : null}
         </div>
@@ -264,23 +283,25 @@ function PolicyEditor({
 }
 
 function CacheServers() {
+  const t = useT();
   const servers = useQuery({
     queryKey: ["servers"],
     queryFn: () => api<Schemas["ServerView"][]>("/api/v1/servers"),
   });
   return (
-    <Card title="Cache servers">
+    <Card title={t("Cache servers")}>
       <ul className="divide-y divide-line text-sm">
         {(servers.data ?? []).map((server) => (
           <ServerStats key={server.id} server={server} />
         ))}
       </ul>
-      {servers.data?.length === 0 ? <Empty>No servers.</Empty> : null}
+      {servers.data?.length === 0 ? <Empty>{t("No servers.")}</Empty> : null}
     </Card>
   );
 }
 
 function ServerStats({ server }: { server: Schemas["ServerView"] }) {
+  const t = useT();
   const stats = useQuery({
     queryKey: ["cache-stats", server.id],
     queryFn: () => api<Schemas["CacheStats"]>(`/api/v1/servers/${server.id}/cache/stats`),
@@ -300,13 +321,23 @@ function ServerStats({ server }: { server: Schemas["ServerView"] }) {
       <span className="font-medium">{server.name}</span>
       {stats.data ? (
         <span className="text-muted">
-          hit ratio {hitRatio(totals)} · {stats.data.objects} objects ·{" "}
-          {formatBytes(stats.data.stored_bytes)} of {formatBytes(stats.data.memory_max_bytes)} ·{" "}
-          {stats.data.evictions} evictions · rules v{stats.data.rules_version}
+          {t(
+            "hit ratio {ratio} · {objects} objects · {stored} of {memory} · {evictions} evictions · rules v{version}",
+            {
+              ratio: hitRatio(totals),
+              objects: stats.data.objects,
+              stored: formatBytes(stats.data.stored_bytes),
+              memory: formatBytes(stats.data.memory_max_bytes),
+              evictions: stats.data.evictions,
+              version: stats.data.rules_version,
+            },
+          )}
         </span>
       ) : (
         <span className="text-muted">
-          {stats.isLoading ? "Checking…" : errorMessage(stats.error, "cache server unavailable")}
+          {stats.isLoading
+            ? t("Checking…")
+            : errorMessage(stats.error, t("cache server unavailable"))}
         </span>
       )}
     </li>

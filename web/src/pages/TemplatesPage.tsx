@@ -7,6 +7,7 @@ import { Badge, Button, Card, Empty, Field, PickField, Select, TextInput } from 
 import { errorMessage } from "../format";
 import { YES_NO } from "../presets";
 import type { Schemas } from "../types";
+import { useT } from "../i18n";
 
 type Template = Schemas["TemplateView"];
 
@@ -16,6 +17,7 @@ interface Named {
 }
 
 export function TemplatesPage() {
+  const t = useT();
   const templates = useQuery({
     queryKey: ["templates"],
     queryFn: () => api<Template[]>("/api/v1/templates"),
@@ -40,10 +42,11 @@ export function TemplatesPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Templates</h1>
+      <h1 className="text-2xl font-semibold">{t("Templates")}</h1>
       <p className="text-sm text-muted">
-        One-click apps that run as compose stacks. Secrets left empty are generated and stored
-        encrypted.
+        {t(
+          "One-click apps that run as compose stacks. Secrets left empty are generated and stored encrypted.",
+        )}
       </p>
       {chosen ? (
         <DeployForm key={chosen.slug} template={chosen} onClose={() => setChosen(null)} />
@@ -52,19 +55,19 @@ export function TemplatesPage() {
         <div className="w-full max-w-sm">
           <TextInput
             type="search"
-            aria-label="Search templates"
-            placeholder="Search by name, tag, or description"
+            aria-label={t("Search templates")}
+            placeholder={t("Search by name, tag, or description")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
         <div className="w-48">
           <Select
-            aria-label="Category"
+            aria-label={t("Category")}
             value={category}
             onChange={(event) => setCategory(event.target.value)}
           >
-            <option value="">All categories</option>
+            <option value="">{t("All categories")}</option>
             {categories.map((item) => (
               <option key={item} value={item}>
                 {item}
@@ -73,7 +76,7 @@ export function TemplatesPage() {
           </Select>
         </div>
       </div>
-      {templates.error ? <Empty>{errorMessage(templates.error, "Could not load")}</Empty> : null}
+      {templates.error ? <Empty>{errorMessage(templates.error, t("Could not load"))}</Empty> : null}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {shown.map((template) => (
           <section
@@ -94,7 +97,7 @@ export function TemplatesPage() {
               ))}
             </div>
             <div className="mt-4 flex items-center gap-3">
-              <Button onClick={() => setChosen(template)}>Deploy</Button>
+              <Button onClick={() => setChosen(template)}>{t("Deploy")}</Button>
               {template.website ? (
                 <a
                   className="text-sm text-accent"
@@ -102,19 +105,20 @@ export function TemplatesPage() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Website
+                  {t("Website")}
                 </a>
               ) : null}
             </div>
           </section>
         ))}
       </div>
-      {templates.data && shown.length === 0 ? <Empty>No templates match.</Empty> : null}
+      {templates.data && shown.length === 0 ? <Empty>{t("No templates match.")}</Empty> : null}
     </>
   );
 }
 
 function DeployForm({ template, onClose }: { template: Template; onClose: () => void }) {
+  const t = useT();
   const projects = useQuery({
     queryKey: ["projects"],
     queryFn: () => api<Named[]>("/api/v1/projects"),
@@ -154,24 +158,25 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
       ),
     onSuccess: (deployed) => {
       setResult(deployed);
-      toast.success(`${template.name} is deploying`);
+      toast.success(t("{name} is deploying", { name: template.name }));
     },
-    onError: (error) => toast.error(errorMessage(error, "Deploy failed")),
+    onError: (error) => toast.error(errorMessage(error, t("Deploy failed"))),
   });
 
   if (result) {
     return (
-      <Card title={`${template.name} deployed`}>
+      <Card title={t("{name} deployed", { name: template.name })}>
         {result.domain ? (
           <p className="text-sm">
-            Routed at <span className="font-mono">https://{result.domain}</span> once DNS points at
-            this server.
+            {t("Routed at {url} once DNS points at this server.", {
+              url: <span className="font-mono">https://{result.domain}</span>,
+            })}
           </p>
         ) : null}
         {result.generated.length > 0 ? (
           <div className="mt-3">
             <p className="text-sm font-medium">
-              Generated secrets — copy them now, they are not shown again:
+              {t("Generated secrets — copy them now, they are not shown again:")}
             </p>
             <ul className="mt-2 space-y-1 rounded-md bg-paper p-3 font-mono text-xs break-all">
               {result.generated.map((item) => (
@@ -188,10 +193,10 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
             className="inline-flex h-10 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink"
             to={`/services/${result.service.id}`}
           >
-            Open service
+            {t("Open service")}
           </Link>
           <Button quiet onClick={onClose}>
-            Close
+            {t("Close")}
           </Button>
         </div>
       </Card>
@@ -199,7 +204,7 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
   }
 
   return (
-    <Card title={`Deploy ${template.name}`}>
+    <Card title={t("Deploy {name}", { name: template.name })}>
       {template.notes ? <p className="mb-3 text-sm text-muted">{template.notes}</p> : null}
       <form
         className="grid gap-3 md:grid-cols-2"
@@ -208,7 +213,7 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
           deploy.mutate();
         }}
       >
-        <Field label="Project">
+        <Field label={t("Project")}>
           <Select
             value={project}
             onChange={(event) => {
@@ -223,7 +228,7 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
             ))}
           </Select>
         </Field>
-        <Field label="Environment">
+        <Field label={t("Environment")}>
           <Select value={environment} onChange={(event) => setEnvironmentId(event.target.value)}>
             {(environments.data ?? []).map((item) => (
               <option key={item.id} value={item.id}>
@@ -232,7 +237,7 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
             ))}
           </Select>
         </Field>
-        <Field label="Server">
+        <Field label={t("Server")}>
           <Select value={server} onChange={(event) => setServerId(event.target.value)}>
             {(servers.data ?? []).map((item) => (
               <option key={item.id} value={item.id}>
@@ -241,7 +246,7 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
             ))}
           </Select>
         </Field>
-        <Field label="Service name">
+        <Field label={t("Service name")}>
           <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
         {template.variables.map((variable) =>
@@ -256,7 +261,7 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
           ) : (
             <Field
               key={variable.name}
-              label={`${variable.label}${variable.required ? " *" : ""}${variable.kind === "secret" ? " (empty = generate)" : ""}`}
+              label={`${variable.label}${variable.required ? " *" : ""}${variable.kind === "secret" ? ` (${t("empty = generate")})` : ""}`}
             >
               <TextInput
                 required={variable.required}
@@ -279,15 +284,15 @@ function DeployForm({ template, onClose }: { template: Template; onClose: () => 
         )}
         <div className="flex items-end gap-2 md:col-span-2">
           <Button type="submit" disabled={!environment || !server || deploy.isPending}>
-            Deploy {template.name}
+            {t("Deploy {name}", { name: template.name })}
           </Button>
           <Button quiet type="button" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </Button>
         </div>
         {projects.data?.length === 0 ? (
           <p className="text-sm text-muted md:col-span-2">
-            Create a project and environment first under Projects.
+            {t("Create a project and environment first under Projects.")}
           </p>
         ) : null}
       </form>

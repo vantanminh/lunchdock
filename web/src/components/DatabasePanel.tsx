@@ -38,16 +38,16 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
     mutationFn: (action: "start" | "stop" | "restart") =>
       api<Schemas["LifecycleView"]>(`/api/v1/services/${service.id}/${action}`, { method: "POST" }),
     onSuccess: async (view) => {
-      toast.success(`Database ${view.status}`);
+      toast.success(t("Database {status}", { status: t(view.status) }));
       await queryClient.invalidateQueries({ queryKey: ["service", service.id] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Action failed")),
+    onError: (error) => toast.error(errorMessage(error, t("Action failed"))),
   });
 
   const reveal = useMutation({
     mutationFn: () => api<Schemas["ConnectionView"]>(`/api/v1/services/${service.id}/connection`),
     onSuccess: setConnection,
-    onError: (error) => toast.error(errorMessage(error, "Could not load the connection string")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not load the connection string"))),
   });
 
   const update = useMutation({
@@ -62,62 +62,62 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
         }),
       }),
     onSuccess: async () => {
-      toast.success("Saved. Restart the database to apply.");
+      toast.success(t("Saved. Restart the database to apply."));
       await queryClient.invalidateQueries({ queryKey: ["service", service.id] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save"))),
   });
 
   return (
     <>
-      <Card title="Database">
+      <Card title={t("Database")}>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-muted">Engine</dt>
+            <dt className="text-muted">{t("Engine")}</dt>
             <dd>
               {spec.engine} {spec.version}
             </dd>
           </div>
           <div>
-            <dt className="text-muted">Status</dt>
+            <dt className="text-muted">{t("Status")}</dt>
             <dd>
               <Badge value={service.status} />
             </dd>
           </div>
           <div>
-            <dt className="text-muted">Internal host</dt>
+            <dt className="text-muted">{t("Internal host")}</dt>
             <dd className="font-mono">
               {spec.container}:{spec.port}
             </dd>
           </div>
           <div>
-            <dt className="text-muted">Volume</dt>
+            <dt className="text-muted">{t("Volume")}</dt>
             <dd className="font-mono">{spec.volume}</dd>
           </div>
           <div>
-            <dt className="text-muted">Database / user</dt>
+            <dt className="text-muted">{t("Database / user")}</dt>
             <dd>
               {spec.database || "—"} / {spec.username || "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-muted">Public port</dt>
-            <dd>{spec.public_port ?? "internal only"}</dd>
+            <dt className="text-muted">{t("Public port")}</dt>
+            <dd>{spec.public_port ?? t("internal only")}</dd>
           </div>
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={() => lifecycle.mutate("start")} disabled={lifecycle.isPending}>
-            Start
+            {t("Start")}
           </Button>
           <Button quiet onClick={() => lifecycle.mutate("stop")} disabled={lifecycle.isPending}>
-            Stop
+            {t("Stop")}
           </Button>
           <Button quiet onClick={() => lifecycle.mutate("restart")} disabled={lifecycle.isPending}>
-            Restart
+            {t("Restart")}
           </Button>
           {user?.role === "admin" ? (
             <Button quiet onClick={() => (connection ? setConnection(null) : reveal.mutate())}>
-              {connection ? "Hide connection string" : "Show connection string"}
+              {connection ? t("Hide connection string") : t("Show connection string")}
             </Button>
           ) : null}
         </div>
@@ -128,7 +128,7 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
           </div>
         ) : null}
       </Card>
-      <Card title="Ports and limits">
+      <Card title={t("Ports and limits")}>
         <form
           className="grid gap-3 md:grid-cols-4"
           onSubmit={(event) => {
@@ -137,7 +137,7 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
           }}
         >
           <Field
-            label="Public port (empty = internal)"
+            label={t("Public port (empty = internal)")}
             presets={
               <QuickPick
                 label={t("Public port presets")}
@@ -160,7 +160,7 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
             <TextInput value={publicPort} onChange={(event) => setPublicPort(event.target.value)} />
           </Field>
           <Field
-            label="Memory (MiB)"
+            label={t("Memory (MiB)")}
             presets={
               <QuickPick
                 label={t("Memory limit presets")}
@@ -173,7 +173,7 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
             <TextInput value={memoryMb} onChange={(event) => setMemoryMb(event.target.value)} />
           </Field>
           <Field
-            label="CPUs"
+            label={t("CPUs")}
             presets={
               <QuickPick
                 label={t("CPU limit presets")}
@@ -186,7 +186,7 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
             <TextInput value={cpus} onChange={(event) => setCpus(event.target.value)} />
           </Field>
           <div className="flex items-end">
-            <Button type="submit">Save</Button>
+            <Button type="submit">{t("Save")}</Button>
           </div>
         </form>
       </Card>
@@ -195,6 +195,7 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
 }
 
 export function ServiceLogs({ serviceId }: { serviceId: string }) {
+  const t = useT();
   const [tail, setTail] = useState(200);
   const logs = useQuery({
     queryKey: ["service-logs", serviceId, tail],
@@ -203,9 +204,9 @@ export function ServiceLogs({ serviceId }: { serviceId: string }) {
     retry: false,
   });
   return (
-    <Card title="Container logs">
+    <Card title={t("Container logs")}>
       <div className="mb-3 flex items-center gap-2 text-sm">
-        <span className="text-muted">Lines</span>
+        <span className="text-muted">{t("Lines")}</span>
         {[100, 200, 1000].map((count) => (
           <Button key={count} quiet={tail !== count} onClick={() => setTail(count)}>
             {count}
@@ -213,10 +214,10 @@ export function ServiceLogs({ serviceId }: { serviceId: string }) {
         ))}
       </div>
       {logs.error ? (
-        <p className="text-sm text-muted">{errorMessage(logs.error, "No logs available")}</p>
+        <p className="text-sm text-muted">{errorMessage(logs.error, t("No logs available"))}</p>
       ) : (
         <pre className="max-h-[32rem] overflow-auto rounded-md bg-paper p-3 text-xs whitespace-pre-wrap">
-          {logs.data?.logs || "No output yet."}
+          {logs.data?.logs || t("No output yet.")}
         </pre>
       )}
     </Card>

@@ -45,10 +45,11 @@ export function GitProvidersPage() {
     onSuccess: async () => {
       setToken("");
       setPrivateKey("");
-      toast.success("Git provider saved");
+      toast.success(t("Git provider saved"));
       await queryClient.invalidateQueries({ queryKey: ["git-providers"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not save"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : t("Could not save")),
   });
 
   function onSubmit(event: FormEvent) {
@@ -58,15 +59,15 @@ export function GitProvidersPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Git providers</h1>
-      <Card title="Add a provider">
+      <h1 className="text-2xl font-semibold">{t("Git providers")}</h1>
+      <Card title={t("Add a provider")}>
         <form className="grid gap-3" onSubmit={onSubmit}>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Name">
+            <Field label={t("Name")}>
               <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
             </Field>
             <PickField
-              label="Kind"
+              label={t("Kind")}
               hint={
                 kind === "github_pat"
                   ? t("A personal access token with read access to the repositories.")
@@ -88,7 +89,7 @@ export function GitProvidersPage() {
             />
           </div>
           {kind === "github_pat" || kind === "gitlab_pat" ? (
-            <Field label="Token">
+            <Field label={t("Token")}>
               <TextInput
                 type="password"
                 value={token}
@@ -99,17 +100,17 @@ export function GitProvidersPage() {
           {kind === "github_app" ? (
             <>
               <div className="grid gap-3 md:grid-cols-2">
-                <Field label="App id">
+                <Field label={t("App id")}>
                   <TextInput value={appId} onChange={(event) => setAppId(event.target.value)} />
                 </Field>
-                <Field label="Installation id">
+                <Field label={t("Installation id")}>
                   <TextInput
                     value={installationId}
                     onChange={(event) => setInstallationId(event.target.value)}
                   />
                 </Field>
               </div>
-              <Field label="Private key PEM">
+              <Field label={t("Private key PEM")}>
                 <TextArea
                   value={privateKey}
                   onChange={(event) => setPrivateKey(event.target.value)}
@@ -117,10 +118,10 @@ export function GitProvidersPage() {
               </Field>
             </>
           ) : null}
-          <Button type="submit">Save</Button>
+          <Button type="submit">{t("Save")}</Button>
         </form>
       </Card>
-      <Card title="Saved">
+      <Card title={t("Saved")}>
         <ul className="space-y-2 text-sm">
           {(providers.data ?? []).map((provider) => (
             <li key={provider.id}>
@@ -128,7 +129,7 @@ export function GitProvidersPage() {
             </li>
           ))}
           {providers.data?.length === 0 ? (
-            <p className="text-muted">No git providers yet.</p>
+            <p className="text-muted">{t("No git providers yet.")}</p>
           ) : null}
         </ul>
       </Card>
