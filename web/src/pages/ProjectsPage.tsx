@@ -7,30 +7,13 @@ import { CreateStackFields } from "../components/stacks";
 import { Button, Card, Field, TextInput } from "../components/ui";
 import type { Schemas } from "../types";
 
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-}
+type Project = Schemas["ProjectView"];
 
-interface Environment {
-  id: string;
-  project_id: string;
-  name: string;
-}
+type Environment = Schemas["EnvironmentView"];
 
-interface Service {
-  id: string;
-  name: string;
-  kind: string;
-  status: string;
-  server_id: string;
-}
+type Service = Schemas["ServiceView"];
 
-interface Server {
-  id: string;
-  name: string;
-}
+type Server = Schemas["ServerView"];
 
 export function ProjectsPage() {
   const queryClient = useQueryClient();
@@ -62,15 +45,12 @@ export function ProjectsPage() {
   const [mainService, setMainService] = useState("");
   const providers = useQuery({
     queryKey: ["git-providers"],
-    queryFn: () => api<{ id: string; name: string; kind: string }[]>("/api/v1/git-providers"),
+    queryFn: () => api<Schemas["GitProviderView"][]>("/api/v1/git-providers"),
     enabled: kind === "compose",
   });
   const engines = useQuery({
     queryKey: ["database-engines"],
-    queryFn: () =>
-      api<{ engine: string; versions: string[]; default_port: number }[]>(
-        "/api/v1/database-engines",
-      ),
+    queryFn: () => api<Schemas["DatabaseEngineView"][]>("/api/v1/database-engines"),
     enabled: kind === "database",
   });
   const engineVersions = engines.data?.find((item) => item.engine === engine)?.versions ?? [];

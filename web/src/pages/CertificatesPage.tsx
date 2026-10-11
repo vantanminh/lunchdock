@@ -3,22 +3,11 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { Button, Card, Field, TextArea, TextInput } from "../components/ui";
+import type { Schemas } from "../types";
 
-interface Certificate {
-  id: string;
-  name: string;
-  common_name: string | null;
-  sans: string[];
-  issuer: string | null;
-  not_after: string | null;
-}
+type Certificate = Schemas["CertificateView"];
 
-interface PanelSettings {
-  panel_domain: string | null;
-  panel_ssl_mode: string;
-  matched_certificate_name: string | null;
-  acme_email: string | null;
-}
+type PanelSettings = Schemas["PanelView"];
 
 export function CertificatesPage() {
   const queryClient = useQueryClient();
@@ -91,7 +80,11 @@ export function CertificatesPage() {
             <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
           <Field label="Certificate PEM">
-            <TextArea required value={certPem} onChange={(event) => setCertPem(event.target.value)} />
+            <TextArea
+              required
+              value={certPem}
+              onChange={(event) => setCertPem(event.target.value)}
+            />
           </Field>
           <Field label="Private key PEM">
             <TextArea required value={keyPem} onChange={(event) => setKeyPem(event.target.value)} />
@@ -111,11 +104,14 @@ export function CertificatesPage() {
               <p>SANs {certificate.sans.join(", ") || "—"}</p>
               <p className="text-muted">Issuer {certificate.issuer ?? "—"}</p>
               <p className="text-muted">
-                Expires {certificate.not_after ? new Date(certificate.not_after).toLocaleString() : "—"}
+                Expires{" "}
+                {certificate.not_after ? new Date(certificate.not_after).toLocaleString() : "—"}
               </p>
             </li>
           ))}
-          {certificates.data?.length === 0 ? <p className="text-muted">No certificates yet.</p> : null}
+          {certificates.data?.length === 0 ? (
+            <p className="text-muted">No certificates yet.</p>
+          ) : null}
         </ul>
       </Card>
       <Card title="Panel domain">

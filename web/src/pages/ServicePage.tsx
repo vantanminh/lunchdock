@@ -39,58 +39,21 @@ interface GitSource {
   provider_id?: string;
 }
 
-interface Service {
-  id: string;
-  name: string;
-  kind: string;
-  status: string;
-  server_id: string;
-  environment_id: string;
-  created_at: string;
+type Service = Omit<Schemas["ServiceView"], "spec"> & {
   spec: { image?: string; git?: GitSource } & Record<string, unknown>;
-}
+};
 
-interface Domain {
-  id: string;
-  host: string;
-  path_prefix: string;
-  ssl_mode: string;
-  compose_service: string | null;
-  matched_certificate_name: string | null;
-  is_preview: boolean;
-  published: boolean;
-}
+type Domain = Schemas["DomainView"];
 
-interface Deployment {
-  id: string;
-  status: string;
-  trigger: string;
-  image_ref: string | null;
-  error: string | null;
-  logs: string;
-  created_at: string;
-}
+type Deployment = Schemas["DeploymentView"];
 
-interface GitProvider {
-  id: string;
-  name: string;
-  kind: string;
-}
+type GitProvider = Schemas["GitProviderView"];
 
-interface SavedSource {
-  webhook_secret?: string | null;
-  public_key?: string | null;
-}
+type SavedSource = Schemas["SourceView"];
 
-interface Registry {
-  id: string;
-  name: string;
-  url: string;
-}
+type Registry = Schemas["RegistryView"];
 
-interface Match {
-  name?: string;
-}
+type Match = Schemas["CertificateView"];
 
 export function ServicePage() {
   const { id = "" } = useParams();

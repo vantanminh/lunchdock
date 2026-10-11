@@ -3,12 +3,9 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { Button, Card, Field, TextArea, TextInput } from "../components/ui";
+import type { Schemas } from "../types";
 
-interface GitProvider {
-  id: string;
-  name: string;
-  kind: string;
-}
+type GitProvider = Schemas["GitProviderView"];
 
 export function GitProvidersPage() {
   const queryClient = useQueryClient();
@@ -74,7 +71,11 @@ export function GitProvidersPage() {
           </div>
           {kind === "github_pat" || kind === "gitlab_pat" ? (
             <Field label="Token">
-              <TextInput type="password" value={token} onChange={(event) => setToken(event.target.value)} />
+              <TextInput
+                type="password"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+              />
             </Field>
           ) : null}
           {kind === "github_app" ? (
@@ -91,7 +92,10 @@ export function GitProvidersPage() {
                 </Field>
               </div>
               <Field label="Private key PEM">
-                <TextArea value={privateKey} onChange={(event) => setPrivateKey(event.target.value)} />
+                <TextArea
+                  value={privateKey}
+                  onChange={(event) => setPrivateKey(event.target.value)}
+                />
               </Field>
             </>
           ) : null}
@@ -105,7 +109,9 @@ export function GitProvidersPage() {
               {provider.name} · {provider.kind}
             </li>
           ))}
-          {providers.data?.length === 0 ? <p className="text-muted">No git providers yet.</p> : null}
+          {providers.data?.length === 0 ? (
+            <p className="text-muted">No git providers yet.</p>
+          ) : null}
         </ul>
       </Card>
     </>

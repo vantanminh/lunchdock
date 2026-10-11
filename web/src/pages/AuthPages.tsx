@@ -45,7 +45,12 @@ export function SetupPage() {
     <AuthFrame title="Create the owner" subtitle="This account administers the panel.">
       <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
         <Field label="Email">
-          <TextInput type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+          <TextInput
+            type="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
         </Field>
         <Field label="Display name">
           <TextInput value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
@@ -112,7 +117,12 @@ export function LoginPage() {
     <AuthFrame title="Sign in" subtitle="Rudder control plane">
       <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
         <Field label="Email">
-          <TextInput type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+          <TextInput
+            type="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
         </Field>
         <Field label="Password">
           <TextInput

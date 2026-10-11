@@ -48,7 +48,7 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
   });
   const servers = useQuery({
     queryKey: ["servers"],
-    queryFn: () => api<{ id: string; name: string }[]>("/api/v1/servers"),
+    queryFn: () => api<Schemas["ServerView"][]>("/api/v1/servers"),
     enabled: !target.serverId && !target.serviceId && !target.panel,
   });
   const [form, setForm] = useState({

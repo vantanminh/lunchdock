@@ -30,7 +30,8 @@ export function UsersPage() {
       toast.success("User created");
       await queryClient.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not create user"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not create user"),
   });
 
   const updateRole = useMutation({
@@ -42,7 +43,8 @@ export function UsersPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not update role"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not update role"),
   });
 
   const remove = useMutation({
@@ -51,7 +53,8 @@ export function UsersPage() {
       toast.success("User deleted");
       await queryClient.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not delete user"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not delete user"),
   });
 
   if (user?.role !== "admin") {
@@ -69,7 +72,12 @@ export function UsersPage() {
       <Card title="Add user">
         <form className="grid gap-3 md:grid-cols-4" onSubmit={onSubmit}>
           <Field label="Email">
-            <TextInput type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            <TextInput
+              type="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </Field>
           <Field label="Password">
             <TextInput

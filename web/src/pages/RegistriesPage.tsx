@@ -3,14 +3,9 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { Button, Card, Field, TextInput } from "../components/ui";
+import type { Schemas } from "../types";
 
-interface Registry {
-  id: string;
-  name: string;
-  url: string;
-  username: string | null;
-  has_password: boolean;
-}
+type Registry = Schemas["RegistryView"];
 
 export function RegistriesPage() {
   const queryClient = useQueryClient();

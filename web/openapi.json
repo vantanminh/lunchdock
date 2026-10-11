@@ -74,7 +74,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AlertKindView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertKindView"
+                  }
                 }
               }
             }
@@ -95,7 +98,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AlertView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertView"
+                  }
                 }
               }
             }
@@ -186,7 +192,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuditView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditView"
+                  }
                 }
               }
             }
@@ -207,7 +216,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BackupJobView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BackupJobView"
+                  }
                 }
               }
             }
@@ -338,7 +350,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BackupRunView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BackupRunView"
+                  }
                 }
               }
             }
@@ -425,6 +440,20 @@
         }
       }
     },
+    "/api/v1/build-queue/{id}/cancel": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Cancel a queued or running build",
+        "operationId": "post_v1_build-queue__id__cancel",
+        "responses": {
+          "204": {
+            "description": "Cancel a queued or running build"
+          }
+        }
+      }
+    },
     "/api/v1/cache-policies": {
       "get": {
         "tags": [
@@ -438,7 +467,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CachePolicyView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CachePolicyView"
+                  }
                 }
               }
             }
@@ -548,7 +580,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CachePresetView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CachePresetView"
+                  }
                 }
               }
             }
@@ -557,6 +592,28 @@
       }
     },
     "/api/v1/certificates": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "List certificates without private keys",
+        "operationId": "get_v1_certificates",
+        "responses": {
+          "200": {
+            "description": "List certificates without private keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CertificateView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "edge"
@@ -607,6 +664,67 @@
         }
       }
     },
+    "/api/v1/certificates/{id}": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Get a certificate",
+        "operationId": "get_v1_certificates__id_",
+        "responses": {
+          "200": {
+            "description": "Get a certificate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Replace an uploaded certificate",
+        "operationId": "put_v1_certificates__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadCertificate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replace an uploaded certificate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Delete a certificate",
+        "operationId": "delete_v1_certificates__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a certificate"
+          }
+        }
+      }
+    },
     "/api/v1/database-engines": {
       "get": {
         "tags": [
@@ -620,7 +738,52 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DatabaseEngineView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DatabaseEngineView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/domains/{id}": {
+      "delete": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Delete a domain",
+        "operationId": "delete_v1_domains__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a domain"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Update a domain",
+        "operationId": "patch_v1_domains__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDomain"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainView"
                 }
               }
             }
@@ -658,6 +821,20 @@
         }
       }
     },
+    "/api/v1/environments/{id}": {
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete an environment",
+        "operationId": "delete_v1_environments__id_",
+        "responses": {
+          "204": {
+            "description": "Delete an environment"
+          }
+        }
+      }
+    },
     "/api/v1/environments/{id}/databases": {
       "post": {
         "tags": [
@@ -689,6 +866,28 @@
       }
     },
     "/api/v1/environments/{id}/services": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List an environment's services",
+        "operationId": "get_v1_environments__id__services",
+        "responses": {
+          "200": {
+            "description": "List an environment's services",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "catalog"
@@ -791,7 +990,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EventView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventView"
+                  }
                 }
               }
             }
@@ -800,6 +1002,28 @@
       }
     },
     "/api/v1/git-providers": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "List Git providers without secrets",
+        "operationId": "get_v1_git-providers",
+        "responses": {
+          "200": {
+            "description": "List Git providers without secrets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GitProviderView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "source"
@@ -825,6 +1049,20 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/git-providers/{id}": {
+      "delete": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Delete a Git provider",
+        "operationId": "delete_v1_git-providers__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a Git provider"
           }
         }
       }
@@ -1118,7 +1356,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChannelView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChannelView"
+                  }
                 }
               }
             }
@@ -1218,6 +1459,25 @@
       }
     },
     "/api/v1/panel": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Panel domain and TLS settings",
+        "operationId": "get_v1_panel",
+        "responses": {
+          "200": {
+            "description": "Panel domain and TLS settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelView"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "edge"
@@ -1248,6 +1508,28 @@
       }
     },
     "/api/v1/projects": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List projects",
+        "operationId": "get_v1_projects",
+        "responses": {
+          "200": {
+            "description": "List projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "catalog"
@@ -1277,7 +1559,142 @@
         }
       }
     },
+    "/api/v1/projects/{id}": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Get a project",
+        "operationId": "get_v1_projects__id_",
+        "responses": {
+          "200": {
+            "description": "Get a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete a project and its environments",
+        "operationId": "delete_v1_projects__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a project and its environments"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Rename or describe a project",
+        "operationId": "patch_v1_projects__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rename or describe a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/environments": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List a project's environments",
+        "operationId": "get_v1_projects__id__environments",
+        "responses": {
+          "200": {
+            "description": "List a project's environments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnvironmentView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Create an environment",
+        "operationId": "post_v1_projects__id__environments",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEnvironment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an environment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/registries": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "List registries without credentials",
+        "operationId": "get_v1_registries",
+        "responses": {
+          "200": {
+            "description": "List registries without credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RegistryView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "edge"
@@ -1307,6 +1724,20 @@
         }
       }
     },
+    "/api/v1/registries/{id}": {
+      "delete": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Delete a registry",
+        "operationId": "delete_v1_registries__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a registry"
+          }
+        }
+      }
+    },
     "/api/v1/s3-destinations": {
       "get": {
         "tags": [
@@ -1320,7 +1751,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DestinationView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DestinationView"
+                  }
                 }
               }
             }
@@ -1432,7 +1866,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServerView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServerView"
+                  }
                 }
               }
             }
@@ -1461,6 +1898,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreatedServer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers/{id}": {
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete a server and revoke its agent certificate",
+        "operationId": "delete_v1_servers__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a server and revoke its agent certificate"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Update a server's name, description, IP, or auto-prune",
+        "operationId": "patch_v1_servers__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a server's name, description, IP, or auto-prune",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerView"
                 }
               }
             }
@@ -1510,6 +1989,27 @@
         }
       }
     },
+    "/api/v1/servers/{id}/probe": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Refresh Docker and OS facts for a server",
+        "operationId": "post_v1_servers__id__probe",
+        "responses": {
+          "200": {
+            "description": "Refresh Docker and OS facts for a server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/servers/{id}/prune": {
       "post": {
         "tags": [
@@ -1544,7 +2044,71 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceSummary"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Get a service",
+        "operationId": "get_v1_services__id_",
+        "responses": {
+          "200": {
+            "description": "Get a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete a service and its containers",
+        "operationId": "delete_v1_services__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a service and its containers"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Update a service",
+        "operationId": "patch_v1_services__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateService"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
                 }
               }
             }
@@ -1566,6 +2130,30 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BuildAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/builds": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "List a service's builds",
+        "operationId": "get_v1_services__id__builds",
+        "responses": {
+          "200": {
+            "description": "List a service's builds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BuildQueueView"
+                  }
                 }
               }
             }
@@ -1717,7 +2305,53 @@
         }
       }
     },
+    "/api/v1/services/{id}/deployments": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "List a service's deployments, newest first",
+        "operationId": "get_v1_services__id__deployments",
+        "responses": {
+          "200": {
+            "description": "List a service's deployments, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeploymentView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/domains": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "List a service's domains",
+        "operationId": "get_v1_services__id__domains",
+        "responses": {
+          "200": {
+            "description": "List a service's domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DomainView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "edge"
@@ -1748,6 +2382,28 @@
       }
     },
     "/api/v1/services/{id}/env": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List environment variables; secret values are masked",
+        "operationId": "get_v1_services__id__env",
+        "responses": {
+          "200": {
+            "description": "List environment variables; secret values are masked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnvVarView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "tags": [
           "catalog"
@@ -1770,6 +2426,20 @@
         }
       }
     },
+    "/api/v1/services/{id}/env/{key}": {
+      "delete": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Delete an environment variable",
+        "operationId": "delete_v1_services__id__env__key_",
+        "responses": {
+          "204": {
+            "description": "Delete an environment variable"
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/logs": {
       "get": {
         "tags": [
@@ -1784,6 +2454,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LogsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/preview-domain": {
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Create a generated preview domain",
+        "operationId": "post_v1_services__id__preview-domain",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewDomain"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a generated preview domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainView"
                 }
               }
             }
@@ -1843,6 +2543,25 @@
       }
     },
     "/api/v1/services/{id}/source": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Get a service's Git source",
+        "operationId": "get_v1_services__id__source",
+        "responses": {
+          "200": {
+            "description": "Get a service's Git source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceView"
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "tags": [
           "source"
@@ -2330,7 +3049,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TemplateView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateView"
+                  }
                 }
               }
             }
@@ -2372,7 +3094,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TokenView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TokenView"
+                  }
                 }
               }
             }
@@ -2435,7 +3160,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserView"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserView"
+                  }
                 }
               }
             }
@@ -2509,6 +3237,34 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/downloads/{file}": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Agent binaries and checksums",
+        "operationId": "get__downloads__file_",
+        "responses": {
+          "200": {
+            "description": "Agent binaries and checksums"
+          }
+        }
+      }
+    },
+    "/install-agent.sh": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Agent install script (text/x-shellscript)",
+        "operationId": "get__install-agent.sh",
+        "responses": {
+          "200": {
+            "description": "Agent install script (text/x-shellscript)"
           }
         }
       }

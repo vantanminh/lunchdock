@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { api, ApiError, setCsrf } from "../api";
 import { useAuth } from "../auth";
 import { Button, Card, Field, TextInput } from "../components/ui";
+import type { Schemas } from "../types";
 
 export function AccountPage() {
   const { user, refresh } = useAuth();
@@ -33,12 +34,14 @@ export function AccountPage() {
 
   async function startTotp() {
     try {
-      const body = await api<{ secret: string; otpauth_url: string }>("/api/v1/me/totp/setup", {
+      const body = await api<Schemas["TotpSetupResponse"]>("/api/v1/me/totp/setup", {
         method: "POST",
       });
       setSetup(body);
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Could not start authenticator setup");
+      toast.error(
+        error instanceof ApiError ? error.message : "Could not start authenticator setup",
+      );
     }
   }
 
@@ -110,7 +113,11 @@ export function AccountPage() {
               />
             </Field>
             <Field label="Current code">
-              <TextInput required value={disableCode} onChange={(event) => setDisableCode(event.target.value)} />
+              <TextInput
+                required
+                value={disableCode}
+                onChange={(event) => setDisableCode(event.target.value)}
+              />
             </Field>
             <Button type="submit" quiet>
               Disable authenticator
@@ -128,7 +135,11 @@ export function AccountPage() {
                   Open in authenticator app
                 </a>
                 <Field label="Code">
-                  <TextInput required value={code} onChange={(event) => setCode(event.target.value)} />
+                  <TextInput
+                    required
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                  />
                 </Field>
                 <Button type="submit">Enable</Button>
               </form>

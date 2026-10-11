@@ -247,6 +247,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/build-queue/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a queued or running build */
+        post: operations["post_v1_build-queue__id__cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cache-policies": {
         parameters: {
             query?: never;
@@ -308,7 +325,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List certificates without private keys */
+        get: operations["get_v1_certificates"];
         put?: never;
         /** Upload a certificate */
         post: operations["post_v1_certificates"];
@@ -335,6 +353,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a certificate */
+        get: operations["get_v1_certificates__id_"];
+        /** Replace an uploaded certificate */
+        put: operations["put_v1_certificates__id_"];
+        post?: never;
+        /** Delete a certificate */
+        delete: operations["delete_v1_certificates__id_"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/database-engines": {
         parameters: {
             query?: never;
@@ -352,6 +389,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/domains/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a domain */
+        delete: operations["delete_v1_domains__id_"];
+        options?: never;
+        head?: never;
+        /** Update a domain */
+        patch: operations["patch_v1_domains__id_"];
+        trace?: never;
+    };
     "/api/v1/domains/{id}/cache": {
         parameters: {
             query?: never;
@@ -364,6 +419,23 @@ export interface paths {
         put: operations["put_v1_domains__id__cache"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/environments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an environment */
+        delete: operations["delete_v1_environments__id_"];
         options?: never;
         head?: never;
         patch?: never;
@@ -393,7 +465,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List an environment's services */
+        get: operations["get_v1_environments__id__services"];
         put?: never;
         /** Create a service */
         post: operations["post_v1_environments__id__services"];
@@ -461,11 +534,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Git providers without secrets */
+        get: operations["get_v1_git-providers"];
         put?: never;
         /** Save a git provider */
         post: operations["post_v1_git-providers"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/git-providers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a Git provider */
+        delete: operations["delete_v1_git-providers__id_"];
         options?: never;
         head?: never;
         patch?: never;
@@ -752,7 +843,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Panel domain and TLS settings */
+        get: operations["get_v1_panel"];
         put?: never;
         post?: never;
         delete?: never;
@@ -769,10 +861,48 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List projects */
+        get: operations["get_v1_projects"];
         put?: never;
         /** Create a project */
         post: operations["post_v1_projects"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a project */
+        get: operations["get_v1_projects__id_"];
+        put?: never;
+        post?: never;
+        /** Delete a project and its environments */
+        delete: operations["delete_v1_projects__id_"];
+        options?: never;
+        head?: never;
+        /** Rename or describe a project */
+        patch: operations["patch_v1_projects__id_"];
+        trace?: never;
+    };
+    "/api/v1/projects/{id}/environments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a project's environments */
+        get: operations["get_v1_projects__id__environments"];
+        put?: never;
+        /** Create an environment */
+        post: operations["post_v1_projects__id__environments"];
         delete?: never;
         options?: never;
         head?: never;
@@ -786,11 +916,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List registries without credentials */
+        get: operations["get_v1_registries"];
         put?: never;
         /** Save registry credentials */
         post: operations["post_v1_registries"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/registries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a registry */
+        delete: operations["delete_v1_registries__id_"];
         options?: never;
         head?: never;
         patch?: never;
@@ -867,6 +1015,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/servers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a server and revoke its agent certificate */
+        delete: operations["delete_v1_servers__id_"];
+        options?: never;
+        head?: never;
+        /** Update a server's name, description, IP, or auto-prune */
+        patch: operations["patch_v1_servers__id_"];
+        trace?: never;
+    };
     "/api/v1/servers/{id}/cache/stats": {
         parameters: {
             query?: never;
@@ -895,6 +1061,23 @@ export interface paths {
         put?: never;
         /** Issue a new join token for a remote server (valid for one hour) */
         post: operations["post_v1_servers__id__join-token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/servers/{id}/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Docker and OS facts for a server */
+        post: operations["post_v1_servers__id__probe"];
         delete?: never;
         options?: never;
         head?: never;
@@ -935,6 +1118,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a service */
+        get: operations["get_v1_services__id_"];
+        put?: never;
+        post?: never;
+        /** Delete a service and its containers */
+        delete: operations["delete_v1_services__id_"];
+        options?: never;
+        head?: never;
+        /** Update a service */
+        patch: operations["patch_v1_services__id_"];
+        trace?: never;
+    };
     "/api/v1/services/{id}/build": {
         parameters: {
             query?: never;
@@ -946,6 +1148,23 @@ export interface paths {
         put?: never;
         /** Queue a git build */
         post: operations["post_v1_services__id__build"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/builds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a service's builds */
+        get: operations["get_v1_services__id__builds"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1038,6 +1257,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a service's deployments, newest first */
+        get: operations["get_v1_services__id__deployments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/domains": {
         parameters: {
             query?: never;
@@ -1045,7 +1281,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List a service's domains */
+        get: operations["get_v1_services__id__domains"];
         put?: never;
         /** Attach a domain */
         post: operations["post_v1_services__id__domains"];
@@ -1062,11 +1299,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List environment variables; secret values are masked */
+        get: operations["get_v1_services__id__env"];
         /** Set an environment variable */
         put: operations["put_v1_services__id__env"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/env/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an environment variable */
+        delete: operations["delete_v1_services__id__env__key_"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1083,6 +1338,23 @@ export interface paths {
         get: operations["get_v1_services__id__logs"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/preview-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a generated preview domain */
+        post: operations["post_v1_services__id__preview-domain"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1130,7 +1402,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get a service's Git source */
+        get: operations["get_v1_services__id__source"];
         /** Set the git source */
         put: operations["put_v1_services__id__source"];
         post?: never;
@@ -1552,6 +1825,40 @@ export interface paths {
         head?: never;
         /** Change a user's role */
         patch: operations["patch_v1_users__id_"];
+        trace?: never;
+    };
+    "/downloads/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agent binaries and checksums */
+        get: operations["get__downloads__file_"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/install-agent.sh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agent install script (text/x-shellscript) */
+        get: operations["get__install-agent.sh"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -2876,7 +3183,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AlertKindView"];
+                    "application/json": components["schemas"]["AlertKindView"][];
                 };
             };
         };
@@ -2896,7 +3203,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AlertView"];
+                    "application/json": components["schemas"]["AlertView"][];
                 };
             };
         };
@@ -2982,7 +3289,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuditView"];
+                    "application/json": components["schemas"]["AuditView"][];
                 };
             };
         };
@@ -3002,7 +3309,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BackupJobView"];
+                    "application/json": components["schemas"]["BackupJobView"][];
                 };
             };
         };
@@ -3128,7 +3435,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BackupRunView"];
+                    "application/json": components["schemas"]["BackupRunView"][];
                 };
             };
         };
@@ -3213,6 +3520,24 @@ export interface operations {
             };
         };
     };
+    "post_v1_build-queue__id__cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cancel a queued or running build */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     "get_v1_cache-policies": {
         parameters: {
             query?: never;
@@ -3228,7 +3553,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CachePolicyView"];
+                    "application/json": components["schemas"]["CachePolicyView"][];
                 };
             };
         };
@@ -3334,7 +3659,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CachePresetView"];
+                    "application/json": components["schemas"]["CachePresetView"][];
+                };
+            };
+        };
+    };
+    get_v1_certificates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List certificates without private keys */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateView"][];
                 };
             };
         };
@@ -3383,6 +3728,68 @@ export interface operations {
             };
         };
     };
+    get_v1_certificates__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Get a certificate */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateView"];
+                };
+            };
+        };
+    };
+    put_v1_certificates__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UploadCertificate"];
+            };
+        };
+        responses: {
+            /** @description Replace an uploaded certificate */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateView"];
+                };
+            };
+        };
+    };
+    delete_v1_certificates__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a certificate */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     "get_v1_database-engines": {
         parameters: {
             query?: never;
@@ -3398,7 +3805,49 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DatabaseEngineView"];
+                    "application/json": components["schemas"]["DatabaseEngineView"][];
+                };
+            };
+        };
+    };
+    delete_v1_domains__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a domain */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patch_v1_domains__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateDomain"];
+            };
+        };
+        responses: {
+            /** @description Update a domain */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainView"];
                 };
             };
         };
@@ -3427,6 +3876,24 @@ export interface operations {
             };
         };
     };
+    delete_v1_environments__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete an environment */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     post_v1_environments__id__databases: {
         parameters: {
             query?: never;
@@ -3447,6 +3914,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceView"];
+                };
+            };
+        };
+    };
+    get_v1_environments__id__services: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List an environment's services */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceView"][];
                 };
             };
         };
@@ -3538,7 +4025,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventView"];
+                    "application/json": components["schemas"]["EventView"][];
+                };
+            };
+        };
+    };
+    "get_v1_git-providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List Git providers without secrets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GitProviderView"][];
                 };
             };
         };
@@ -3564,6 +4071,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GitProviderView"];
                 };
+            };
+        };
+    };
+    "delete_v1_git-providers__id_": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a Git provider */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3850,7 +4375,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChannelView"];
+                    "application/json": components["schemas"]["ChannelView"][];
                 };
             };
         };
@@ -3941,6 +4466,26 @@ export interface operations {
             };
         };
     };
+    get_v1_panel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Panel domain and TLS settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PanelView"];
+                };
+            };
+        };
+    };
     patch_v1_panel: {
         parameters: {
             query?: never;
@@ -3961,6 +4506,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PanelView"];
+                };
+            };
+        };
+    };
+    get_v1_projects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List projects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"][];
                 };
             };
         };
@@ -3989,6 +4554,132 @@ export interface operations {
             };
         };
     };
+    get_v1_projects__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Get a project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"];
+                };
+            };
+        };
+    };
+    delete_v1_projects__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a project and its environments */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patch_v1_projects__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateProject"];
+            };
+        };
+        responses: {
+            /** @description Rename or describe a project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"];
+                };
+            };
+        };
+    };
+    get_v1_projects__id__environments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List a project's environments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentView"][];
+                };
+            };
+        };
+    };
+    post_v1_projects__id__environments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateEnvironment"];
+            };
+        };
+        responses: {
+            /** @description Create an environment */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentView"];
+                };
+            };
+        };
+    };
+    get_v1_registries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List registries without credentials */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistryView"][];
+                };
+            };
+        };
+    };
     post_v1_registries: {
         parameters: {
             query?: never;
@@ -4013,6 +4704,24 @@ export interface operations {
             };
         };
     };
+    delete_v1_registries__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a registry */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     "get_v1_s3-destinations": {
         parameters: {
             query?: never;
@@ -4028,7 +4737,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DestinationView"];
+                    "application/json": components["schemas"]["DestinationView"][];
                 };
             };
         };
@@ -4134,7 +4843,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServerView"];
+                    "application/json": components["schemas"]["ServerView"][];
                 };
             };
         };
@@ -4159,6 +4868,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreatedServer"];
+                };
+            };
+        };
+    };
+    delete_v1_servers__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a server and revoke its agent certificate */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patch_v1_servers__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateServer"];
+            };
+        };
+        responses: {
+            /** @description Update a server's name, description, IP, or auto-prune */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerView"];
                 };
             };
         };
@@ -4203,6 +4954,26 @@ export interface operations {
             };
         };
     };
+    post_v1_servers__id__probe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refresh Docker and OS facts for a server */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerView"];
+                };
+            };
+        };
+    };
     post_v1_servers__id__prune: {
         parameters: {
             query?: never;
@@ -4238,7 +5009,69 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServiceSummary"];
+                    "application/json": components["schemas"]["ServiceSummary"][];
+                };
+            };
+        };
+    };
+    get_v1_services__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Get a service */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceView"];
+                };
+            };
+        };
+    };
+    delete_v1_services__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a service and its containers */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patch_v1_services__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateService"];
+            };
+        };
+        responses: {
+            /** @description Update a service */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceView"];
                 };
             };
         };
@@ -4259,6 +5092,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BuildAccepted"];
+                };
+            };
+        };
+    };
+    get_v1_services__id__builds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List a service's builds */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildQueueView"][];
                 };
             };
         };
@@ -4393,6 +5246,46 @@ export interface operations {
             };
         };
     };
+    get_v1_services__id__deployments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List a service's deployments, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentView"][];
+                };
+            };
+        };
+    };
+    get_v1_services__id__domains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List a service's domains */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainView"][];
+                };
+            };
+        };
+    };
     post_v1_services__id__domains: {
         parameters: {
             query?: never;
@@ -4413,6 +5306,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DomainView"];
+                };
+            };
+        };
+    };
+    get_v1_services__id__env: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List environment variables; secret values are masked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvVarView"][];
                 };
             };
         };
@@ -4439,6 +5352,24 @@ export interface operations {
             };
         };
     };
+    delete_v1_services__id__env__key_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete an environment variable */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_v1_services__id__logs: {
         parameters: {
             query?: never;
@@ -4455,6 +5386,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LogsView"];
+                };
+            };
+        };
+    };
+    "post_v1_services__id__preview-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PreviewDomain"];
+            };
+        };
+        responses: {
+            /** @description Create a generated preview domain */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainView"];
                 };
             };
         };
@@ -4499,6 +5454,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeploymentView"];
+                };
+            };
+        };
+    };
+    get_v1_services__id__source: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Get a service's Git source */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceView"];
                 };
             };
         };
@@ -4972,7 +5947,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TemplateView"];
+                    "application/json": components["schemas"]["TemplateView"][];
                 };
             };
         };
@@ -5012,7 +5987,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenView"];
+                    "application/json": components["schemas"]["TokenView"][];
                 };
             };
         };
@@ -5074,7 +6049,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserView"];
+                    "application/json": components["schemas"]["UserView"][];
                 };
             };
         };
@@ -5142,6 +6117,42 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserView"];
                 };
+            };
+        };
+    };
+    get__downloads__file_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agent binaries and checksums */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "get__install-agent.sh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agent install script (text/x-shellscript) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

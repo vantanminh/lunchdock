@@ -10,11 +10,7 @@ import { Badge, Button, Card, Empty, Field, Select, TextArea, TextInput } from "
 type StackView = Schemas["StackView"];
 type StackGit = Schemas["StackGit"];
 
-interface GitProvider {
-  id: string;
-  name: string;
-  kind: string;
-}
+type GitProvider = Schemas["GitProviderView"];
 
 export const COMPOSE_EXAMPLE = `services:
   web:
