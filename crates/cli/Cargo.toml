@@ -1,0 +1,16 @@
+[package]
+name = "rudder-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+description = "Rudder command line client"
+
+[[bin]]
+name = "rudder"
+path = "src/main.rs"
+
+[dependencies]
+rudder-core = { path = "../core" }
+anyhow.workspace = true
