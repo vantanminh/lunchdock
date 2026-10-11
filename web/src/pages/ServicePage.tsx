@@ -9,8 +9,20 @@ import { LogViewer } from "../components/logs";
 import { DatabasePanel, ServiceLogs } from "../components/DatabasePanel";
 import { StackLogs, StackOverview, StackSourceEditor, useStack } from "../components/stacks";
 import { MetricsGrid, SERVICE_CHARTS } from "../components/metrics";
-import { Badge, Button, Card, Empty, Field, Tabs, TextInput } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Empty,
+  Field,
+  PickField,
+  QuickPick,
+  Tabs,
+  TextInput,
+} from "../components/ui";
 import { errorMessage } from "../format";
+import { useT } from "../i18n";
+import { BRANCHES, BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
 
 const TerminalPanel = lazy(() =>
@@ -56,6 +68,7 @@ type Registry = Schemas["RegistryView"];
 type Match = Schemas["CertificateView"];
 
 export function ServicePage() {
+  const t = useT();
   const { id = "" } = useParams();
   const queryClient = useQueryClient();
   const service = useQuery({
@@ -239,7 +252,17 @@ export function ServicePage() {
           <>
             <Card title="Deploy image">
               <form className="grid gap-3 md:grid-cols-2" onSubmit={onDeploy}>
-                <Field label="Image">
+                <Field
+                  label="Image"
+                  presets={
+                    <QuickPick
+                      label={t("Image suggestions")}
+                      options={IMAGES}
+                      value={image}
+                      onPick={setImage}
+                    />
+                  }
+                >
                   <TextInput
                     value={image}
                     placeholder="ghcr.io/org/app:1"
@@ -302,24 +325,29 @@ export function ServicePage() {
                   onChange={(event) => setRepo(event.target.value)}
                 />
               </Field>
-              <Field label="Branch">
+              <Field
+                label="Branch"
+                presets={
+                  <QuickPick
+                    label={t("Branch presets")}
+                    options={BRANCHES}
+                    value={branch}
+                    onPick={setBranch}
+                  />
+                }
+              >
                 <TextInput
                   required
                   value={branch}
                   onChange={(event) => setBranch(event.target.value)}
                 />
               </Field>
-              <Field label="Build">
-                <select
-                  className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                  value={strategy}
-                  onChange={(event) => setStrategy(event.target.value)}
-                >
-                  <option value="dockerfile">Dockerfile</option>
-                  <option value="nixpacks">Nixpacks</option>
-                  <option value="static">Static site</option>
-                </select>
-              </Field>
+              <PickField
+                label="Build"
+                options={BUILD_STRATEGIES}
+                value={strategy}
+                onPick={setStrategy}
+              />
               <div className="flex items-end gap-2">
                 <Button type="submit">Save source</Button>
                 <Button quiet type="button" onClick={() => build.mutate()}>
@@ -356,7 +384,18 @@ export function ServicePage() {
                   onChange={(event) => void lookUp(event.target.value)}
                 />
               </Field>
-              <Field label="Port">
+              <Field
+                label="Port"
+                hint={t("The port your app listens on inside the container.")}
+                presets={
+                  <QuickPick
+                    label={t("Port presets")}
+                    options={PORTS}
+                    value={port}
+                    onPick={setPort}
+                  />
+                }
+              >
                 <TextInput value={port} onChange={(event) => setPort(event.target.value)} />
               </Field>
               {isStack ? (
@@ -377,17 +416,7 @@ export function ServicePage() {
                   </select>
                 </Field>
               ) : null}
-              <Field label="SSL">
-                <select
-                  className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                  value={sslMode}
-                  onChange={(event) => setSslMode(event.target.value)}
-                >
-                  <option value="letsencrypt">Let's Encrypt</option>
-                  <option value="custom">Uploaded certificate</option>
-                  <option value="none">None</option>
-                </select>
-              </Field>
+              <PickField label="SSL" options={SSL_MODES} value={sslMode} onPick={setSslMode} />
               <div className="flex items-end gap-2">
                 <Button type="submit">Add domain</Button>
                 <Button quiet type="button" onClick={() => preview.mutate()}>
@@ -487,6 +516,7 @@ export function ServicePage() {
 }
 
 function EnvironmentEditor({ serviceId }: { serviceId: string }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const vars = useQuery({
     queryKey: ["env", serviceId],
@@ -495,6 +525,7 @@ function EnvironmentEditor({ serviceId }: { serviceId: string }) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
   const [buildSecret, setBuildSecret] = useState(false);
+  const suggestedValues = ENV_KEYS.find((item) => item.key === key)?.values ?? [];
   const save = useMutation({
     mutationFn: () =>
       api(`/api/v1/services/${serviceId}/env`, {
@@ -528,10 +559,32 @@ function EnvironmentEditor({ serviceId }: { serviceId: string }) {
           save.mutate();
         }}
       >
-        <Field label="Key">
+        <Field
+          label="Key"
+          presets={
+            <QuickPick
+              label={t("Common variables")}
+              options={ENV_KEYS.map((item) => ({ label: item.key, value: item.key }))}
+              value={key}
+              onPick={setKey}
+            />
+          }
+        >
           <TextInput required value={key} onChange={(event) => setKey(event.target.value)} />
         </Field>
-        <Field label="Value">
+        <Field
+          label="Value"
+          presets={
+            suggestedValues.length > 0 ? (
+              <QuickPick
+                label={t("Common values")}
+                options={suggestedValues.map((item) => ({ label: item, value: item }))}
+                value={value}
+                onPick={setValue}
+              />
+            ) : undefined
+          }
+        >
           <TextInput
             required
             type="password"

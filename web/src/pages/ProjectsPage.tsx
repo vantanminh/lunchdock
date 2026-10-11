@@ -4,7 +4,9 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { CreateStackFields } from "../components/stacks";
-import { Button, Card, Field, TextInput } from "../components/ui";
+import { Button, Card, Field, PickField, QuickPick, TextInput } from "../components/ui";
+import { useT } from "../i18n";
+import { ENVIRONMENT_NAMES, IMAGES, MAIN_SERVICES, SERVICE_KINDS } from "../presets";
 import type { Schemas } from "../types";
 
 type Project = Schemas["ProjectView"];
@@ -16,6 +18,7 @@ type Service = Schemas["ServiceView"];
 type Server = Schemas["ServerView"];
 
 export function ProjectsPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const projects = useQuery({
     queryKey: ["projects"],
@@ -188,7 +191,17 @@ export function ProjectsPage() {
                   createEnvironment.mutate();
                 }}
               >
-                <Field label="Name">
+                <Field
+                  label="Name"
+                  presets={
+                    <QuickPick
+                      label={t("Environment name presets")}
+                      options={ENVIRONMENT_NAMES}
+                      value={environmentName}
+                      onPick={setEnvironmentName}
+                    />
+                  }
+                >
                   <TextInput
                     required
                     value={environmentName}
@@ -217,17 +230,7 @@ export function ProjectsPage() {
                     onChange={(event) => setServiceName(event.target.value)}
                   />
                 </Field>
-                <Field label="Kind">
-                  <select
-                    className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                    value={kind}
-                    onChange={(event) => setKind(event.target.value)}
-                  >
-                    <option value="application">application</option>
-                    <option value="database">database</option>
-                    <option value="compose">compose stack</option>
-                  </select>
-                </Field>
+                <PickField label="Kind" options={SERVICE_KINDS} value={kind} onPick={setKind} />
                 <Field label="Server">
                   <select
                     className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
@@ -244,39 +247,38 @@ export function ProjectsPage() {
                 </Field>
                 {kind === "database" ? (
                   <>
-                    <Field label="Engine">
-                      <select
-                        className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                        value={engine}
-                        onChange={(event) => {
-                          setEngine(event.target.value);
-                          setVersion("");
-                        }}
-                      >
-                        {(engines.data ?? []).map((item) => (
-                          <option key={item.engine} value={item.engine}>
-                            {item.engine}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Version">
-                      <select
-                        className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                        value={version || engineVersions[0] || ""}
-                        onChange={(event) => setVersion(event.target.value)}
-                      >
-                        {engineVersions.map((item) => (
-                          <option key={item} value={item}>
-                            {item}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
+                    <PickField
+                      label="Engine"
+                      options={(engines.data ?? []).map((item) => ({
+                        label: item.engine,
+                        value: item.engine,
+                      }))}
+                      value={engine}
+                      onPick={(next) => {
+                        setEngine(next);
+                        setVersion("");
+                      }}
+                    />
+                    <PickField
+                      label="Version"
+                      options={engineVersions.map((item) => ({ label: item, value: item }))}
+                      value={version || engineVersions[0] || ""}
+                      onPick={setVersion}
+                    />
                   </>
                 ) : kind === "compose" ? (
                   <>
-                    <Field label="Main service (receives domains)">
+                    <Field
+                      label="Main service (receives domains)"
+                      presets={
+                        <QuickPick
+                          label={t("Main service presets")}
+                          options={MAIN_SERVICES}
+                          value={mainService}
+                          onPick={setMainService}
+                        />
+                      }
+                    >
                       <TextInput
                         value={mainService}
                         placeholder="web"
@@ -294,7 +296,17 @@ export function ProjectsPage() {
                     />
                   </>
                 ) : (
-                  <Field label="Image">
+                  <Field
+                    label="Image"
+                    presets={
+                      <QuickPick
+                        label={t("Image suggestions")}
+                        options={IMAGES}
+                        value={image}
+                        onPick={setImage}
+                      />
+                    }
+                  >
                     <TextInput value={image} onChange={(event) => setImage(event.target.value)} />
                   </Field>
                 )}

@@ -4,8 +4,27 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../api";
 import { errorMessage } from "../format";
+import { useT } from "../i18n";
+import {
+  BRANCHES,
+  COMPOSE_FILES,
+  COMPOSE_STARTERS,
+  MAIN_SERVICES,
+  STACK_SOURCES,
+} from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Card, Empty, Field, Select, TextArea, TextInput } from "./ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Empty,
+  Field,
+  PickField,
+  QuickPick,
+  Select,
+  TextArea,
+  TextInput,
+} from "./ui";
 
 type StackView = Schemas["StackView"];
 type StackGit = Schemas["StackGit"];
@@ -188,6 +207,23 @@ export function StackSourceEditor({ serviceId }: { serviceId: string }) {
   );
 }
 
+/** Starter compose files; picking one fills the editor after confirming it will replace the text. */
+function YamlStarters({ yaml, onPick }: { yaml: string; onPick: (yaml: string) => void }) {
+  const t = useT();
+  return (
+    <QuickPick
+      label={t("Starter files")}
+      options={COMPOSE_STARTERS.map((starter) => ({ label: starter.label, value: starter.yaml }))}
+      value={yaml}
+      onPick={(next) => {
+        if (!yaml.trim() || window.confirm(t("Replace the current YAML with this starter?"))) {
+          onPick(next);
+        }
+      }}
+    />
+  );
+}
+
 function SourceForm({
   serviceId,
   initial,
@@ -197,6 +233,7 @@ function SourceForm({
   initial: StackView;
   providers: GitProvider[];
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [source, setSource] = useState(initial.source || "inline");
   const [yaml, setYaml] = useState(initial.compose_yaml);
@@ -242,13 +279,18 @@ function SourceForm({
         }}
       >
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Source">
-            <Select value={source} onChange={(event) => setSource(event.target.value)}>
-              <option value="inline">Paste YAML</option>
-              <option value="git">Git repository (local server)</option>
-            </Select>
-          </Field>
-          <Field label="Main service (default domain target)">
+          <PickField label="Source" options={STACK_SOURCES} value={source} onPick={setSource} />
+          <Field
+            label="Main service (default domain target)"
+            presets={
+              <QuickPick
+                label={t("Main service presets")}
+                options={MAIN_SERVICES}
+                value={mainService}
+                onPick={setMainService}
+              />
+            }
+          >
             <TextInput
               value={mainService}
               placeholder="web"
@@ -257,7 +299,7 @@ function SourceForm({
           </Field>
         </div>
         {source === "inline" ? (
-          <Field label="docker-compose.yml">
+          <Field label="docker-compose.yml" presets={<YamlStarters yaml={yaml} onPick={setYaml} />}>
             <TextArea
               className="min-h-80"
               spellCheck={false}
@@ -296,6 +338,7 @@ function GitFields({
   providers: GitProvider[];
   onChange: (git: StackGit) => void;
 }) {
+  const t = useT();
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <Field label="Provider">
@@ -320,14 +363,34 @@ function GitFields({
           onChange={(event) => onChange({ ...git, repo: event.target.value })}
         />
       </Field>
-      <Field label="Branch">
+      <Field
+        label="Branch"
+        presets={
+          <QuickPick
+            label={t("Branch presets")}
+            options={BRANCHES}
+            value={git.branch}
+            onPick={(branch) => onChange({ ...git, branch })}
+          />
+        }
+      >
         <TextInput
           required
           value={git.branch}
           onChange={(event) => onChange({ ...git, branch: event.target.value })}
         />
       </Field>
-      <Field label="Compose file path">
+      <Field
+        label="Compose file path"
+        presets={
+          <QuickPick
+            label={t("Compose file presets")}
+            options={COMPOSE_FILES}
+            value={git.compose_file}
+            onPick={(compose_file) => onChange({ ...git, compose_file })}
+          />
+        }
+      >
         <TextInput
           required
           value={git.compose_file}
@@ -405,14 +468,9 @@ export function CreateStackFields({
 }) {
   return (
     <div className="space-y-3 md:col-span-2">
-      <Field label="Compose source">
-        <Select value={source} onChange={(event) => onSource(event.target.value)}>
-          <option value="inline">Paste YAML</option>
-          <option value="git">Git repository (local server)</option>
-        </Select>
-      </Field>
+      <PickField label="Compose source" options={STACK_SOURCES} value={source} onPick={onSource} />
       {source === "inline" ? (
-        <Field label="docker-compose.yml">
+        <Field label="docker-compose.yml" presets={<YamlStarters yaml={yaml} onPick={onYaml} />}>
           <TextArea
             className="min-h-60"
             spellCheck={false}
