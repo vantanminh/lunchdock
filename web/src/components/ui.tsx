@@ -100,18 +100,101 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
 export function Field({
   label,
   hint,
+  presets,
   children,
 }: {
   label: string;
   hint?: ReactNode;
+  /** One-click suggestions shown under the control, usually a <QuickPick>. */
+  presets?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <label className="grid gap-1.5">
-      <span className="text-[13px] font-medium text-ink-soft">{label}</span>
-      {children}
+    <div className="grid content-start gap-1.5">
+      <label className="grid gap-1.5">
+        <span className="text-[13px] font-medium text-ink-soft">{label}</span>
+        {children}
+      </label>
+      {presets}
       {hint ? <span className="text-[13px] text-muted">{hint}</span> : null}
-    </label>
+    </div>
+  );
+}
+
+export interface PickOption {
+  /** Shown on the chip; looked up in the translations, so plain values pass through unchanged. */
+  label: string;
+  /** Applied when the chip is clicked. */
+  value: string;
+  /** Longer explanation, shown as a tooltip. */
+  hint?: string;
+}
+
+/**
+ * A row of one-click suggestions for a field. The chip whose value equals `value` is marked
+ * as selected, so the row also tells the user which preset the field currently matches.
+ */
+export function QuickPick({
+  label,
+  options,
+  value,
+  onPick,
+  size = "sm",
+}: {
+  /** Accessible name of the group, for example "Schedule presets". */
+  label: string;
+  options: readonly PickOption[];
+  value?: string | null;
+  onPick: (value: string, option: PickOption) => void;
+  /** `md` is for chips that are the field's only control rather than a shortcut beside one. */
+  size?: "sm" | "md";
+}) {
+  const t = useT();
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-1.5">
+      {options.map((option) => {
+        const selected = value != null && option.value === value;
+        return (
+          <button
+            key={`${option.label}:${option.value}`}
+            type="button"
+            aria-pressed={selected}
+            title={option.hint ? t(option.hint) : undefined}
+            onClick={() => onPick(option.value, option)}
+            className={`inline-flex items-center rounded-full border leading-none font-medium whitespace-nowrap transition-colors ${size === "md" ? "h-9 px-3.5 text-sm" : "h-7 px-2.5 text-[13px]"} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pine ${
+              selected
+                ? "border-pine-line bg-pine-soft text-pine"
+                : "border-line-strong bg-surface text-ink-soft hover:bg-sunken hover:text-ink"
+            }`}
+          >
+            {t(option.label)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A setting with a few fixed choices, shown as chips so every option is visible at once. */
+export function PickField({
+  label,
+  hint,
+  options,
+  value,
+  onPick,
+}: {
+  label: string;
+  hint?: ReactNode;
+  options: readonly PickOption[];
+  value: string;
+  onPick: (value: string) => void;
+}) {
+  return (
+    <div className="grid content-start gap-1.5">
+      <span className="text-[13px] font-medium text-ink-soft">{label}</span>
+      <QuickPick label={label} options={options} value={value} onPick={onPick} size="md" />
+      {hint ? <span className="text-[13px] text-muted">{hint}</span> : null}
+    </div>
   );
 }
 
@@ -239,8 +322,7 @@ export function Badge({
   dot?: boolean;
 }) {
   const t = useT();
-  const resolved: Tone =
-    tone && tone in toneClass ? (tone as Tone) : toneOf(tone ?? value);
+  const resolved: Tone = tone && tone in toneClass ? (tone as Tone) : toneOf(tone ?? value);
   const showDot = dot ?? (resolved !== "neutral" && resolved !== "outline");
   return (
     <span
@@ -321,8 +403,7 @@ export function Meter({
   className?: string;
 }) {
   const pct = value == null ? null : Math.max(0, Math.min(100, value));
-  const fill =
-    pct == null ? "" : pct >= 90 ? "bg-danger" : pct >= 75 ? "bg-amber" : "bg-pine";
+  const fill = pct == null ? "" : pct >= 90 ? "bg-danger" : pct >= 75 ? "bg-amber" : "bg-pine";
   return (
     <div
       role="meter"
@@ -420,9 +501,7 @@ export function Segmented<T extends string>({
           className={`inline-flex h-7 items-center gap-1.5 rounded-[5px] px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors ${value === key ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink"}`}
         >
           {text}
-          {count != null ? (
-            <span className="text-xs text-faint tabular-nums">{count}</span>
-          ) : null}
+          {count != null ? <span className="text-xs text-faint tabular-nums">{count}</span> : null}
         </button>
       ))}
     </div>

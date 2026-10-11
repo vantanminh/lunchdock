@@ -45,10 +45,7 @@ export function SetupPage() {
   }
 
   return (
-    <AuthFrame
-      title={t("Create the owner")}
-      subtitle={t("This account administers the panel.")}
-    >
+    <AuthFrame title={t("Create the owner")} subtitle={t("This account administers the panel.")}>
       <form className="grid gap-4" onSubmit={(event) => void onSubmit(event)}>
         <Field label={t("Email")}>
           <TextInput

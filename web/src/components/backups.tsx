@@ -1,11 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../api";
 import { errorMessage, formatBytes, formatDuration, formatTime } from "../format";
+import { useT } from "../i18n";
+import {
+  allTimezones,
+  BANDWIDTH,
+  compressionLevels,
+  EXCLUDE_GLOBS,
+  pickDurations,
+  plain,
+  RETENTION,
+  retentionKey,
+  RETRIES,
+  SCHEDULES,
+  timezoneOptions,
+} from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Empty, Field, Select, TextArea, TextInput } from "./ui";
+import { Badge, Button, Empty, Field, QuickPick, Select, TextArea, TextInput } from "./ui";
 
 type Job = Schemas["BackupJobView"];
 type Run = Schemas["BackupRunView"];
@@ -39,7 +53,15 @@ function useDestinations() {
   });
 }
 
+function nameSuggestions(kind: string, isDatabase: boolean): string[] {
+  if (kind === "panel_db") return ["panel-nightly", "panel-weekly"];
+  if (kind === "panel_settings") return ["settings-export"];
+  if (kind === "database" || isDatabase) return ["db-nightly", "db-hourly", "db-weekly"];
+  return ["nightly", "hourly", "weekly", "monthly"];
+}
+
 export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSaved?: () => void }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const destinations = useDestinations();
   const presets = useQuery({
@@ -161,11 +183,18 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
 
   const set = (key: keyof typeof form) => (event: { target: { value: string } }) =>
     setForm({ ...form, [key]: event.target.value });
+  const assign = (values: Partial<typeof form>) => setForm({ ...form, ...values });
+  const appendLine = (key: "include_globs" | "exclude_globs", line: string) => {
+    const lines = form[key].split("\n").filter(Boolean);
+    if (!lines.includes(line)) assign({ [key]: [...lines, line].join("\n") });
+  };
   const check = (key: keyof typeof form) => (event: { target: { checked: boolean } }) =>
     setForm({ ...form, [key]: event.target.checked });
   const isPanel = form.target_kind.startsWith("panel_");
   const isArchive = form.target_kind !== "database" && !isPanel;
   const presetNames = (presets.data?.schedules ?? []).map((preset) => preset.name);
+  const detectedTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+  const timezones = useMemo(allTimezones, []);
 
   if (destinations.data?.length === 0) {
     return (
@@ -192,7 +221,17 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
       }}
     >
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Job name">
+        <Field
+          label="Job name"
+          presets={
+            <QuickPick
+              label={t("Name suggestions")}
+              options={plain(nameSuggestions(form.target_kind, Boolean(target.isDatabase)))}
+              value={form.name}
+              onPick={(name) => assign({ name })}
+            />
+          }
+        >
           <TextInput required value={form.name} placeholder="nightly" onChange={set("name")} />
         </Field>
         <Field label="What to back up">
@@ -242,10 +281,21 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
             />
           </Field>
         ) : null}
-        <Field label="Schedule (cron or preset, empty = manual only)">
+        <Field
+          label="Schedule (cron or preset, empty = manual only)"
+          presets={
+            <QuickPick
+              label={t("Schedule presets")}
+              options={SCHEDULES}
+              value={form.schedule_cron}
+              onPick={(schedule_cron) => assign({ schedule_cron })}
+            />
+          }
+        >
           <TextInput
             list="backup-presets"
             value={form.schedule_cron}
+            placeholder={t("Manual only")}
             onChange={set("schedule_cron")}
           />
           <datalist id="backup-presets">
@@ -254,12 +304,51 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
             ))}
           </datalist>
         </Field>
-        <Field label="Timezone">
-          <TextInput required value={form.timezone} onChange={set("timezone")} />
+        <Field
+          label="Timezone"
+          hint={t("Schedule times follow this timezone.")}
+          presets={
+            <QuickPick
+              label={t("Timezone presets")}
+              options={timezoneOptions(detectedTimezone)}
+              value={form.timezone}
+              onPick={(timezone) => assign({ timezone })}
+            />
+          }
+        >
+          <TextInput
+            required
+            list="backup-timezones"
+            value={form.timezone}
+            onChange={set("timezone")}
+          />
+          <datalist id="backup-timezones">
+            {timezones.map((zone) => (
+              <option key={zone} value={zone} />
+            ))}
+          </datalist>
         </Field>
-        <Field label="Compression">
+        <Field
+          label="Compression"
+          presets={
+            <QuickPick
+              label={t("Compression level presets")}
+              options={compressionLevels(form.compression)}
+              value={form.compression_level}
+              onPick={(compression_level) => assign({ compression_level })}
+            />
+          }
+        >
           <div className="flex gap-2">
-            <Select value={form.compression} onChange={set("compression")}>
+            <Select
+              value={form.compression}
+              onChange={(event) =>
+                assign({
+                  compression: event.target.value,
+                  compression_level: compressionLevels(event.target.value)[1]?.value ?? "",
+                })
+              }
+            >
               <option value="zstd">zstd</option>
               <option value="gzip">gzip</option>
               <option value="none">none</option>
@@ -321,23 +410,42 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
           ))}
         </div>
       </fieldset>
-      <div className="grid gap-3 md:grid-cols-5">
-        <Field label="Keep last">
-          <TextInput value={form.keep_last} onChange={set("keep_last")} />
-        </Field>
-        <Field label="Keep days">
-          <TextInput value={form.keep_days} onChange={set("keep_days")} />
-        </Field>
-        <Field label="Daily">
-          <TextInput value={form.daily} onChange={set("daily")} />
-        </Field>
-        <Field label="Weekly">
-          <TextInput value={form.weekly} onChange={set("weekly")} />
-        </Field>
-        <Field label="Monthly">
-          <TextInput value={form.monthly} onChange={set("monthly")} />
-        </Field>
-      </div>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">{t("Retention")}</legend>
+        <p className="text-[13px] text-muted">
+          {t("Old backups are deleted once no rule below wants them. Empty fields are not used.")}
+        </p>
+        <QuickPick
+          label={t("Retention presets")}
+          options={RETENTION.map((preset) => ({
+            label: preset.label,
+            value: retentionKey(preset.values),
+            hint: preset.hint,
+          }))}
+          value={retentionKey(form)}
+          onPick={(_, option) => {
+            const preset = RETENTION.find((item) => item.label === option.label);
+            if (preset) assign(preset.values);
+          }}
+        />
+        <div className="grid gap-3 md:grid-cols-5">
+          <Field label="Keep last">
+            <TextInput value={form.keep_last} onChange={set("keep_last")} />
+          </Field>
+          <Field label="Keep days">
+            <TextInput value={form.keep_days} onChange={set("keep_days")} />
+          </Field>
+          <Field label="Daily">
+            <TextInput value={form.daily} onChange={set("daily")} />
+          </Field>
+          <Field label="Weekly">
+            <TextInput value={form.weekly} onChange={set("weekly")} />
+          </Field>
+          <Field label="Monthly">
+            <TextInput value={form.monthly} onChange={set("monthly")} />
+          </Field>
+        </div>
+      </fieldset>
       <button type="button" className="text-sm text-accent" onClick={() => setAdvanced(!advanced)}>
         {advanced ? "Hide advanced options" : "Show advanced options"}
       </button>
@@ -346,7 +454,19 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
           <Field label="Path prefix">
             <TextInput value={form.path_prefix} onChange={set("path_prefix")} />
           </Field>
-          <Field label={`Filename template (${(presets.data?.filename_tokens ?? []).join(" ")})`}>
+          <Field
+            label={`Filename template (${(presets.data?.filename_tokens ?? []).join(" ")})`}
+            presets={
+              <QuickPick
+                label={t("Filename tokens")}
+                options={(presets.data?.filename_tokens ?? []).map((token) => ({
+                  label: `+ ${token}`,
+                  value: token,
+                }))}
+                onPick={(token) => assign({ filename_template: form.filename_template + token })}
+              />
+            }
+          >
             <TextInput value={form.filename_template} onChange={set("filename_template")} />
           </Field>
           {isPanel ? null : isArchive ? (
@@ -354,7 +474,16 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
               <Field label="Include globs (one per line)">
                 <TextArea value={form.include_globs} onChange={set("include_globs")} />
               </Field>
-              <Field label="Exclude globs (one per line)">
+              <Field
+                label="Exclude globs (one per line)"
+                presets={
+                  <QuickPick
+                    label={t("Common exclusions")}
+                    options={EXCLUDE_GLOBS}
+                    onPick={(glob) => appendLine("exclude_globs", glob)}
+                  />
+                }
+              >
                 <TextArea value={form.exclude_globs} onChange={set("exclude_globs")} />
               </Field>
               <label className="flex items-center gap-2 text-sm">
@@ -403,13 +532,43 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
               </Field>
             </>
           )}
-          <Field label="Timeout (seconds)">
+          <Field
+            label="Timeout (seconds)"
+            presets={
+              <QuickPick
+                label={t("Timeout presets")}
+                options={pickDurations("900", "1800", "3600", "21600", "86400")}
+                value={form.timeout_secs}
+                onPick={(timeout_secs) => assign({ timeout_secs })}
+              />
+            }
+          >
             <TextInput value={form.timeout_secs} onChange={set("timeout_secs")} />
           </Field>
-          <Field label="Retries">
+          <Field
+            label="Retries"
+            presets={
+              <QuickPick
+                label={t("Retry presets")}
+                options={RETRIES}
+                value={form.retries}
+                onPick={(retries) => assign({ retries })}
+              />
+            }
+          >
             <TextInput value={form.retries} onChange={set("retries")} />
           </Field>
-          <Field label="Bandwidth limit (Mbit/s, empty = unlimited)">
+          <Field
+            label="Bandwidth limit (Mbit/s, empty = unlimited)"
+            presets={
+              <QuickPick
+                label={t("Bandwidth presets")}
+                options={BANDWIDTH}
+                value={form.bandwidth_mbps}
+                onPick={(bandwidth_mbps) => assign({ bandwidth_mbps })}
+              />
+            }
+          >
             <TextInput value={form.bandwidth_mbps} onChange={set("bandwidth_mbps")} />
           </Field>
           <div className="space-y-2 text-sm">

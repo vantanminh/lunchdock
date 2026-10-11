@@ -73,9 +73,7 @@ export function AccountPage() {
       toast.success(t("Authenticator disabled"));
       await refresh();
     } catch (error) {
-      toast.error(
-        error instanceof ApiError ? error.message : t("Could not disable authenticator"),
-      );
+      toast.error(error instanceof ApiError ? error.message : t("Could not disable authenticator"));
     }
   }
 
@@ -122,7 +120,9 @@ export function AccountPage() {
       <Card title={t("Authenticator")}>
         {user?.totp_enabled ? (
           <form className="grid max-w-md gap-3" onSubmit={(event) => void disableTotp(event)}>
-            <p className="text-sm text-muted">{t("Authenticator codes are required at sign-in.")}</p>
+            <p className="text-sm text-muted">
+              {t("Authenticator codes are required at sign-in.")}
+            </p>
             <Field label={t("Password")}>
               <TextInput
                 type="password"
