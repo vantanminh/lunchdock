@@ -7,7 +7,7 @@
 
 use rudder_core::{
     ArchiveSource, CachePurge, ComposeAction, ContainerSpec, Error, ExecSpec, NodeDriver,
-    RegistryAuth,
+    RegistryAuth, ReplaceContainer,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -87,6 +87,20 @@ pub enum Request {
     CacheStats,
     ListContainers,
     HostStats,
+    ContainerImage {
+        name: String,
+    },
+    ReplaceContainer {
+        request: ReplaceContainer,
+    },
+    /// Version and target triple of the agent itself. Answered by the agent.
+    AgentInfo,
+    /// Input stream: a new agent binary. The agent checks it, swaps it in, and
+    /// restarts once the reply is sent.
+    UpdateAgent {
+        version: String,
+        sha256: String,
+    },
     /// Output stream: stdout of the command.
     ExecRead {
         id: String,
@@ -160,6 +174,10 @@ impl Request {
             Self::CacheStats => "cache_stats",
             Self::ListContainers => "list_containers",
             Self::HostStats => "host_stats",
+            Self::ContainerImage { .. } => "container_image",
+            Self::ReplaceContainer { .. } => "replace_container",
+            Self::AgentInfo => "agent_info",
+            Self::UpdateAgent { .. } => "update_agent",
             Self::ExecRead { .. } => "exec_read",
             Self::ExecWrite { .. } => "exec_write",
             Self::ArchiveRead { .. } => "archive_read",
@@ -177,9 +195,10 @@ impl Request {
             | Self::ArchiveRead { .. }
             | Self::FollowLogs { .. }
             | Self::SaveImage { .. } => Streaming::Output,
-            Self::ExecWrite { .. } | Self::ArchiveWrite { .. } | Self::LoadImage => {
-                Streaming::Input
-            }
+            Self::ExecWrite { .. }
+            | Self::ArchiveWrite { .. }
+            | Self::LoadImage
+            | Self::UpdateAgent { .. } => Streaming::Input,
             Self::Terminal { .. } => Streaming::Both,
             _ => Streaming::None,
         }
@@ -190,6 +209,8 @@ impl Request {
         match self {
             Self::PullImage { .. } | Self::Compose { .. } | Self::Prune => 1800,
             Self::StopContainer { timeout_secs, .. } => (*timeout_secs).max(0) as u64 + 60,
+            Self::ReplaceContainer { request } => request.timeout_secs.min(1800) + 120,
+            Self::UpdateAgent { .. } => 600,
             Self::Exec { .. } => 600,
             // Input streams answer only after the whole upload, so the panel's own
             // backup timeout bounds them instead.
@@ -235,6 +256,9 @@ pub async fn call(driver: &dyn NodeDriver, request: Request) -> Result<Value, Er
         Request::CacheStats => json(driver.cache_stats().await?),
         Request::ListContainers => json(driver.list_containers().await?),
         Request::HostStats => json(driver.host_stats().await?),
+        Request::ContainerImage { name } => json(driver.container_image(&name).await?),
+        Request::ReplaceContainer { request } => json(driver.replace_container(&request).await?),
+        Request::AgentInfo => Err(Error::Node("agent_info is answered by the agent".into())),
         streaming => Err(Error::Node(format!(
             "{} needs a stream channel",
             streaming.name()

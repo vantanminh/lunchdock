@@ -32,9 +32,12 @@ cron = "0.17.0"
 serde_yaml_ng = "0.10.0"
 rustix = { version = "1.1.5", features = ["fs"] }
 utoipa = { version = "6.0.0", optional = true }
+semver = "1"
+minisign-verify = "0.3"
 
 [features]
 openapi = ["dep:utoipa"]
 
 [dev-dependencies]
+minisign = "0.10"
 rcgen = "0.14.10"

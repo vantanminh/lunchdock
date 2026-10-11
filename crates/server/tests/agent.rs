@@ -208,6 +208,7 @@ fn start_agent(
         identity,
         data_dir: data_dir.to_owned(),
         stats_interval: Duration::from_millis(300),
+        self_update: None,
     };
     tokio::spawn(rudder_agent::run_with(
         options,

@@ -49,7 +49,9 @@ use crate::routes::stacks::{
     TemplateDeployed, TemplateDetail, TemplateVariableView, TemplateView, UpdateStack,
 };
 use crate::routes::system::{PanelBackupRequest, SystemInfo};
+use crate::routes::updates::{ComponentsStarted, UpdateOverview, UpdateSettings, UpdateStarted};
 use crate::stacks::StackGit;
+use crate::update::{ComponentStatus, ReleaseInfo, UpdateCheck, UpdateHistoryEntry};
 use rudder_core::{
     CacheHostStats, CachePurgeResult, CacheRule, CacheStats, RuleAction, RuleMatch, RuleMode,
 };
@@ -176,11 +178,19 @@ use rudder_core::{
         SaveChannel,
         PruneResult,
         SystemInfo,
+        UpdateOverview,
+        UpdateSettings,
+        UpdateStarted,
+        ComponentsStarted,
+        UpdateCheck,
+        ReleaseInfo,
+        ComponentStatus,
+        UpdateHistoryEntry,
         PanelBackupRequest
     )),
     modifiers(&SecurityAddon),
     tags(
-        (name = "system", description = "Process health, version, settings export, and panel backups"),
+        (name = "system", description = "Process health, version, settings export, panel backups, and self-update"),
         (name = "auth", description = "Setup, sessions, users, tokens, and audit"),
         (name = "catalog", description = "Servers, projects, environments, and services"),
         (name = "edge", description = "Domains, certificates, registries, and image deploys"),
@@ -254,6 +264,51 @@ const ROUTES: &[Route] = &[
         request: None,
         response: Some("SystemInfo"),
         status: 200,
+    },
+    Route {
+        path: "/api/v1/system/updates",
+        method: HttpMethod::Get,
+        tag: "system",
+        summary: "Update status: versions, last release check, components, and history (admin)",
+        request: None,
+        response: Some("UpdateOverview"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/system/updates/check",
+        method: HttpMethod::Post,
+        tag: "system",
+        summary: "Check GitHub for a newer signed release now (admin, write)",
+        request: None,
+        response: Some("UpdateCheck"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/system/updates/settings",
+        method: HttpMethod::Put,
+        tag: "system",
+        summary: "Set the update channel, auto-update, and maintenance window (admin, write)",
+        request: Some("UpdateSettings"),
+        response: Some("UpdateOverview"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/system/updates/apply",
+        method: HttpMethod::Post,
+        tag: "system",
+        summary: "Back up, then update the panel to the latest verified release with rollback (admin, write)",
+        request: None,
+        response: Some("UpdateStarted"),
+        status: 202,
+    },
+    Route {
+        path: "/api/v1/system/updates/components",
+        method: HttpMethod::Post,
+        tag: "system",
+        summary: "Update outdated agents and caches to this panel's version (admin, write)",
+        request: None,
+        response: Some("ComponentsStarted"),
+        status: 202,
     },
     Route {
         path: "/api/v1/system/settings-export",

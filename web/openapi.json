@@ -2203,6 +2203,120 @@
         }
       }
     },
+    "/api/v1/system/updates": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Update status: versions, last release check, components, and history (admin)",
+        "operationId": "get_v1_system_updates",
+        "responses": {
+          "200": {
+            "description": "Update status: versions, last release check, components, and history (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/updates/apply": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Back up, then update the panel to the latest verified release with rollback (admin, write)",
+        "operationId": "post_v1_system_updates_apply",
+        "responses": {
+          "202": {
+            "description": "Back up, then update the panel to the latest verified release with rollback (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStarted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/updates/check": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Check GitHub for a newer signed release now (admin, write)",
+        "operationId": "post_v1_system_updates_check",
+        "responses": {
+          "200": {
+            "description": "Check GitHub for a newer signed release now (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCheck"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/updates/components": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Update outdated agents and caches to this panel's version (admin, write)",
+        "operationId": "post_v1_system_updates_components",
+        "responses": {
+          "202": {
+            "description": "Update outdated agents and caches to this panel's version (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentsStarted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/updates/settings": {
+      "put": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Set the update channel, auto-update, and maintenance window (admin, write)",
+        "operationId": "put_v1_system_updates_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set the update channel, auto-update, and maintenance window (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/templates": {
       "get": {
         "tags": [
@@ -3129,6 +3243,64 @@
           "summary": {
             "type": "string",
             "description": "Non-secret description such as the chat id or webhook host."
+          }
+        }
+      },
+      "ComponentStatus": {
+        "type": "object",
+        "description": "Agent and cache versions per server.",
+        "required": [
+          "server_id",
+          "server_name",
+          "kind",
+          "online",
+          "agent_outdated",
+          "cache_outdated"
+        ],
+        "properties": {
+          "agent_outdated": {
+            "type": "boolean"
+          },
+          "agent_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cache_image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cache_outdated": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "server_name": {
+            "type": "string"
+          }
+        }
+      },
+      "ComponentsStarted": {
+        "type": "object",
+        "required": [
+          "queued"
+        ],
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "description": "Agents and caches queued for an update.",
+            "minimum": 0
           }
         }
       },
@@ -4676,6 +4848,41 @@
           }
         }
       },
+      "ReleaseInfo": {
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "html_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
       "RestoreRequest": {
         "type": "object",
         "description": "Where a restore writes.",
@@ -6071,6 +6278,48 @@
           }
         }
       },
+      "UpdateCheck": {
+        "type": "object",
+        "required": [
+          "checked_at",
+          "current",
+          "channel",
+          "verified"
+        ],
+        "properties": {
+          "channel": {
+            "type": "string"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latest": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReleaseInfo",
+                "description": "Newest release above the current version, if any."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "The latest release's signature and checksums were verified."
+          }
+        }
+      },
       "UpdateDatabase": {
         "type": "object",
         "properties": {
@@ -6184,6 +6433,139 @@
           }
         }
       },
+      "UpdateHistoryEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "component",
+          "to_version",
+          "status",
+          "logs",
+          "started_at"
+        ],
+        "properties": {
+          "component": {
+            "type": "string"
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "from_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "logs": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "server_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "to_version": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateOverview": {
+        "type": "object",
+        "required": [
+          "current_version",
+          "channel",
+          "auto_update",
+          "repository",
+          "signing_key",
+          "components",
+          "history"
+        ],
+        "properties": {
+          "apply_blocker": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why \"Update now\" is unavailable, if it is."
+          },
+          "auto_update": {
+            "type": "boolean"
+          },
+          "channel": {
+            "type": "string",
+            "description": "`stable` or `prerelease`."
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComponentStatus"
+            }
+          },
+          "current_version": {
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateHistoryEntry"
+            }
+          },
+          "last_check": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UpdateCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maintenance_window": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`HH:MM-HH:MM` in UTC; automatic updates wait for it. Empty means any time."
+          },
+          "repository": {
+            "type": "string"
+          },
+          "signing_key": {
+            "type": "boolean",
+            "description": "A release signing key is configured, so verified releases can be applied."
+          },
+          "target_cache_image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cache image for this panel version, from its signed release."
+          }
+        }
+      },
       "UpdatePanel": {
         "type": "object",
         "properties": {
@@ -6291,6 +6673,28 @@
           "spec": {}
         }
       },
+      "UpdateSettings": {
+        "type": "object",
+        "required": [
+          "channel",
+          "auto_update"
+        ],
+        "properties": {
+          "auto_update": {
+            "type": "boolean"
+          },
+          "channel": {
+            "type": "string",
+            "description": "`stable` or `prerelease`."
+          },
+          "maintenance_window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateSource": {
         "type": "object",
         "required": [
@@ -6363,6 +6767,18 @@
           },
           "source": {
             "type": "string"
+          }
+        }
+      },
+      "UpdateStarted": {
+        "type": "object",
+        "required": [
+          "history_id"
+        ],
+        "properties": {
+          "history_id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -6443,7 +6859,7 @@
   "tags": [
     {
       "name": "system",
-      "description": "Process health, version, settings export, and panel backups"
+      "description": "Process health, version, settings export, panel backups, and self-update"
     },
     {
       "name": "auth",

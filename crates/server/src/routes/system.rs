@@ -63,7 +63,7 @@ async fn info(State(state): State<AppState>, auth: AuthUser) -> Result<Json<Syst
         .filter(|output| output.status.success())
         .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned());
     Ok(Json(SystemInfo {
-        version: env!("CARGO_PKG_VERSION").into(),
+        version: rudder_core::VERSION.into(),
         schema,
         known_schema: crate::db::known_migration(),
         pg_dump,

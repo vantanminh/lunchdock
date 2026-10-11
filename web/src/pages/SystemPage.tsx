@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { api, download } from "../api";
 import { BackupJobForm, PanelRestoreHint } from "../components/backups";
 import { Button, Card, Field, TextInput } from "../components/ui";
+import { UpdatesCard } from "../components/updates";
 import { errorMessage } from "../format";
 import type { Schemas } from "../types";
 
@@ -58,6 +59,7 @@ export function SystemPage() {
           <p className="text-sm text-muted">Loading…</p>
         )}
       </Card>
+      <UpdatesCard />
       <Card title="Panel backup">
         <p className="mb-3 text-sm text-muted">
           A complete copy of the panel: the database (projects, services, domains, users, backup

@@ -13,12 +13,13 @@ use rudder_proto::agent::{
 };
 use rudder_proto::NodeAgentClient;
 use serde_json::Value;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 
 use crate::identity::Identity;
 use crate::telemetry::Buffer;
+use crate::update::{self, SelfUpdate};
 
 const FLUSH_EVERY: Duration = Duration::from_secs(1);
 const MAX_BACKOFF: Duration = Duration::from_secs(30);
@@ -33,6 +34,9 @@ pub struct Session {
     pub identity: Identity,
     pub driver: Arc<dyn NodeDriver>,
     pub buffer: Arc<Buffer>,
+    pub self_update: Option<SelfUpdate>,
+    /// Set once the panel welcomes a session; the update watchdog waits on it.
+    pub connected: watch::Sender<bool>,
 }
 
 impl Session {
@@ -112,6 +116,7 @@ impl Session {
             Err(status) => return Err(SessionError::Connect(status_error(status))),
         }
         tracing::info!(panel = %self.identity.meta.grpc_url, "connected to the panel");
+        self.connected.send_replace(true);
 
         let mut flush = tokio::time::interval(FLUSH_EVERY);
         loop {
@@ -189,6 +194,21 @@ impl Session {
         };
         let driver = self.driver.as_ref();
         let stream_id = command.stream_id;
+        match request {
+            Request::AgentInfo => {
+                let info = serde_json::json!({
+                    "version": rudder_core::VERSION,
+                    "target": update::target(),
+                });
+                return reply(&outbox, id, Ok(info)).await;
+            }
+            Request::UpdateAgent { version, sha256 } => {
+                return self
+                    .update_agent(client, outbox, id, &stream_id, &version, &sha256)
+                    .await;
+            }
+            _ => {}
+        }
         match request.streaming() {
             Streaming::None => reply(&outbox, id, ops::call(driver, request).await).await,
             Streaming::Output => {
@@ -256,6 +276,38 @@ impl Session {
                 };
                 pump(frames, &stream_id, output, finished).await;
             }
+        }
+    }
+}
+
+impl Session {
+    async fn update_agent(
+        &self,
+        client: Client,
+        outbox: Outbox,
+        id: u64,
+        stream_id: &str,
+        version: &str,
+        sha256: &str,
+    ) {
+        let (frames, responses) = match open_channel(client, stream_id).await {
+            Ok(channel) => channel,
+            Err(error) => return reply(&outbox, id, Err(error)).await,
+        };
+        let input = input_bytes(responses);
+        let outcome = match &self.self_update {
+            Some(target) => update::install(target, version, sha256, input).await,
+            None => Err(Error::Validation(
+                "this agent was started without self-update".into(),
+            )),
+        };
+        drop(frames);
+        let installed = outcome.is_ok();
+        reply(&outbox, id, outcome.and_then(json)).await;
+        if let (true, Some(target)) = (installed, &self.self_update) {
+            // Let the reply reach the panel before the process exits.
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            (target.restart)();
         }
     }
 }

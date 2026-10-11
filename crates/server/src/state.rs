@@ -33,6 +33,7 @@ pub struct AppState {
     pub agents: Arc<AgentRegistry>,
     pub backup_slots: Arc<BackupSlots>,
     pub logs: Arc<LogHub>,
+    pub updates: Arc<crate::update::Updates>,
 }
 
 impl AppState {
@@ -54,6 +55,7 @@ impl AppState {
             agents: Arc::new(AgentRegistry::default()),
             backup_slots: Arc::new(Mutex::new(HashMap::new())),
             logs: Arc::new(LogHub::default()),
+            updates: Arc::default(),
         }
     }
 }

@@ -17,6 +17,7 @@ mod github_app;
 mod image_ref;
 mod logs;
 mod metrics;
+mod release;
 mod retention;
 mod rollout;
 mod schedule;
@@ -53,7 +54,8 @@ pub use database::{connection_string, database_runtime, DatabaseRequest, Databas
 pub use driver::{
     validate_host_path, ArchiveSource, ByteStream, ContainerInfo, ContainerSpec, ContainerStats,
     DockerInfo, ExecOutput, ExecSpec, HealthState, LogLine, LogLineStream, LogStreamKind,
-    NodeDriver, PortMapping, RegistryAuth, TerminalInput, TerminalInputStream, VolumeMount,
+    NodeDriver, PortMapping, ReadyProbe, RegistryAuth, ReplaceContainer, ReplaceReport,
+    TerminalInput, TerminalInputStream, VolumeMount,
 };
 pub use envelope::{Decryptor, Encryptor, MAGIC as ENVELOPE_MAGIC};
 pub use error::Error;
@@ -72,6 +74,12 @@ pub use metrics::{
     parse_meminfo, parse_net_dev, parse_proc_stat, percent, rate, read_host_stats, resolution_for,
     step_alert, validate_alert_kind, AlertState, AlertTransition, CpuTimes, HostStats, Resolution,
     ALERT_KINDS, SAMPLE_INTERVAL_SECS,
+};
+pub use release::{
+    in_maintenance_window, parse_maintenance_window, parse_sha256sums, parse_version, pick_release,
+    sha256_hex, validate_pinned_image, verify_minisign, verify_release, GithubAsset, GithubRelease,
+    ReleaseImages, ReleaseManifest, UpdateChannel, AGENT_TARGETS, RELEASE_FORMAT, RELEASE_MANIFEST,
+    RELEASE_SIGNATURE, RELEASE_SUMS,
 };
 pub use retention::{expired_ids, BackupPoint, RetentionPolicy};
 pub use rollout::{
@@ -97,8 +105,12 @@ pub fn random_bytes<const N: usize>() -> [u8; N] {
     bytes
 }
 
-/// Crate version, shared by every Rudder binary.
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Version shared by every Rudder binary. Release builds set
+/// `RUDDER_BUILD_VERSION` from the tag; other builds use the crate version.
+pub const VERSION: &str = match option_env!("RUDDER_BUILD_VERSION") {
+    Some(version) => version,
+    None => env!("CARGO_PKG_VERSION"),
+};
 
 /// Product name used in logs, installers, and the panel.
 pub const PRODUCT: &str = "rudder";

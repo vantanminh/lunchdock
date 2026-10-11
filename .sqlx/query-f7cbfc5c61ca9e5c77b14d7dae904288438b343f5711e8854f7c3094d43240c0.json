@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE update_history SET logs = right(logs || $2, 200000) WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f7cbfc5c61ca9e5c77b14d7dae904288438b343f5711e8854f7c3094d43240c0"
+}

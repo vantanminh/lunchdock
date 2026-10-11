@@ -126,13 +126,13 @@ impl LocalDriver {
         Ok(bytes.to_vec())
     }
 
-    fn docker(&self) -> Result<&Docker, Error> {
+    pub(crate) fn docker(&self) -> Result<&Docker, Error> {
         self.docker
             .as_ref()
             .ok_or_else(|| Error::Node("docker socket is not available".into()))
     }
 
-    fn node(error: impl std::fmt::Display) -> Error {
+    pub(crate) fn node(error: impl std::fmt::Display) -> Error {
         Error::Node(error.to_string())
     }
 }
@@ -1015,6 +1015,23 @@ impl NodeDriver for LocalDriver {
             .cache_request(reqwest::Method::GET, "/stats", None)
             .await?;
         serde_json::from_slice(&bytes).map_err(Self::node)
+    }
+
+    async fn container_image(&self, name: &str) -> Result<Option<String>, Error> {
+        match self.docker()?.inspect_container(name, None).await {
+            Ok(inspected) => Ok(inspected.config.and_then(|config| config.image)),
+            Err(bollard::errors::Error::DockerResponseServerError {
+                status_code: 404, ..
+            }) => Ok(None),
+            Err(error) => Err(Self::node(error)),
+        }
+    }
+
+    async fn replace_container(
+        &self,
+        request: &rudder_core::ReplaceContainer,
+    ) -> Result<rudder_core::ReplaceReport, Error> {
+        self.replace(request).await
     }
 }
 

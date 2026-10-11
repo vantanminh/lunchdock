@@ -49,6 +49,13 @@ fn main() -> anyhow::Result<()> {
                 docker_socket: None,
                 cache_admin_url: std::env::var("RUDDER_CACHE_ADMIN_URL").ok(),
                 host_proc: std::env::var_os("RUDDER_HOST_PROC").map(PathBuf::from),
+                binary: std::env::var_os("RUDDER_AGENT_BINARY").map(PathBuf::from),
+                update_grace: std::time::Duration::from_secs(
+                    std::env::var("RUDDER_AGENT_UPDATE_GRACE_SECS")
+                        .ok()
+                        .and_then(|value| value.parse().ok())
+                        .unwrap_or(120),
+                ),
             };
             while let Some(arg) = args.next() {
                 match arg.as_str() {
@@ -108,7 +115,12 @@ Usage:
 
 `enroll` creates a private key, exchanges the one-time join token for a client
 certificate, and saves both in the data directory. `run` connects to the panel
-and keeps reconnecting until stopped.",
+and keeps reconnecting until stopped.
+
+When the panel sends a new agent binary, `run` replaces its own executable
+(RUDDER_AGENT_BINARY overrides the path) and exits with code 75 so the service
+manager restarts it. If the new binary cannot reach the panel within
+RUDDER_AGENT_UPDATE_GRACE_SECS (default 120), the previous binary is restored.",
         version = rudder_core::VERSION,
         data = DEFAULT_DATA_DIR,
         node = DEFAULT_NODE_DIR,

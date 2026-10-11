@@ -74,6 +74,7 @@ const badgeTone: Record<string, string> = {
   queued: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
   deploying: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
   partial: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  rolled_back: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
   stopped: "bg-zinc-500/15 text-muted",
   expired: "bg-zinc-500/15 text-muted",
   failed: "bg-red-500/15 text-red-700 dark:text-red-300",

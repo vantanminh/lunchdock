@@ -17,8 +17,8 @@ use futures_util::StreamExt;
 use rudder_core::{
     ArchiveSource, ByteStream, CachePurge, CachePurgeResult, CacheStats, ComposeAction,
     ContainerInfo, ContainerSpec, ContainerStats, DockerInfo, Error, ExecOutput, ExecSpec,
-    HealthState, HostStats, LogLine, LogLineStream, NodeDriver, RegistryAuth, TerminalInput,
-    TerminalInputStream,
+    HealthState, HostStats, LogLine, LogLineStream, NodeDriver, RegistryAuth, ReplaceContainer,
+    ReplaceReport, TerminalInput, TerminalInputStream,
 };
 use rudder_node::ops::{self, Request};
 use rudder_proto::agent::{server_message, Command, CommandResult, Frame, ServerMessage};
@@ -632,5 +632,50 @@ impl NodeDriver for RemoteHandle {
 
     async fn cache_stats(&self) -> Result<CacheStats, Error> {
         self.0.call(Request::CacheStats).await
+    }
+
+    async fn container_image(&self, name: &str) -> Result<Option<String>, Error> {
+        self.0
+            .call(Request::ContainerImage { name: name.into() })
+            .await
+    }
+
+    async fn replace_container(&self, request: &ReplaceContainer) -> Result<ReplaceReport, Error> {
+        self.0
+            .call(Request::ReplaceContainer {
+                request: request.clone(),
+            })
+            .await
+    }
+}
+
+/// What a connected agent reports about itself.
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub struct AgentInfo {
+    pub version: String,
+    pub target: String,
+}
+
+impl RemoteHandle {
+    pub async fn agent_info(&self) -> Result<AgentInfo, Error> {
+        self.0.call(Request::AgentInfo).await
+    }
+
+    /// Upload a new agent binary. The agent restarts after it replies.
+    pub async fn update_agent(
+        &self,
+        version: &str,
+        sha256: &str,
+        binary: ByteStream,
+    ) -> Result<(), Error> {
+        self.0
+            .input_stream(
+                Request::UpdateAgent {
+                    version: version.into(),
+                    sha256: sha256.into(),
+                },
+                binary,
+            )
+            .await
     }
 }

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT manifest FROM update_history\n        WHERE component = 'panel' AND status = 'succeeded' AND to_version = $1 AND manifest IS NOT NULL\n        ORDER BY started_at DESC LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "manifest",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "9e4807190c92e5435e7754f0819ddff0234240bd8e38fdab7e622034a419f705"
+}

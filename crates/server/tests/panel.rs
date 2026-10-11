@@ -298,7 +298,7 @@ async fn settings_export_and_access(pool: PgPool) {
     let info = send(&app, "GET", "/api/v1/system", owner.pair(), None).await;
     assert_eq!(info.status, StatusCode::OK);
     assert_eq!(info.body["schema"], info.body["known_schema"]);
-    assert_eq!(info.body["version"], env!("CARGO_PKG_VERSION"));
+    assert_eq!(info.body["version"], rudder_core::VERSION);
 
     for path in ["/api/v1/system", "/api/v1/system/settings-export"] {
         let denied = send(&app, "GET", path, viewer.pair(), None).await;

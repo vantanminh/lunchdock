@@ -1364,6 +1364,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Update status: versions, last release check, components, and history (admin) */
+        get: operations["get_v1_system_updates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/updates/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Back up, then update the panel to the latest verified release with rollback (admin, write) */
+        post: operations["post_v1_system_updates_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/updates/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check GitHub for a newer signed release now (admin, write) */
+        post: operations["post_v1_system_updates_check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/updates/components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update outdated agents and caches to this panel's version (admin, write) */
+        post: operations["post_v1_system_updates_components"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/updates/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the update channel, auto-update, and maintenance window (admin, write) */
+        put: operations["put_v1_system_updates_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/templates": {
         parameters: {
             query?: never;
@@ -1693,6 +1778,22 @@ export interface components {
             name: string;
             /** @description Non-secret description such as the chat id or webhook host. */
             summary: string;
+        };
+        /** @description Agent and cache versions per server. */
+        ComponentStatus: {
+            agent_outdated: boolean;
+            agent_version?: string | null;
+            cache_image?: string | null;
+            cache_outdated: boolean;
+            kind: string;
+            online: boolean;
+            /** Format: uuid */
+            server_id: string;
+            server_name: string;
+        };
+        ComponentsStarted: {
+            /** @description Agents and caches queued for an update. */
+            queued: number;
         };
         ConnectionView: {
             database: string;
@@ -2128,6 +2229,13 @@ export interface components {
             url: string;
             username?: string | null;
         };
+        ReleaseInfo: {
+            html_url?: string | null;
+            name?: string | null;
+            notes?: string | null;
+            published_at?: string | null;
+            version: string;
+        };
         /** @description Where a restore writes. */
         RestoreRequest: {
             /** @description Host path for bind and path backups. Defaults to the original path. */
@@ -2556,6 +2664,16 @@ export interface components {
             otpauth_url: string;
             secret: string;
         };
+        UpdateCheck: {
+            channel: string;
+            /** Format: date-time */
+            checked_at: string;
+            current: string;
+            error?: string | null;
+            latest?: components["schemas"]["ReleaseInfo"] | null;
+            /** @description The latest release's signature and checksums were verified. */
+            verified: boolean;
+        };
         UpdateDatabase: {
             clear_public_port?: boolean | null;
             /** Format: int64 */
@@ -2586,6 +2704,40 @@ export interface components {
              */
             policy_id?: string | null;
         };
+        UpdateHistoryEntry: {
+            component: string;
+            /** Format: date-time */
+            finished_at?: string | null;
+            from_version?: string | null;
+            /** Format: uuid */
+            id: string;
+            logs: string;
+            /** Format: uuid */
+            server_id?: string | null;
+            server_name?: string | null;
+            /** Format: date-time */
+            started_at: string;
+            status: string;
+            to_version: string;
+        };
+        UpdateOverview: {
+            /** @description Why "Update now" is unavailable, if it is. */
+            apply_blocker?: string | null;
+            auto_update: boolean;
+            /** @description `stable` or `prerelease`. */
+            channel: string;
+            components: components["schemas"]["ComponentStatus"][];
+            current_version: string;
+            history: components["schemas"]["UpdateHistoryEntry"][];
+            last_check?: components["schemas"]["UpdateCheck"] | null;
+            /** @description `HH:MM-HH:MM` in UTC; automatic updates wait for it. Empty means any time. */
+            maintenance_window?: string | null;
+            repository: string;
+            /** @description A release signing key is configured, so verified releases can be applied. */
+            signing_key: boolean;
+            /** @description Cache image for this panel version, from its signed release. */
+            target_cache_image?: string | null;
+        };
         UpdatePanel: {
             acme_email?: string | null;
             clear_domain?: boolean | null;
@@ -2613,6 +2765,12 @@ export interface components {
             server_id?: string | null;
             spec?: unknown;
         };
+        UpdateSettings: {
+            auto_update: boolean;
+            /** @description `stable` or `prerelease`. */
+            channel: string;
+            maintenance_window?: string | null;
+        };
         UpdateSource: {
             branch: string;
             context?: string | null;
@@ -2628,6 +2786,10 @@ export interface components {
             git?: components["schemas"]["StackGit"] | null;
             main_service?: string | null;
             source: string;
+        };
+        UpdateStarted: {
+            /** Format: uuid */
+            history_id: string;
         };
         UpdateUser: {
             role: string;
@@ -4688,6 +4850,110 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_v1_system_updates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Update status: versions, last release check, components, and history (admin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateOverview"];
+                };
+            };
+        };
+    };
+    post_v1_system_updates_apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Back up, then update the panel to the latest verified release with rollback (admin, write) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStarted"];
+                };
+            };
+        };
+    };
+    post_v1_system_updates_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Check GitHub for a newer signed release now (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateCheck"];
+                };
+            };
+        };
+    };
+    post_v1_system_updates_components: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Update outdated agents and caches to this panel's version (admin, write) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentsStarted"];
+                };
+            };
+        };
+    };
+    put_v1_system_updates_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateSettings"];
+            };
+        };
+        responses: {
+            /** @description Set the update channel, auto-update, and maintenance window (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateOverview"];
+                };
             };
         };
     };

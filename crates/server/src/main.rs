@@ -13,6 +13,7 @@ const USAGE: &str = "usage:
   rudder-server openapi              print the OpenAPI document
   rudder-server backup --out FILE [--passphrase-file FILE] [--include-history]
   rudder-server restore --file FILE [--passphrase-file FILE] [--master-key-file FILE] [--force]
+  rudder-server self-update ...      internal: run by the panel's updater container
 
 backup reads the passphrase from --passphrase-file or RUDDER_BACKUP_PASSPHRASE.
 restore reads it from --passphrase-file or RUDDER_RESTORE_PASSPHRASE, restores into
@@ -28,12 +29,13 @@ fn main() -> anyhow::Result<()> {
         }
         Some("backup") => runtime()?.block_on(backup(&args[1..])),
         Some("restore") => runtime()?.block_on(restore(&args[1..])),
+        Some("self-update") => runtime()?.block_on(self_update(&args[1..])),
         Some("--help" | "-h" | "help") => {
             println!("{USAGE}");
             Ok(())
         }
         Some("--version") => {
-            println!("rudder-server {}", env!("CARGO_PKG_VERSION"));
+            println!("rudder-server {}", rudder_core::VERSION);
             Ok(())
         }
         Some(other) => bail!("unknown command '{other}'\n{USAGE}"),
@@ -157,4 +159,46 @@ async fn restore(args: &[String]) -> anyhow::Result<()> {
         master_key_out.display()
     );
     Ok(())
+}
+
+async fn self_update(args: &[String]) -> anyhow::Result<()> {
+    let flags = Flags::parse(
+        args,
+        &[
+            "--container",
+            "--image",
+            "--history",
+            "--backup",
+            "--from-version",
+            "--to-version",
+            "--migration",
+        ],
+        &[],
+    )?;
+    let required = |name: &str| {
+        flags
+            .value(name)
+            .map(str::to_owned)
+            .with_context(|| format!("{name} is required"))
+    };
+    let config = rudder_server::Config::load()?;
+    rudder_server::telemetry::init(&config);
+    let args = rudder_server::UpdaterArgs {
+        container: required("--container")?,
+        image: required("--image")?,
+        history: required("--history")?
+            .parse()
+            .context("--history is not a UUID")?,
+        backup: PathBuf::from(required("--backup")?),
+        from_version: required("--from-version")?,
+        to_version: required("--to-version")?,
+        migration: required("--migration")?
+            .parse()
+            .context("--migration is not a number")?,
+    };
+    if rudder_server::run_updater(config, args).await? {
+        Ok(())
+    } else {
+        bail!("the update did not succeed; see the panel's update history")
+    }
 }

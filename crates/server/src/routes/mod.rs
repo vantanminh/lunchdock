@@ -11,3 +11,4 @@ pub mod logs;
 pub mod monitoring;
 pub mod stacks;
 pub mod system;
+pub mod updates;

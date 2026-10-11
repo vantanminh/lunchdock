@@ -104,10 +104,7 @@ pub async fn settings_export(pool: &PgPool) -> Result<Value, ApiError> {
     let mut document = serde_json::Map::new();
     document.insert("format".into(), Value::from("rudder-settings-export"));
     document.insert("version".into(), Value::from(1));
-    document.insert(
-        "rudder_version".into(),
-        Value::from(env!("CARGO_PKG_VERSION")),
-    );
+    document.insert("rudder_version".into(), Value::from(rudder_core::VERSION));
     document.insert("exported_at".into(), Value::from(Utc::now().to_rfc3339()));
     if let Value::Object(tables) = export {
         document.extend(tables);
@@ -271,7 +268,7 @@ fn io_error(context: &str) -> impl Fn(std::io::Error) -> Error + '_ {
     move |error| Error::Node(format!("{context}: {error}"))
 }
 
-async fn applied_migration(pool: &PgPool) -> Result<i64, Error> {
+pub(crate) async fn applied_migration(pool: &PgPool) -> Result<i64, Error> {
     sqlx::query_scalar!(
         r#"SELECT COALESCE(MAX(version), 0) AS "version!" FROM _sqlx_migrations WHERE success"#
     )
@@ -312,7 +309,7 @@ pub async fn archive(
     let manifest = Manifest {
         format: FORMAT.into(),
         version: FORMAT_VERSION,
-        rudder_version: env!("CARGO_PKG_VERSION").into(),
+        rudder_version: rudder_core::VERSION.into(),
         created_at: Utc::now(),
         migration: applied_migration(pool).await?,
         includes_history: include_history,
@@ -541,7 +538,8 @@ pub async fn restore(options: RestoreOptions) -> anyhow::Result<RestoreReport> {
         );
     }
     let key = parse_key(&std::fs::read_to_string(work.file(MASTER_KEY))?)?;
-    if let Some(current) = existing_key(&options.master_key_out)? {
+    let current_key = existing_key(&options.master_key_out)?;
+    if let Some(current) = current_key {
         if current != key && !options.force {
             bail!(
                 "{} holds a different master key; pass --force to replace it",
@@ -583,7 +581,10 @@ pub async fn restore(options: RestoreOptions) -> anyhow::Result<RestoreReport> {
     run_pg_tool(&options.pg_restore, &args, &env)
         .await
         .map_err(|error| anyhow::anyhow!(error.to_string()))?;
-    write_key(&options.master_key_out, &key)?;
+    // The key file may be a read-only mount; leave it alone when it already matches.
+    if current_key != Some(key) {
+        write_key(&options.master_key_out, &key)?;
+    }
     Ok(RestoreReport {
         manifest,
         replaced_existing: has_tables,

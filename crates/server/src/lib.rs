@@ -29,6 +29,7 @@ mod stacks;
 mod state;
 pub mod telemetry;
 mod templates;
+mod update;
 
 use anyhow::Context;
 use tokio::net::TcpListener;
@@ -48,6 +49,9 @@ pub use monitor::{evaluate_alerts, insert_samples, Sample};
 pub use nodes::driver_for as node_driver;
 pub use panel::{Manifest as PanelManifest, RestoreOptions, RestoreReport};
 pub use state::AppState;
+pub use update::{
+    apply_panel, check as check_for_update, run_updater, update_components, UpdaterArgs,
+};
 
 /// Bind the HTTP server, run migrations, and serve until shutdown.
 pub async fn run(config: Config) -> anyhow::Result<()> {
@@ -151,6 +155,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             }
         });
     }
+    update::spawn_background(state.clone());
     let app = router(state);
     let listener = TcpListener::bind(addr)
         .await
@@ -278,6 +283,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::monitoring::router())
         .merge(routes::agents::router())
         .merge(routes::system::router())
+        .merge(routes::updates::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

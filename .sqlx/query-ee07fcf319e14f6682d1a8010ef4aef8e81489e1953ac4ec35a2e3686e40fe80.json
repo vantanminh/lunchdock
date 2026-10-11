@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE update_history SET status = 'failed', finished_at = now(),\n            logs = logs || 'abandoned: no progress for an hour' || chr(10)\n        WHERE status = 'running' AND started_at < now() - INTERVAL '1 hour'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ee07fcf319e14f6682d1a8010ef4aef8e81489e1953ac4ec35a2e3686e40fe80"
+}

@@ -203,6 +203,40 @@ mod tests {
     }
 }
 
+/// How a replaced container proves it is up before the old one is discarded.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ReadyProbe {
+    /// Still running, and not restarting, after the grace period.
+    Running,
+    /// `GET path` on the container's address answers 2xx.
+    Http { port: u16, path: String },
+    /// The command exits 0 and, when `expect` is set, its output contains it.
+    Exec {
+        command: Vec<String>,
+        expect: Option<String>,
+    },
+}
+
+/// Swap a container for one from `image`, keeping its settings, with rollback.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReplaceContainer {
+    pub name: String,
+    pub image: String,
+    pub probe: ReadyProbe,
+    pub timeout_secs: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReplaceReport {
+    pub previous_image: String,
+    pub image: String,
+    /// The new container failed its probe and the previous one runs again.
+    pub rolled_back: bool,
+    /// Steps taken, and the new container's last output when it failed.
+    pub log: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExecOutput {
     pub exit_code: i64,
@@ -334,6 +368,17 @@ pub trait NodeDriver: Send + Sync {
     /// Counters and usage from the node's HTTP cache.
     async fn cache_stats(&self) -> Result<crate::CacheStats, Error> {
         Err(unsupported("cache_stats"))
+    }
+
+    /// Image reference a container was created from.
+    async fn container_image(&self, _name: &str) -> Result<Option<String>, Error> {
+        Err(unsupported("container_image"))
+    }
+
+    /// Recreate a container from a new image. The image must already be present.
+    /// A failed probe restores the previous container and reports `rolled_back`.
+    async fn replace_container(&self, _request: &ReplaceContainer) -> Result<ReplaceReport, Error> {
+        Err(unsupported("replace_container"))
     }
 }
 

@@ -10,6 +10,7 @@ mod host;
 pub mod identity;
 mod session;
 pub mod telemetry;
+pub mod update;
 
 use std::future::Future;
 use std::path::PathBuf;
@@ -22,6 +23,7 @@ use rudder_node::LocalDriver;
 
 pub use identity::{enroll, Identity};
 pub use telemetry::Buffer;
+pub use update::SelfUpdate;
 
 const CURSOR_FILE: &str = "log-cursors.json";
 const STATS_INTERVAL: Duration = Duration::from_secs(10);
@@ -36,13 +38,21 @@ pub struct AgentConfig {
     pub docker_socket: Option<PathBuf>,
     pub cache_admin_url: Option<String>,
     pub host_proc: Option<PathBuf>,
+    /// The binary replaced on update; the running executable by default.
+    pub binary: Option<PathBuf>,
+    pub update_grace: Duration,
 }
+
+/// Exit code that makes the service manager start the (new) binary again.
+pub const RESTART_EXIT_CODE: i32 = 75;
 
 /// Settings for [`run_with`].
 pub struct RunOptions {
     pub identity: Identity,
     pub data_dir: PathBuf,
     pub stats_interval: Duration,
+    /// `None` refuses binary updates from the panel.
+    pub self_update: Option<SelfUpdate>,
 }
 
 /// Run the agent with the local Docker driver until SIGINT or SIGTERM.
@@ -72,11 +82,22 @@ pub async fn run(config: AgentConfig) -> anyhow::Result<()> {
         panel = %identity.meta.grpc_url,
         "rudder-agent starting"
     );
+    let binary = match config.binary {
+        Some(binary) => binary,
+        None => std::env::current_exe().context("locate the agent binary")?,
+    };
+    let self_update = SelfUpdate {
+        binary,
+        data_dir: config.data_dir.clone(),
+        restart: Arc::new(|| std::process::exit(RESTART_EXIT_CODE)),
+        grace: config.update_grace,
+    };
     run_with(
         RunOptions {
             identity,
             data_dir: config.data_dir,
             stats_interval: STATS_INTERVAL,
+            self_update: Some(self_update),
         },
         Arc::new(driver),
         buffer,
@@ -95,7 +116,8 @@ pub async fn run_with(
     buffer: Arc<Buffer>,
     shutdown: impl Future<Output = ()>,
 ) {
-    let tasks = Tasks(vec![
+    let (connected, welcomed) = tokio::sync::watch::channel(false);
+    let mut tasks = Tasks(vec![
         tokio::spawn(collect::stats(
             driver.clone(),
             buffer.clone(),
@@ -111,10 +133,17 @@ pub async fn run_with(
                 identity: options.identity,
                 driver,
                 buffer,
+                self_update: options.self_update.clone(),
+                connected,
             })
             .run(),
         ),
     ]);
+    if let Some(self_update) = options.self_update {
+        tasks.0.push(tokio::spawn(async move {
+            update::watchdog(self_update, welcomed).await;
+        }));
+    }
     shutdown.await;
     drop(tasks);
 }

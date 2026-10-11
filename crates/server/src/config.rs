@@ -52,7 +52,22 @@ pub struct Config {
     pub dist_dir: PathBuf,
     /// `pg_dump` used for panel backups.
     pub pg_dump: PathBuf,
+    /// `pg_restore` used to roll back a failed update.
+    pub pg_restore: PathBuf,
+    /// File the master key was read from, when it came from a file.
+    pub master_key_file: Option<PathBuf>,
+    /// GitHub API base for release checks.
+    pub update_api_url: String,
+    /// Minisign public key that signs releases. `None` disables applying updates.
+    pub update_public_key: Option<String>,
+    /// Name of the container the panel runs in.
+    pub self_container: String,
+    /// Seconds between background release checks; 0 turns them off.
+    pub update_check_secs: u64,
 }
+
+/// Release signing key compiled into official builds.
+const BUILT_IN_UPDATE_KEY: Option<&str> = option_env!("RUDDER_UPDATE_PUBKEY");
 
 impl Config {
     /// Load configuration from process environment variables.
@@ -171,6 +186,50 @@ impl Config {
                 .filter(|v| !v.is_empty())
                 .map_or("pg_dump", String::as_str),
         );
+        let pg_restore = PathBuf::from(
+            vars.get("RUDDER_PG_RESTORE")
+                .filter(|v| !v.is_empty())
+                .map_or("pg_restore", String::as_str),
+        );
+        let master_key_file = vars
+            .get("RUDDER_MASTER_KEY_FILE")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from);
+        let update_api_url = vars
+            .get("RUDDER_UPDATE_API_URL")
+            .filter(|v| !v.is_empty())
+            .map_or("https://api.github.com", String::as_str)
+            .trim_end_matches('/')
+            .to_owned();
+        if !update_api_url.starts_with("https://") && !update_api_url.starts_with("http://") {
+            return Err(ConfigError::Invalid {
+                name: "RUDDER_UPDATE_API_URL",
+                reason: "expected an http:// or https:// URL".into(),
+            });
+        }
+        let update_public_key = vars
+            .get("RUDDER_UPDATE_PUBKEY")
+            .map(String::as_str)
+            .or(BUILT_IN_UPDATE_KEY)
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(str::to_owned);
+        let self_container = vars
+            .get("RUDDER_SELF_CONTAINER")
+            .filter(|v| !v.is_empty())
+            .map_or("rudder", String::as_str)
+            .to_owned();
+        rudder_core::validate_name(&self_container).map_err(|error| ConfigError::Invalid {
+            name: "RUDDER_SELF_CONTAINER",
+            reason: error.to_string(),
+        })?;
+        let update_check_secs = match vars.get("RUDDER_UPDATE_CHECK_SECS") {
+            None => 6 * 3600,
+            Some(value) => value.parse().map_err(|_| ConfigError::Invalid {
+                name: "RUDDER_UPDATE_CHECK_SECS",
+                reason: "expected a number of seconds".into(),
+            })?,
+        };
         Ok(Self {
             database_url,
             bind,
@@ -188,6 +247,12 @@ impl Config {
             agent_url,
             dist_dir,
             pg_dump,
+            pg_restore,
+            master_key_file,
+            update_api_url,
+            update_public_key,
+            self_container,
+            update_check_secs,
         })
     }
 }
@@ -212,6 +277,10 @@ impl fmt::Debug for Config {
             .field("dist_dir", &self.dist_dir)
             .field("host_proc", &self.host_proc)
             .field("pg_dump", &self.pg_dump)
+            .field("pg_restore", &self.pg_restore)
+            .field("update_api_url", &self.update_api_url)
+            .field("update_public_key", &self.update_public_key.is_some())
+            .field("self_container", &self.self_container)
             .finish()
     }
 }
