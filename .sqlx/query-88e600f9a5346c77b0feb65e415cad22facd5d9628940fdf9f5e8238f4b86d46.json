@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE build_queue\n        SET status = 'succeeded', finished_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "88e600f9a5346c77b0feb65e415cad22facd5d9628940fdf9f5e8238f4b86d46"
+}

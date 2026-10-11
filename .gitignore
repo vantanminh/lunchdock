@@ -1,0 +1,26 @@
+# 5harness local / derived (not SoT)
+.5harness/index/
+.5harness/local/
+.5harness/mutation.lock
+# Optional SQLite import residue (not SoT)
+harness.db
+harness.db-wal
+harness.db-shm
+
+# Rust
+/target
+**/*.rs.bk
+
+# Node
+node_modules
+web/dist
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+/data
+
+# OS
+.DS_Store

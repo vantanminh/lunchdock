@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE services\n        SET status = 'failed', updated_at = now()\n        WHERE status IN ('deploying', 'building')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c2a708d6a119898a1c84c7ac6ca7bf2708785ad6159e36b5fa0fec61556eb196"
+}

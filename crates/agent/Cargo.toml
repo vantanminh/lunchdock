@@ -1,0 +1,19 @@
+[package]
+name = "rudder-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+description = "Rudder node agent"
+
+[[bin]]
+name = "rudder-agent"
+path = "src/main.rs"
+
+[dependencies]
+rudder-core = { path = "../core" }
+anyhow.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

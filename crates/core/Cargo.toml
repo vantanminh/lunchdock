@@ -1,0 +1,28 @@
+[package]
+name = "rudder-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+description = "Domain types, validation, and shared errors for Rudder"
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+aes-gcm = "0.11.1"
+rand = "0.10.3"
+async-trait = "0.1.92"
+x509-parser = { version = "0.18.1", features = ["verify"] }
+rsa = { version = "0.9.10", features = ["pem"] }
+p256 = { version = "0.14.0", features = ["pem"] }
+tokio = { workspace = true, features = ["time", "macros", "rt-multi-thread"] }
+hmac = "0.12"
+sha2 = { version = "0.10.9", features = ["oid"] }
+subtle = "2.6.1"
+hex = "0.4.3"
+base64 = "0.23.1"
+
+[dev-dependencies]
+rcgen = "0.14.10"

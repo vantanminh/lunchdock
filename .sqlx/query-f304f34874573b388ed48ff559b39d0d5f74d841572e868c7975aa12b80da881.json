@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE services\n            SET current_container_id = $2,\n                current_image = $3,\n                spec = spec || jsonb_build_object('image', $3::text, 'watch_tag', $4::bool),\n                updated_at = now()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f304f34874573b388ed48ff559b39d0d5f74d841572e868c7975aa12b80da881"
+}

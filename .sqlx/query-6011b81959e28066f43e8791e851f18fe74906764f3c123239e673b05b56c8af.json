@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT panel_domain, panel_ssl_mode, panel_certificate_id\n        FROM panel_settings\n        WHERE id = TRUE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "panel_domain",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "panel_ssl_mode",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "panel_certificate_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "6011b81959e28066f43e8791e851f18fe74906764f3c123239e673b05b56c8af"
+}

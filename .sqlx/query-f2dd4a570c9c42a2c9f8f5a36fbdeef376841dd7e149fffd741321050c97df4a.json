@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE panel_settings\n        SET panel_domain = CASE WHEN $1 THEN NULL ELSE COALESCE($2, panel_domain) END,\n            panel_ssl_mode = COALESCE($3, panel_ssl_mode),\n            panel_certificate_id = COALESCE($4, panel_certificate_id),\n            acme_email = COALESCE($5, acme_email),\n            updated_at = now()\n        WHERE id = TRUE\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Text",
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f2dd4a570c9c42a2c9f8f5a36fbdeef376841dd7e149fffd741321050c97df4a"
+}

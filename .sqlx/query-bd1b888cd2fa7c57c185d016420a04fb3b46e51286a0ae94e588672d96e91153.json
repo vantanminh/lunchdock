@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM service_containers WHERE service_id = $1 AND container_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bd1b888cd2fa7c57c185d016420a04fb3b46e51286a0ae94e588672d96e91153"
+}

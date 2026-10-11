@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT kind, spec, webhook_secret_enc FROM services WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 2,
+        "name": "webhook_secret_enc",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "4d550ac52e05d0ad40b141e7ba4584febf1cd279bcc1b1550272f6c7728404cb"
+}

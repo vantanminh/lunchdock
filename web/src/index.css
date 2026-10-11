@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --paper: #f4efe6;
+  --ink: #1c1915;
+  --muted: #6d645b;
+  --line: #e3d7c6;
+  --panel: #fffaf3;
+  --accent: #8d4318;
+  --accent-ink: #fff8f2;
+  --danger: #9f2d2d;
+}
+
+.dark {
+  color-scheme: dark;
+  --paper: #10151c;
+  --ink: #f3ecdf;
+  --muted: #b3aa9e;
+  --line: #2a313b;
+  --panel: #171d26;
+  --accent: #e0a15a;
+  --accent-ink: #1a120b;
+  --danger: #f0a0a0;
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-panel: var(--panel);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+#root {
+  min-height: 100vh;
+}

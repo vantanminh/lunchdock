@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE deployments\n        SET status = 'failed',\n            error = 'interrupted by process restart',\n            finished_at = COALESCE(finished_at, now())\n        WHERE status = 'running'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3e07043c796b46a90d3db8be67a6fda8480363be5d17f9179970be3842d05453"
+}

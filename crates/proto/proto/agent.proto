@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package rudder.agent.v1;
+
+// Long-lived session. The agent dials the panel and keeps this stream open.
+service NodeAgent {
+  rpc Session(stream AgentMessage) returns (stream ServerMessage);
+}
+
+message AgentMessage {
+  string request_id = 1;
+  oneof body {
+    Register register = 10;
+    Heartbeat heartbeat = 11;
+    CommandResult command_result = 12;
+    LogBatch log_batch = 13;
+    MetricBatch metric_batch = 14;
+    TerminalBytes terminal_bytes = 15;
+  }
+}
+
+message ServerMessage {
+  string request_id = 1;
+  oneof body {
+    Welcome welcome = 10;
+    Command command = 11;
+    ServerAck server_ack = 12;
+    TerminalBytes terminal_bytes = 13;
+  }
+}
+
+message Register {
+  string hostname = 1;
+  string agent_version = 2;
+  string docker_version = 3;
+  string os_info = 4;
+  // Present only on the first connection that still has no client certificate.
+  string join_token = 5;
+  bytes csr_pem = 6;
+  uint32 cpu_count = 7;
+  uint64 memory_bytes = 8;
+  uint64 disk_bytes = 9;
+}
+
+message Welcome {
+  bool enrolled = 1;
+  bytes client_cert_pem = 2;
+  bytes ca_pem = 3;
+  string server_id = 4;
+  string min_agent_version = 5;
+}
+
+message Heartbeat {
+  string agent_version = 1;
+  string docker_version = 2;
+  string os_info = 3;
+  uint32 cpu_count = 4;
+  uint64 memory_bytes = 5;
+  uint64 disk_bytes = 6;
+  double cpu_percent = 7;
+  double mem_percent = 8;
+  double disk_percent = 9;
+  double load1 = 10;
+  uint64 disk_used_bytes = 11;
+  uint64 net_rx_bytes = 12;
+  uint64 net_tx_bytes = 13;
+  double disk_read_bps = 14;
+  double disk_write_bps = 15;
+}
+
+// `op` names a NodeDriver method. `payload_json` is the serde encoding of the
+// matching request type defined in rudder-core.
+message Command {
+  string op = 1;
+  bytes payload_json = 2;
+}
+
+message CommandResult {
+  bool ok = 1;
+  string error = 2;
+  bytes payload_json = 3;
+}
+
+message LogRecord {
+  int64 logged_at_unix_ms = 1;
+  string source = 2;
+  string level = 3;
+  string message = 4;
+  string service_name = 5;
+  string container_id = 6;
+  int32 http_status = 7;
+  string fields_json = 8;
+}
+
+message LogBatch {
+  repeated LogRecord records = 1;
+}
+
+message MetricSample {
+  int64 sampled_at_unix_ms = 1;
+  string source = 2;
+  string metric = 3;
+  double value = 4;
+  string service_name = 5;
+  string labels_json = 6;
+}
+
+message MetricBatch {
+  repeated MetricSample samples = 1;
+}
+
+message TerminalBytes {
+  string stream_id = 1;
+  bytes data = 2;
+  bool eof = 3;
+  bool stderr = 4;
+}
+
+message ServerAck {
+  bool ok = 1;
+  string detail = 2;
+}

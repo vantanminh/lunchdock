@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO domains (\n            service_id, host, path_prefix, target_port, https_redirect, ssl_mode, certificate_id,\n            basic_auth_user, basic_auth_hash\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n        RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,\n                  certificate_id, basic_auth_user, cache_enabled, is_preview\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "service_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "host",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "path_prefix",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "target_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "https_redirect",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "ssl_mode",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "certificate_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "basic_auth_user",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "cache_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "is_preview",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4",
+        "Bool",
+        "Text",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "584de09b76c5ac85a4314ab061a2135cb1a2615359550c6a7fbdfaefa7bc5943"
+}
