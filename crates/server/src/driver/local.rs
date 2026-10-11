@@ -21,7 +21,7 @@ use futures_util::StreamExt;
 use rudder_core::{
     compose_args, validate_env_key, validate_image_ref, validate_name, ArchiveSource, ByteStream,
     ComposeAction, ContainerSpec, DockerInfo, Error, ExecOutput, ExecSpec, HealthState, NodeDriver,
-    RegistryAuth, VolumeMount, PROXY_NETWORK,
+    RegistryAuth, VolumeMount, CACHE_TOKEN_FILE, PROXY_NETWORK,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
@@ -29,10 +29,14 @@ use tokio::process::Command;
 /// Small image with `tar` used to read and write volumes and host paths.
 pub const HELPER_IMAGE: &str = "alpine:3.20";
 
+/// Admin listener of the cache server on the panel host.
+pub const DEFAULT_CACHE_ADMIN: &str = "http://127.0.0.1:9090";
+
 pub struct LocalDriver {
     docker: Option<Docker>,
     root: PathBuf,
     socket: Option<PathBuf>,
+    cache_admin: String,
 }
 
 impl LocalDriver {
@@ -58,7 +62,49 @@ impl LocalDriver {
             docker,
             root: root.into(),
             socket: socket.map(std::path::Path::to_path_buf),
+            cache_admin: DEFAULT_CACHE_ADMIN.into(),
         }
+    }
+
+    /// Base URL of the local cache server's admin listener.
+    pub fn with_cache_admin(mut self, url: &str) -> Self {
+        self.cache_admin = url.trim_end_matches('/').to_owned();
+        self
+    }
+
+    async fn cache_request(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<&rudder_core::CachePurge>,
+    ) -> Result<Vec<u8>, Error> {
+        let token = tokio::fs::read_to_string(confined_path(&self.root, CACHE_TOKEN_FILE)?)
+            .await
+            .map_err(|error| Error::Node(format!("cache admin token is not readable: {error}")))?;
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .map_err(Self::node)?;
+        let mut request = client
+            .request(method, format!("{}{path}", self.cache_admin))
+            .bearer_auth(token.trim());
+        if let Some(body) = body {
+            request = request.json(body);
+        }
+        let response = request
+            .send()
+            .await
+            .map_err(|error| Error::Node(format!("cache server is not reachable: {error}")))?;
+        let status = response.status();
+        let bytes = response.bytes().await.map_err(Self::node)?;
+        if !status.is_success() {
+            let message = serde_json::from_slice::<serde_json::Value>(&bytes)
+                .ok()
+                .and_then(|value| value["error"].as_str().map(str::to_owned))
+                .unwrap_or_else(|| status.to_string());
+            return Err(Error::Node(format!("cache server: {message}")));
+        }
+        Ok(bytes.to_vec())
     }
 
     fn docker(&self) -> Result<&Docker, Error> {
@@ -659,6 +705,23 @@ impl NodeDriver for LocalDriver {
     async fn read_file(&self, relative_path: &str) -> Result<Vec<u8>, Error> {
         let path = confined_path(&self.root, relative_path)?;
         tokio::fs::read(&path).await.map_err(Self::node)
+    }
+
+    async fn cache_purge(
+        &self,
+        request: &rudder_core::CachePurge,
+    ) -> Result<rudder_core::CachePurgeResult, Error> {
+        let bytes = self
+            .cache_request(reqwest::Method::POST, "/purge", Some(request))
+            .await?;
+        serde_json::from_slice(&bytes).map_err(Self::node)
+    }
+
+    async fn cache_stats(&self) -> Result<rudder_core::CacheStats, Error> {
+        let bytes = self
+            .cache_request(reqwest::Method::GET, "/stats", None)
+            .await?;
+        serde_json::from_slice(&bytes).map_err(Self::node)
     }
 }
 

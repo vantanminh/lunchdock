@@ -5,6 +5,7 @@
 
 mod backup;
 mod buildspec;
+mod cache;
 mod certs;
 mod compose;
 mod crypto;
@@ -32,6 +33,13 @@ pub use backup::{
 pub use buildspec::{
     can_start, docker_build_argv, git_clone_argv, nixpacks_argv, redact, static_dockerfile,
     validate_branch, validate_git_url, validate_rel_path, BuildPlan, BuildStrategy,
+};
+pub use cache::{
+    cache_path, cache_preset, encoding_class, validate_upstream, CacheControl, CacheDocument,
+    CacheHostStats, CachePolicy, CachePreset, CachePurge, CachePurgeResult, CacheRequest,
+    CacheRule, CacheSite, CacheStats, Freshness, RequestDecision, RuleAction, RuleMatch, RuleMode,
+    CACHE_CONTAINER, CACHE_PORT, CACHE_PRESETS, CACHE_RULES_FILE, CACHE_TOKEN_FILE,
+    DEFAULT_MAX_OBJECT_BYTES, DEFAULT_MEMORY_BYTES,
 };
 pub use certs::{
     certificate_matches_host, matching_certificate, validate_key_and_chain, CertificateDetails,

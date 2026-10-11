@@ -177,6 +177,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cache-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List cache policies with their rules */
+        get: operations["get_v1_cache-policies"];
+        put?: never;
+        /** Create a cache policy, optionally from a preset */
+        post: operations["post_v1_cache-policies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cache-policies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One cache policy */
+        get: operations["get_v1_cache-policies__id_"];
+        /** Replace a cache policy and republish the servers using it */
+        put: operations["put_v1_cache-policies__id_"];
+        post?: never;
+        /** Delete a cache policy; domains fall back to the default policy */
+        delete: operations["delete_v1_cache-policies__id_"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cache-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Built-in policy presets */
+        get: operations["get_v1_cache-presets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/certificates": {
         parameters: {
             query?: never;
@@ -221,6 +275,23 @@ export interface paths {
         /** List database engines and versions */
         get: operations["get_v1_database-engines"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/domains/{id}/cache": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Turn caching on or off for a domain and choose its policy */
+        put: operations["put_v1_domains__id__cache"];
         post?: never;
         delete?: never;
         options?: never;
@@ -571,6 +642,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/servers/{id}/cache/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Counters and usage from a server's cache */
+        get: operations["get_v1_servers__id__cache_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/build": {
         parameters: {
             query?: never;
@@ -582,6 +670,40 @@ export interface paths {
         put?: never;
         /** Queue a git build */
         post: operations["post_v1_services__id__build"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/cache": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cache settings and counters for a service's domains */
+        get: operations["get_v1_services__id__cache"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/cache/purge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Purge cached objects for a service's domains */
+        post: operations["post_v1_services__id__cache_purge"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1080,6 +1202,80 @@ export interface components {
             id: string;
             status: string;
         };
+        CacheHostStats: {
+            /** Format: int64 */
+            bypass: number;
+            /** Format: int64 */
+            bytes_served: number;
+            /** Format: int64 */
+            hits: number;
+            host: string;
+            /** Format: int64 */
+            misses: number;
+            /** Format: int64 */
+            objects: number;
+            /** Format: int64 */
+            stale: number;
+            /** Format: int64 */
+            stored_bytes: number;
+        };
+        CachePolicyView: {
+            /** Format: date-time */
+            created_at: string;
+            description: string;
+            /**
+             * Format: int64
+             * @description Domains that use this policy.
+             */
+            domains: number;
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: int64
+             * @description Largest response body stored. Null means 16 MiB.
+             */
+            max_object_bytes?: number | null;
+            /**
+             * Format: int64
+             * @description Share of the server's memory store. Null uses the default (256 MiB in total).
+             */
+            memory_max_bytes?: number | null;
+            name: string;
+            rules: components["schemas"]["CacheRule"][];
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CachePresetView: {
+            description: string;
+            name: string;
+            rules: components["schemas"]["CacheRule"][];
+            slug: string;
+        };
+        CachePurgeResult: {
+            /** Format: int64 */
+            removed: number;
+        };
+        CacheRule: {
+            action: components["schemas"]["RuleAction"];
+            match?: components["schemas"]["RuleMatch"];
+            name?: string;
+        };
+        CacheStats: {
+            /** Format: int64 */
+            evictions: number;
+            hosts: components["schemas"]["CacheHostStats"][];
+            /** Format: int64 */
+            memory_max_bytes: number;
+            /** Format: int64 */
+            objects: number;
+            /** Format: int64 */
+            reloads: number;
+            /** Format: int64 */
+            rules_version: number;
+            /** Format: int64 */
+            stored_bytes: number;
+            version: string;
+        };
         CertificateView: {
             common_name?: string | null;
             /** Format: date-time */
@@ -1267,6 +1463,16 @@ export interface components {
             path_style: boolean;
             region: string;
         };
+        DomainCacheView: {
+            /** Format: uuid */
+            domain_id: string;
+            enabled: boolean;
+            host: string;
+            path_prefix: string;
+            /** Format: uuid */
+            policy_id?: string | null;
+            policy_name?: string | null;
+        };
         DomainView: {
             basic_auth_user?: string | null;
             cache_enabled: boolean;
@@ -1401,6 +1607,80 @@ export interface components {
             /** Format: uuid */
             deployment_id: string;
         };
+        RuleAction: {
+            /**
+             * @description Requests carrying a cookie whose name starts with one of these skip the cache.
+             * @default []
+             */
+            bypass_cookies: string[];
+            /**
+             * @description Drop the query string from the cache key.
+             * @default false
+             */
+            ignore_query: boolean;
+            /** @default cache */
+            mode: components["schemas"]["RuleMode"];
+            /**
+             * @description When non-empty, only these query parameters are part of the key (sorted).
+             * @default []
+             */
+            query_keys: string[];
+            /**
+             * @description Use `s-maxage`/`max-age` from the origin when present, and honor `no-store`/`private`.
+             * @default true
+             */
+            respect_origin: boolean;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            stale_if_error_secs: number;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            stale_while_revalidate_secs: number;
+            /**
+             * @description Response statuses that may be stored.
+             * @default [
+             *       200,
+             *       203,
+             *       204,
+             *       300,
+             *       301,
+             *       308,
+             *       404,
+             *       410
+             *     ]
+             */
+            statuses: number[];
+            /**
+             * Format: int32
+             * @description Freshness when the origin gives none, or always when `respect_origin` is false.
+             * @default 300
+             */
+            ttl_secs: number;
+        };
+        /** @description Every set field must match. An empty matcher matches every request. */
+        RuleMatch: {
+            /**
+             * @description File extensions without the dot, compared case-insensitively.
+             * @default []
+             */
+            extensions: string[];
+            /**
+             * @description `*` matches any run of characters; anchored at both ends.
+             * @default null
+             */
+            path_glob: string | null;
+            /**
+             * @description Path must start with one of these.
+             * @default []
+             */
+            path_prefixes: string[];
+        };
+        /** @enum {string} */
+        RuleMode: "cache" | "bypass";
         RunAccepted: {
             /** Format: uuid */
             run_id: string;
@@ -1439,6 +1719,18 @@ export interface components {
             tool_options?: Record<string, never> | null;
             verify_after_upload?: boolean | null;
         };
+        SaveCachePolicy: {
+            description?: string | null;
+            /** Format: int64 */
+            max_object_bytes?: number | null;
+            /** Format: int64 */
+            memory_max_bytes?: number | null;
+            name: string;
+            /** @description Preset slug to start from when creating. */
+            preset?: string | null;
+            /** @description Ordered rules; the first match wins. Defaults to the preset's rules on create. */
+            rules?: components["schemas"]["CacheRule"][] | null;
+        };
         SaveDestination: {
             access_key_id?: string | null;
             bucket: string;
@@ -1467,6 +1759,23 @@ export interface components {
             os_info?: string | null;
             public_ip?: string | null;
             status: string;
+        };
+        ServiceCachePurge: {
+            all?: boolean | null;
+            /**
+             * Format: uuid
+             * @description Limit the purge to one domain. Defaults to every cached domain of the service.
+             */
+            domain_id?: string | null;
+            paths?: string[] | null;
+            prefix?: string | null;
+        };
+        ServiceCacheView: {
+            domains: components["schemas"]["DomainCacheView"][];
+            /** @description Counters for this service's cached hosts. */
+            stats: components["schemas"]["CacheHostStats"][];
+            /** @description Why stats are missing, such as an unreachable cache server. */
+            stats_error?: string | null;
         };
         ServiceView: {
             /** Format: date-time */
@@ -1627,6 +1936,14 @@ export interface components {
             ssl_mode?: string | null;
             /** Format: int32 */
             target_port?: number | null;
+        };
+        UpdateDomainCache: {
+            enabled: boolean;
+            /**
+             * Format: uuid
+             * @description Null uses the built-in "Honor origin headers" policy.
+             */
+            policy_id?: string | null;
         };
         UpdatePanel: {
             acme_email?: string | null;
@@ -1954,6 +2271,132 @@ export interface operations {
             };
         };
     };
+    "get_v1_cache-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List cache policies with their rules */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CachePolicyView"];
+                };
+            };
+        };
+    };
+    "post_v1_cache-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveCachePolicy"];
+            };
+        };
+        responses: {
+            /** @description Create a cache policy, optionally from a preset */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CachePolicyView"];
+                };
+            };
+        };
+    };
+    "get_v1_cache-policies__id_": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One cache policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CachePolicyView"];
+                };
+            };
+        };
+    };
+    "put_v1_cache-policies__id_": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveCachePolicy"];
+            };
+        };
+        responses: {
+            /** @description Replace a cache policy and republish the servers using it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CachePolicyView"];
+                };
+            };
+        };
+    };
+    "delete_v1_cache-policies__id_": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a cache policy; domains fall back to the default policy */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "get_v1_cache-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Built-in policy presets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CachePresetView"];
+                };
+            };
+        };
+    };
     post_v1_certificates: {
         parameters: {
             query?: never;
@@ -2014,6 +2457,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DatabaseEngineView"];
+                };
+            };
+        };
+    };
+    put_v1_domains__id__cache: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateDomainCache"];
+            };
+        };
+        responses: {
+            /** @description Turn caching on or off for a domain and choose its policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainCacheView"];
                 };
             };
         };
@@ -2528,6 +2995,26 @@ export interface operations {
             };
         };
     };
+    get_v1_servers__id__cache_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Counters and usage from a server's cache */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CacheStats"];
+                };
+            };
+        };
+    };
     post_v1_services__id__build: {
         parameters: {
             query?: never;
@@ -2544,6 +3031,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BuildAccepted"];
+                };
+            };
+        };
+    };
+    get_v1_services__id__cache: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cache settings and counters for a service's domains */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceCacheView"];
+                };
+            };
+        };
+    };
+    post_v1_services__id__cache_purge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ServiceCachePurge"];
+            };
+        };
+        responses: {
+            /** @description Purge cached objects for a service's domains */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CachePurgeResult"];
                 };
             };
         };

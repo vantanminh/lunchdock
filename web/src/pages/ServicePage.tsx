@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { BackupJobForm, BackupJobs } from "../components/backups";
+import { ServiceCachePanel } from "../components/cache";
 import { DatabasePanel, ServiceLogs } from "../components/DatabasePanel";
 import { StackLogs, StackOverview, StackSourceEditor, useStack } from "../components/stacks";
 import { Badge, Button, Card, Empty, Field, Tabs, TextInput } from "../components/ui";
@@ -15,6 +16,7 @@ const TABS = [
   ["source", "Source"],
   ["environment", "Environment"],
   ["domains", "Domains & SSL"],
+  ["cache", "Cache"],
   ["deployments", "Deployments"],
   ["logs", "Logs"],
   ["backups", "Backups"],
@@ -442,6 +444,7 @@ export function ServicePage() {
           </Card>
         </>
       ) : null}
+      {tab === "cache" ? <ServiceCachePanel serviceId={id} /> : null}
       {tab === "deployments" ? (
         <>
           <Card title="Deployments">

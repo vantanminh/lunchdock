@@ -38,6 +38,8 @@ pub struct Config {
     pub trust_proxy: bool,
     /// Docker Engine unix socket. `None` uses `DOCKER_HOST` or `/var/run/docker.sock`.
     pub docker_socket: Option<PathBuf>,
+    /// Admin listener of the local cache server.
+    pub cache_admin_url: String,
 }
 
 impl Config {
@@ -107,6 +109,17 @@ impl Config {
             .get("RUDDER_DOCKER_SOCKET")
             .filter(|v| !v.is_empty())
             .map(PathBuf::from);
+        let cache_admin_url = vars
+            .get("RUDDER_CACHE_ADMIN_URL")
+            .filter(|v| !v.is_empty())
+            .cloned()
+            .unwrap_or_else(|| crate::driver::DEFAULT_CACHE_ADMIN.to_owned());
+        if !cache_admin_url.starts_with("http://") && !cache_admin_url.starts_with("https://") {
+            return Err(ConfigError::Invalid {
+                name: "RUDDER_CACHE_ADMIN_URL",
+                reason: "expected an http:// or https:// URL".into(),
+            });
+        }
         Ok(Self {
             database_url,
             bind,
@@ -118,6 +131,7 @@ impl Config {
             cookie_secure,
             trust_proxy,
             docker_socket,
+            cache_admin_url,
         })
     }
 }
@@ -136,6 +150,7 @@ impl fmt::Debug for Config {
             .field("cookie_secure", &self.cookie_secure)
             .field("trust_proxy", &self.trust_proxy)
             .field("docker_socket", &self.docker_socket)
+            .field("cache_admin_url", &self.cache_admin_url)
             .finish()
     }
 }

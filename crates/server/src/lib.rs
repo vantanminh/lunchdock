@@ -8,6 +8,7 @@ mod audit;
 mod auth;
 mod backup;
 mod build_queue;
+mod cache;
 mod config;
 mod db;
 mod deploy;
@@ -131,6 +132,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::databases::router())
         .merge(routes::backups::router())
         .merge(routes::stacks::router())
+        .merge(routes::cache::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

@@ -2,4 +2,4 @@
 
 mod local;
 
-pub use local::LocalDriver;
+pub use local::{LocalDriver, DEFAULT_CACHE_ADMIN};

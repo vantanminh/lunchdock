@@ -16,6 +16,10 @@ use crate::routes::backups::{
     BackupJobView, BackupRunView, DestinationView, EventView, RunAccepted, SaveBackupJob,
     SaveDestination, TestResult,
 };
+use crate::routes::cache::{
+    CachePolicyView, CachePresetView, DomainCacheView, SaveCachePolicy, ServiceCachePurge,
+    ServiceCacheView, UpdateDomainCache,
+};
 use crate::routes::catalog::{
     CreateEnvironment, CreateProject, CreateServer, CreateService, EnvVarView, EnvironmentView,
     ProjectView, PutEnvVar, ServerView, ServiceView, UpdateServer, UpdateService,
@@ -36,6 +40,9 @@ use crate::routes::stacks::{
     TemplateDeployed, TemplateDetail, TemplateVariableView, TemplateView, UpdateStack,
 };
 use crate::stacks::StackGit;
+use rudder_core::{
+    CacheHostStats, CachePurgeResult, CacheRule, CacheStats, RuleAction, RuleMatch, RuleMode,
+};
 
 #[derive(OpenApiDerive)]
 #[openapi(
@@ -118,7 +125,21 @@ use crate::stacks::StackGit;
         TemplateDetail,
         DeployTemplate,
         GeneratedValue,
-        TemplateDeployed
+        TemplateDeployed,
+        RuleMatch,
+        RuleMode,
+        RuleAction,
+        CacheRule,
+        CachePolicyView,
+        SaveCachePolicy,
+        CachePresetView,
+        UpdateDomainCache,
+        DomainCacheView,
+        CacheHostStats,
+        ServiceCacheView,
+        ServiceCachePurge,
+        CachePurgeResult,
+        CacheStats
     )),
     modifiers(&SecurityAddon),
     tags(
@@ -129,7 +150,8 @@ use crate::stacks::StackGit;
         (name = "source", description = "Git providers, webhooks, and builds"),
         (name = "databases", description = "Managed databases and their lifecycle"),
         (name = "backups", description = "S3 destinations, backup jobs, runs, and restores"),
-        (name = "stacks", description = "Docker Compose stacks and app templates")
+        (name = "stacks", description = "Docker Compose stacks and app templates"),
+        (name = "cache", description = "HTTP cache policies, purge, and stats")
     )
 )]
 struct ApiDoc;
@@ -796,6 +818,96 @@ const ROUTES: &[Route] = &[
         request: Some("DeployTemplate"),
         response: Some("TemplateDeployed"),
         status: 201,
+    },
+    Route {
+        path: "/api/v1/cache-policies",
+        method: HttpMethod::Get,
+        tag: "cache",
+        summary: "List cache policies with their rules",
+        request: None,
+        response: Some("CachePolicyView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/cache-policies",
+        method: HttpMethod::Post,
+        tag: "cache",
+        summary: "Create a cache policy, optionally from a preset",
+        request: Some("SaveCachePolicy"),
+        response: Some("CachePolicyView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/cache-policies/{id}",
+        method: HttpMethod::Get,
+        tag: "cache",
+        summary: "One cache policy",
+        request: None,
+        response: Some("CachePolicyView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/cache-policies/{id}",
+        method: HttpMethod::Put,
+        tag: "cache",
+        summary: "Replace a cache policy and republish the servers using it",
+        request: Some("SaveCachePolicy"),
+        response: Some("CachePolicyView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/cache-policies/{id}",
+        method: HttpMethod::Delete,
+        tag: "cache",
+        summary: "Delete a cache policy; domains fall back to the default policy",
+        request: None,
+        response: None,
+        status: 204,
+    },
+    Route {
+        path: "/api/v1/cache-presets",
+        method: HttpMethod::Get,
+        tag: "cache",
+        summary: "Built-in policy presets",
+        request: None,
+        response: Some("CachePresetView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/domains/{id}/cache",
+        method: HttpMethod::Put,
+        tag: "cache",
+        summary: "Turn caching on or off for a domain and choose its policy",
+        request: Some("UpdateDomainCache"),
+        response: Some("DomainCacheView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/cache",
+        method: HttpMethod::Get,
+        tag: "cache",
+        summary: "Cache settings and counters for a service's domains",
+        request: None,
+        response: Some("ServiceCacheView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/cache/purge",
+        method: HttpMethod::Post,
+        tag: "cache",
+        summary: "Purge cached objects for a service's domains",
+        request: Some("ServiceCachePurge"),
+        response: Some("CachePurgeResult"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/servers/{id}/cache/stats",
+        method: HttpMethod::Get,
+        tag: "cache",
+        summary: "Counters and usage from a server's cache",
+        request: None,
+        response: Some("CacheStats"),
+        status: 200,
     },
 ];
 

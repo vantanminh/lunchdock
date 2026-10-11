@@ -12,7 +12,7 @@ name = "rudder-server"
 path = "src/main.rs"
 
 [dependencies]
-rudder-core = { path = "../core" }
+rudder-core = { path = "../core", features = ["openapi"] }
 anyhow.workspace = true
 thiserror.workspace = true
 serde.workspace = true

@@ -38,10 +38,10 @@ impl AppState {
         let cipher = Arc::new(Cipher::new(*config.master_key()));
         let per_minute = NonZeroU32::new(10).expect("login quota");
         let login_limiter = Arc::new(RateLimiter::keyed(Quota::per_minute(per_minute)));
-        let local_driver = Arc::new(LocalDriver::connect(
-            &config.data_dir,
-            config.docker_socket.as_deref(),
-        ));
+        let local_driver = Arc::new(
+            LocalDriver::connect(&config.data_dir, config.docker_socket.as_deref())
+                .with_cache_admin(&config.cache_admin_url),
+        );
         Self {
             pool,
             config: Arc::new(config),

@@ -1,5 +1,6 @@
 pub mod account;
 pub mod backups;
+pub mod cache;
 pub mod catalog;
 pub mod databases;
 pub mod edge;

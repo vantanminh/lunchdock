@@ -27,6 +27,8 @@ struct RouteRow {
     compose_service: Option<String>,
     stack_container: Option<String>,
     project: Option<String>,
+    cache_enabled: bool,
+    cache_policy_id: Option<Uuid>,
 }
 
 struct PanelRoute {
@@ -55,7 +57,19 @@ pub async fn publish_server(state: &AppState, server_id: Uuid) -> Result<bool, A
         tracing::info!(%server_id, "routing change stored; the agent applies it when connected");
         return Ok(false);
     }
-    let yaml = render_for_server(&state.pool, server_id, state.config.bind.port()).await?;
+    let (routes, note, sites) =
+        render_for_server(&state.pool, server_id, state.config.bind.port()).await?;
+    let yaml = (routes, note);
+    let cache_document = crate::cache::render_document(&state.pool, sites).await?;
+    crate::cache::ensure_token(state.local_driver.as_ref()).await?;
+    state
+        .local_driver
+        .write_file(
+            rudder_core::CACHE_RULES_FILE,
+            &serde_json::to_vec_pretty(&cache_document).unwrap_or_default(),
+        )
+        .await
+        .map_err(core_error)?;
     let materials = write_certificates(state).await?;
     let document = render_dynamic_config(&yaml.0, &materials).map_err(core_error)?;
     let mut body = document;
@@ -74,7 +88,7 @@ async fn render_for_server(
     pool: &PgPool,
     server_id: Uuid,
     panel_port: u16,
-) -> Result<(Vec<ProxyRoute>, String), ApiError> {
+) -> Result<(Vec<ProxyRoute>, String, Vec<crate::cache::SiteSource>), ApiError> {
     let rows = sqlx::query_as!(
         RouteRow,
         r#"
@@ -90,6 +104,8 @@ async fn render_for_server(
                d.compose_service,
                s.spec -> 'containers' ->> d.compose_service AS "stack_container?",
                s.spec ->> 'project' AS "project?",
+               d.cache_enabled,
+               d.cache_policy_id,
                (
                    SELECT sc.container_name
                    FROM service_containers sc
@@ -108,8 +124,21 @@ async fn render_for_server(
     .await
     .map_err(ApiError::database)?;
     let mut routes = Vec::new();
+    let mut sites = Vec::new();
     for row in rows {
-        routes.push(route_from_row(row)?);
+        let cache = row.cache_enabled.then_some(row.cache_policy_id);
+        let mut route = route_from_row(row)?;
+        if let Some(policy_id) = cache {
+            sites.push(crate::cache::SiteSource {
+                host: route.host.clone(),
+                path_prefix: route.path_prefix.clone(),
+                upstream: format!("{}:{}", route.container, route.port),
+                policy_id,
+            });
+            route.container = rudder_core::CACHE_CONTAINER.into();
+            route.port = rudder_core::CACHE_PORT;
+        }
+        routes.push(route);
     }
     let panel = sqlx::query_as!(
         PanelRoute,
@@ -145,7 +174,7 @@ async fn render_for_server(
             });
         }
     }
-    Ok((routes, note))
+    Ok((routes, note, sites))
 }
 
 fn route_from_row(row: RouteRow) -> Result<ProxyRoute, ApiError> {

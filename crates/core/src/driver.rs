@@ -252,6 +252,19 @@ pub trait NodeDriver: Send + Sync {
     async fn read_file(&self, _relative_path: &str) -> Result<Vec<u8>, Error> {
         Err(unsupported("read_file"))
     }
+
+    /// Remove objects from the node's HTTP cache.
+    async fn cache_purge(
+        &self,
+        _request: &crate::CachePurge,
+    ) -> Result<crate::CachePurgeResult, Error> {
+        Err(unsupported("cache_purge"))
+    }
+
+    /// Counters and usage from the node's HTTP cache.
+    async fn cache_stats(&self) -> Result<crate::CacheStats, Error> {
+        Err(unsupported("cache_stats"))
+    }
 }
 
 fn unsupported(op: &str) -> Error {

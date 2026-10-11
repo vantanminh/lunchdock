@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE domains SET cache_enabled = $2, cache_policy_id = $3 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ac7ffd1fd4fa3983c7778a78d30c40a38f23403890d356e46b6158f7db2393a2"
+}

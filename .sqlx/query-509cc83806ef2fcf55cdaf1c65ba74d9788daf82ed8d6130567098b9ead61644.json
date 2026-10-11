@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT s.server_id\n        FROM domains d\n        JOIN services s ON s.id = d.service_id\n        WHERE d.cache_enabled AND d.cache_policy_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "server_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "509cc83806ef2fcf55cdaf1c65ba74d9788daf82ed8d6130567098b9ead61644"
+}

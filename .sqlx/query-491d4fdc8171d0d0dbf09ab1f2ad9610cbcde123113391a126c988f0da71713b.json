@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT d.id AS domain_id, d.host, d.path_prefix, d.cache_enabled AS enabled,\n               d.cache_policy_id AS policy_id, p.name AS \"policy_name?\", s.server_id\n        FROM domains d\n        JOIN services s ON s.id = d.service_id\n        LEFT JOIN cache_policies p ON p.id = d.cache_policy_id\n        WHERE ($1::uuid IS NULL OR d.service_id = $1)\n          AND ($2::uuid IS NULL OR d.id = $2)\n        ORDER BY d.host, d.path_prefix\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "domain_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "host",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "path_prefix",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "policy_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "policy_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "server_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "491d4fdc8171d0d0dbf09ab1f2ad9610cbcde123113391a126c988f0da71713b"
+}

@@ -11,6 +11,7 @@ const links = [
   ["/templates", "Templates"],
   ["/backups", "Backups"],
   ["/s3-destinations", "S3 destinations"],
+  ["/cache", "Cache"],
   ["/certificates", "Certificates"],
   ["/registries", "Registries"],
   ["/git", "Git providers"],

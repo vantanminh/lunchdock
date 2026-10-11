@@ -283,6 +283,137 @@
         }
       }
     },
+    "/api/v1/cache-policies": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "List cache policies with their rules",
+        "operationId": "get_v1_cache-policies",
+        "responses": {
+          "200": {
+            "description": "List cache policies with their rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePolicyView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Create a cache policy, optionally from a preset",
+        "operationId": "post_v1_cache-policies",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCachePolicy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a cache policy, optionally from a preset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePolicyView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cache-policies/{id}": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "One cache policy",
+        "operationId": "get_v1_cache-policies__id_",
+        "responses": {
+          "200": {
+            "description": "One cache policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePolicyView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Replace a cache policy and republish the servers using it",
+        "operationId": "put_v1_cache-policies__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCachePolicy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replace a cache policy and republish the servers using it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePolicyView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Delete a cache policy; domains fall back to the default policy",
+        "operationId": "delete_v1_cache-policies__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a cache policy; domains fall back to the default policy"
+          }
+        }
+      }
+    },
+    "/api/v1/cache-presets": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Built-in policy presets",
+        "operationId": "get_v1_cache-presets",
+        "responses": {
+          "200": {
+            "description": "Built-in policy presets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePresetView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/certificates": {
       "post": {
         "tags": [
@@ -348,6 +479,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DatabaseEngineView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/domains/{id}/cache": {
+      "put": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Turn caching on or off for a domain and choose its policy",
+        "operationId": "put_v1_domains__id__cache",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDomainCache"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Turn caching on or off for a domain and choose its policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainCacheView"
                 }
               }
             }
@@ -932,6 +1093,27 @@
         }
       }
     },
+    "/api/v1/servers/{id}/cache/stats": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Counters and usage from a server's cache",
+        "operationId": "get_v1_servers__id__cache_stats",
+        "responses": {
+          "200": {
+            "description": "Counters and usage from a server's cache",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/build": {
       "post": {
         "tags": [
@@ -946,6 +1128,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BuildAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/cache": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Cache settings and counters for a service's domains",
+        "operationId": "get_v1_services__id__cache",
+        "responses": {
+          "200": {
+            "description": "Cache settings and counters for a service's domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCacheView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/cache/purge": {
+      "post": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Purge cached objects for a service's domains",
+        "operationId": "post_v1_services__id__cache_purge",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceCachePurge"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Purge cached objects for a service's domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachePurgeResult"
                 }
               }
             }
@@ -1928,6 +2161,228 @@
           }
         }
       },
+      "CacheHostStats": {
+        "type": "object",
+        "required": [
+          "host",
+          "hits",
+          "misses",
+          "stale",
+          "bypass",
+          "bytes_served",
+          "objects",
+          "stored_bytes"
+        ],
+        "properties": {
+          "bypass": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "bytes_served": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "hits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "host": {
+            "type": "string"
+          },
+          "misses": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "objects": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "stale": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "stored_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "CachePolicyView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "rules",
+          "domains",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "domains": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Domains that use this policy."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "max_object_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Largest response body stored. Null means 16 MiB."
+          },
+          "memory_max_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Share of the server's memory store. Null uses the default (256 MiB in total)."
+          },
+          "name": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheRule"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CachePresetView": {
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "description",
+          "rules"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheRule"
+            }
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "CachePurgeResult": {
+        "type": "object",
+        "required": [
+          "removed"
+        ],
+        "properties": {
+          "removed": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "CacheRule": {
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/RuleAction"
+          },
+          "match": {
+            "$ref": "#/components/schemas/RuleMatch"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CacheStats": {
+        "type": "object",
+        "required": [
+          "version",
+          "rules_version",
+          "objects",
+          "stored_bytes",
+          "memory_max_bytes",
+          "evictions",
+          "reloads",
+          "hosts"
+        ],
+        "properties": {
+          "evictions": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "hosts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheHostStats"
+            }
+          },
+          "memory_max_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "objects": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "reloads": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "rules_version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "stored_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
       "CertificateView": {
         "type": "object",
         "required": [
@@ -2645,6 +3100,43 @@
           }
         }
       },
+      "DomainCacheView": {
+        "type": "object",
+        "required": [
+          "domain_id",
+          "host",
+          "path_prefix",
+          "enabled"
+        ],
+        "properties": {
+          "domain_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "host": {
+            "type": "string"
+          },
+          "path_prefix": {
+            "type": "string"
+          },
+          "policy_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "policy_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "DomainView": {
         "type": "object",
         "required": [
@@ -3109,6 +3601,116 @@
           }
         }
       },
+      "RuleAction": {
+        "type": "object",
+        "properties": {
+          "bypass_cookies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Requests carrying a cookie whose name starts with one of these skip the cache.",
+            "default": []
+          },
+          "ignore_query": {
+            "type": "boolean",
+            "description": "Drop the query string from the cache key.",
+            "default": false
+          },
+          "mode": {
+            "$ref": "#/components/schemas/RuleMode",
+            "default": "cache"
+          },
+          "query_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "When non-empty, only these query parameters are part of the key (sorted).",
+            "default": []
+          },
+          "respect_origin": {
+            "type": "boolean",
+            "description": "Use `s-maxage`/`max-age` from the origin when present, and honor `no-store`/`private`.",
+            "default": true
+          },
+          "stale_if_error_secs": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0,
+            "minimum": 0
+          },
+          "stale_while_revalidate_secs": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0,
+            "minimum": 0
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "description": "Response statuses that may be stored.",
+            "default": [
+              200,
+              203,
+              204,
+              300,
+              301,
+              308,
+              404,
+              410
+            ]
+          },
+          "ttl_secs": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Freshness when the origin gives none, or always when `respect_origin` is false.",
+            "default": 300,
+            "minimum": 0
+          }
+        }
+      },
+      "RuleMatch": {
+        "type": "object",
+        "description": "Every set field must match. An empty matcher matches every request.",
+        "properties": {
+          "extensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "File extensions without the dot, compared case-insensitively.",
+            "default": []
+          },
+          "path_glob": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`*` matches any run of characters; anchored at both ends.",
+            "default": null
+          },
+          "path_prefixes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Path must start with one of these.",
+            "default": []
+          }
+        }
+      },
+      "RuleMode": {
+        "type": "string",
+        "enum": [
+          "cache",
+          "bypass"
+        ]
+      },
       "RunAccepted": {
         "type": "object",
         "required": [
@@ -3268,6 +3870,54 @@
           }
         }
       },
+      "SaveCachePolicy": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_object_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "memory_max_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "preset": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Preset slug to start from when creating."
+          },
+          "rules": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CacheRule"
+            },
+            "description": "Ordered rules; the first match wins. Defaults to the preset's rules on create."
+          }
+        }
+      },
       "SaveDestination": {
         "type": "object",
         "required": [
@@ -3388,6 +4038,69 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "ServiceCachePurge": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "domain_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Limit the purge to one domain. Defaults to every cached domain of the service."
+          },
+          "paths": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ServiceCacheView": {
+        "type": "object",
+        "required": [
+          "domains",
+          "stats"
+        ],
+        "properties": {
+          "domains": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainCacheView"
+            }
+          },
+          "stats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheHostStats"
+            },
+            "description": "Counters for this service's cached hosts."
+          },
+          "stats_error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why stats are missing, such as an unreachable cache server."
           }
         }
       },
@@ -4037,6 +4750,25 @@
           }
         }
       },
+      "UpdateDomainCache": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "policy_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Null uses the built-in \"Honor origin headers\" policy."
+          }
+        }
+      },
       "UpdatePanel": {
         "type": "object",
         "properties": {
@@ -4290,6 +5022,10 @@
     {
       "name": "stacks",
       "description": "Docker Compose stacks and app templates"
+    },
+    {
+      "name": "cache",
+      "description": "HTTP cache policies, purge, and stats"
     }
   ]
 }

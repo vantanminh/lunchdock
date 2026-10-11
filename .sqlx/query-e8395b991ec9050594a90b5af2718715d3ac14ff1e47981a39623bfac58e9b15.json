@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT policy_id, name, match_spec, action_spec\n        FROM cache_rules\n        WHERE policy_id = ANY($1)\n        ORDER BY policy_id, position\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "policy_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "match_spec",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "action_spec",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e8395b991ec9050594a90b5af2718715d3ac14ff1e47981a39623bfac58e9b15"
+}
