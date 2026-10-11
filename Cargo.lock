@@ -3858,7 +3858,13 @@ name = "rudder-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
+ "reqwest",
  "rudder-core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -3955,6 +3961,7 @@ dependencies = [
  "rcgen",
  "reqwest",
  "rudder-agent",
+ "rudder-cli",
  "rudder-core",
  "rudder-node",
  "rudder-proto",

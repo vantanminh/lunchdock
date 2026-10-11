@@ -70,6 +70,7 @@ http-body-util = "0.1.5"
 rcgen = { version = "0.14.10", default-features = false, features = ["pem", "aws_lc_rs"] }
 x509-parser = "0.18"
 rudder-agent = { path = "../agent" }
+rudder-cli = { path = "../cli" }
 tower = { version = "0.5.3", features = ["util"] }
 tokio-tungstenite = "0.29.0"
 minisign = "0.10"
