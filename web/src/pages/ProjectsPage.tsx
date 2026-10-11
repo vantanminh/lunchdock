@@ -3,7 +3,9 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
+import { CreateStackFields } from "../components/stacks";
 import { Button, Card, Field, TextInput } from "../components/ui";
+import type { Schemas } from "../types";
 
 interface Project {
   id: string;
@@ -49,6 +51,20 @@ export function ProjectsPage() {
   const [image, setImage] = useState("");
   const [engine, setEngine] = useState("postgres");
   const [version, setVersion] = useState("");
+  const [stackSource, setStackSource] = useState("inline");
+  const [stackYaml, setStackYaml] = useState("");
+  const [stackGit, setStackGit] = useState<Schemas["StackGit"]>({
+    provider_id: "",
+    repo: "",
+    branch: "main",
+    compose_file: "docker-compose.yml",
+  });
+  const [mainService, setMainService] = useState("");
+  const providers = useQuery({
+    queryKey: ["git-providers"],
+    queryFn: () => api<{ id: string; name: string; kind: string }[]>("/api/v1/git-providers"),
+    enabled: kind === "compose",
+  });
   const engines = useQuery({
     queryKey: ["database-engines"],
     queryFn: () =>
@@ -112,19 +128,35 @@ export function ProjectsPage() {
               server_id: serverId || servers.data?.[0]?.id,
             }),
           })
-        : api(`/api/v1/environments/${environmentId}/services`, {
-            method: "POST",
-            body: JSON.stringify({
-              name: serviceName,
-              kind,
-              server_id: serverId || servers.data?.[0]?.id,
-              spec: image ? { image } : {},
+        : kind === "compose"
+          ? api(`/api/v1/environments/${environmentId}/stacks`, {
+              method: "POST",
+              body: JSON.stringify({
+                name: serviceName,
+                server_id: serverId || servers.data?.[0]?.id,
+                source: stackSource,
+                compose_yaml: stackSource === "inline" ? stackYaml : undefined,
+                git: stackSource === "git" ? stackGit : undefined,
+                main_service: mainService || undefined,
+              }),
+            })
+          : api(`/api/v1/environments/${environmentId}/services`, {
+              method: "POST",
+              body: JSON.stringify({
+                name: serviceName,
+                kind,
+                server_id: serverId || servers.data?.[0]?.id,
+                spec: image ? { image } : {},
+              }),
             }),
-          }),
     onSuccess: async () => {
       setServiceName("");
       toast.success(
-        kind === "database" ? "Database created with a generated password" : "Service created",
+        kind === "database"
+          ? "Database created with a generated password"
+          : kind === "compose"
+            ? "Stack saved; deploy it from its page"
+            : "Service created",
       );
       await queryClient.invalidateQueries({ queryKey: ["services", environmentId] });
     },
@@ -213,7 +245,7 @@ export function ProjectsPage() {
                   >
                     <option value="application">application</option>
                     <option value="database">database</option>
-                    <option value="compose">compose</option>
+                    <option value="compose">compose stack</option>
                   </select>
                 </Field>
                 <Field label="Server">
@@ -262,6 +294,25 @@ export function ProjectsPage() {
                       </select>
                     </Field>
                   </>
+                ) : kind === "compose" ? (
+                  <>
+                    <Field label="Main service (receives domains)">
+                      <TextInput
+                        value={mainService}
+                        placeholder="web"
+                        onChange={(event) => setMainService(event.target.value)}
+                      />
+                    </Field>
+                    <CreateStackFields
+                      source={stackSource}
+                      yaml={stackYaml}
+                      git={stackGit}
+                      providers={providers.data ?? []}
+                      onSource={setStackSource}
+                      onYaml={setStackYaml}
+                      onGit={setStackGit}
+                    />
+                  </>
                 ) : (
                   <Field label="Image">
                     <TextInput value={image} onChange={(event) => setImage(event.target.value)} />
@@ -271,6 +322,13 @@ export function ProjectsPage() {
                   Add service
                 </Button>
               </form>
+              <p className="mt-3 text-sm text-muted">
+                Or start from a ready-made app in{" "}
+                <Link className="text-accent" to="/templates">
+                  Templates
+                </Link>
+                .
+              </p>
               <ul className="mt-4 divide-y divide-line text-sm">
                 {(services.data ?? []).map((service) => (
                   <li key={service.id} className="py-2">

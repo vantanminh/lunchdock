@@ -262,6 +262,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/environments/{id}/stacks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a compose stack from YAML or Git */
+        post: operations["post_v1_environments__id__stacks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/environments/{id}/templates/{slug}/deploy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deploy a template as a stack */
+        post: operations["post_v1_environments__id__templates__slug__deploy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events": {
         parameters: {
             query?: never;
@@ -708,6 +742,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/stack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stack source, generated compose file, and service states */
+        get: operations["get_v1_services__id__stack"];
+        /** Replace the stack source */
+        put: operations["put_v1_services__id__stack"];
+        post?: never;
+        /** Stop and delete a stack; ?volumes=true also removes named volumes */
+        delete: operations["delete_v1_services__id__stack"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/stack/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Logs of one compose service (?service=&tail=) */
+        get: operations["get_v1_services__id__stack_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/stack/{action}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run up, down, restart, or pull in the background */
+        post: operations["post_v1_services__id__stack__action_"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/start": {
         parameters: {
             query?: never;
@@ -785,6 +872,40 @@ export interface paths {
         };
         /** Setup status */
         get: operations["get_v1_setup_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** App template gallery */
+        get: operations["get_v1_templates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One template with its compose file */
+        get: operations["get_v1_templates__slug_"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1010,6 +1131,8 @@ export interface components {
             basic_auth_user?: string | null;
             /** Format: uuid */
             certificate_id?: string | null;
+            /** @description Required for compose stacks unless the stack has a main service. */
+            compose_service?: string | null;
             host: string;
             https_redirect?: boolean | null;
             path_prefix?: string | null;
@@ -1052,6 +1175,19 @@ export interface components {
             server_id: string;
             spec?: unknown;
         };
+        CreateStack: {
+            compose_yaml?: string | null;
+            git?: components["schemas"]["StackGit"] | null;
+            /** @description Compose service new domains point at by default. */
+            main_service?: string | null;
+            name: string;
+            /** Format: uuid */
+            server_id: string;
+            /** @description `inline` (paste YAML) or `git`. */
+            source: string;
+            /** @description Run `docker compose up` right away. Defaults to false. */
+            start?: boolean | null;
+        };
         CreateToken: {
             /** Format: date-time */
             expires_at?: string | null;
@@ -1091,6 +1227,16 @@ export interface components {
             registry_id?: string | null;
             watch_tag?: boolean | null;
         };
+        DeployTemplate: {
+            name: string;
+            /** Format: uuid */
+            server_id: string;
+            /** @description Run `docker compose up` right away. Defaults to true. */
+            start?: boolean | null;
+            values?: {
+                [key: string]: string;
+            };
+        };
         DeploymentView: {
             /** Format: date-time */
             created_at: string;
@@ -1126,6 +1272,8 @@ export interface components {
             cache_enabled: boolean;
             /** Format: uuid */
             certificate_id?: string | null;
+            /** @description Compose service inside a stack that receives the traffic. */
+            compose_service?: string | null;
             host: string;
             https_redirect: boolean;
             /** Format: uuid */
@@ -1170,6 +1318,10 @@ export interface components {
             service_id?: string | null;
             severity: string;
             title: string;
+        };
+        GeneratedValue: {
+            key: string;
+            value: string;
         };
         GitProviderView: {
             /** Format: date-time */
@@ -1355,6 +1507,78 @@ export interface components {
             strategy: string;
             webhook_secret?: string | null;
         };
+        StackGit: {
+            branch: string;
+            /** @description Path of the compose file inside the repository. */
+            compose_file: string;
+            /** Format: uuid */
+            provider_id: string;
+            repo: string;
+        };
+        StackLogsView: {
+            logs: string;
+            service: string;
+        };
+        StackServiceView: {
+            container: string;
+            image?: string | null;
+            name: string;
+            routed: boolean;
+            /** @description Null when the server cannot be reached. */
+            running?: boolean | null;
+        };
+        StackView: {
+            compose_path: string;
+            compose_yaml: string;
+            /** @description The file Rudder runs: project name, labels, and proxy network applied. */
+            generated_yaml: string;
+            git?: components["schemas"]["StackGit"] | null;
+            main_service?: string | null;
+            /** @description Referenced variables with no value under Environment. */
+            missing_variables: string[];
+            project: string;
+            service: components["schemas"]["ServiceView"];
+            services: components["schemas"]["StackServiceView"][];
+            source: string;
+            template?: string | null;
+            /** @description `${NAME}` references in the compose file. */
+            variables: string[];
+            warnings: string[];
+        };
+        TemplateDeployed: {
+            deployment?: components["schemas"]["DeploymentView"] | null;
+            domain?: string | null;
+            /** @description Secrets generated for empty fields. Shown once; they are stored encrypted. */
+            generated: components["schemas"]["GeneratedValue"][];
+            service: components["schemas"]["ServiceView"];
+        };
+        TemplateDetail: components["schemas"]["TemplateView"] & {
+            compose: string;
+        };
+        TemplateVariableView: {
+            default?: string | null;
+            description: string;
+            /** @description domain, string, email, secret, number, or boolean. */
+            kind: string;
+            label: string;
+            name: string;
+            required: boolean;
+        };
+        TemplateView: {
+            category: string;
+            description: string;
+            images: string[];
+            main_service: string;
+            name: string;
+            notes: string;
+            /** Format: int32 */
+            port: number;
+            services: string[];
+            slug: string;
+            tags: string[];
+            variables: components["schemas"]["TemplateVariableView"][];
+            website: string;
+        };
         TestResult: {
             message: string;
             ok: boolean;
@@ -1431,6 +1655,12 @@ export interface components {
             publish_dir?: string | null;
             repo: string;
             strategy: string;
+        };
+        UpdateStack: {
+            compose_yaml?: string | null;
+            git?: components["schemas"]["StackGit"] | null;
+            main_service?: string | null;
+            source: string;
         };
         UpdateUser: {
             role: string;
@@ -1832,6 +2062,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceView"];
+                };
+            };
+        };
+    };
+    post_v1_environments__id__stacks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateStack"];
+            };
+        };
+        responses: {
+            /** @description Create a compose stack from YAML or Git */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackView"];
+                };
+            };
+        };
+    };
+    post_v1_environments__id__templates__slug__deploy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DeployTemplate"];
+            };
+        };
+        responses: {
+            /** @description Deploy a template as a stack */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDeployed"];
                 };
             };
         };
@@ -2490,6 +2768,108 @@ export interface operations {
             };
         };
     };
+    get_v1_services__id__stack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stack source, generated compose file, and service states */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackView"];
+                };
+            };
+        };
+    };
+    put_v1_services__id__stack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateStack"];
+            };
+        };
+        responses: {
+            /** @description Replace the stack source */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackView"];
+                };
+            };
+        };
+    };
+    delete_v1_services__id__stack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stop and delete a stack; ?volumes=true also removes named volumes */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_v1_services__id__stack_logs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logs of one compose service (?service=&tail=) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackLogsView"];
+                };
+            };
+        };
+    };
+    post_v1_services__id__stack__action_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Run up, down, restart, or pull in the background */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentView"];
+                };
+            };
+        };
+    };
     post_v1_services__id__start: {
         parameters: {
             query?: never;
@@ -2588,6 +2968,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SetupStatus"];
+                };
+            };
+        };
+    };
+    get_v1_templates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description App template gallery */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateView"];
+                };
+            };
+        };
+    };
+    get_v1_templates__slug_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One template with its compose file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDetail"];
                 };
             };
         };

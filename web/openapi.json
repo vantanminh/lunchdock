@@ -415,6 +415,66 @@
         }
       }
     },
+    "/api/v1/environments/{id}/stacks": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Create a compose stack from YAML or Git",
+        "operationId": "post_v1_environments__id__stacks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStack"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a compose stack from YAML or Git",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/environments/{id}/templates/{slug}/deploy": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Deploy a template as a stack",
+        "operationId": "post_v1_environments__id__templates__slug__deploy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeployTemplate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Deploy a template as a stack",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDeployed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/events": {
       "get": {
         "tags": [
@@ -1141,6 +1201,109 @@
         }
       }
     },
+    "/api/v1/services/{id}/stack": {
+      "get": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Stack source, generated compose file, and service states",
+        "operationId": "get_v1_services__id__stack",
+        "responses": {
+          "200": {
+            "description": "Stack source, generated compose file, and service states",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Replace the stack source",
+        "operationId": "put_v1_services__id__stack",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStack"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replace the stack source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Stop and delete a stack; ?volumes=true also removes named volumes",
+        "operationId": "delete_v1_services__id__stack",
+        "responses": {
+          "204": {
+            "description": "Stop and delete a stack; ?volumes=true also removes named volumes"
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/stack/logs": {
+      "get": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Logs of one compose service (?service=&tail=)",
+        "operationId": "get_v1_services__id__stack_logs",
+        "responses": {
+          "200": {
+            "description": "Logs of one compose service (?service=&tail=)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackLogsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/stack/{action}": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Run up, down, restart, or pull in the background",
+        "operationId": "post_v1_services__id__stack__action_",
+        "responses": {
+          "202": {
+            "description": "Run up, down, restart, or pull in the background",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/start": {
       "post": {
         "tags": [
@@ -1241,6 +1404,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SetupStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/templates": {
+      "get": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "App template gallery",
+        "operationId": "get_v1_templates",
+        "responses": {
+          "200": {
+            "description": "App template gallery",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/templates/{slug}": {
+      "get": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "One template with its compose file",
+        "operationId": "get_v1_templates__slug_",
+        "responses": {
+          "200": {
+            "description": "One template with its compose file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDetail"
                 }
               }
             }
@@ -1914,6 +2119,13 @@
             ],
             "format": "uuid"
           },
+          "compose_service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Required for compose stacks unless the stack has a main service."
+          },
           "host": {
             "type": "string"
           },
@@ -2086,6 +2298,57 @@
           "spec": {}
         }
       },
+      "CreateStack": {
+        "type": "object",
+        "required": [
+          "name",
+          "server_id",
+          "source"
+        ],
+        "properties": {
+          "compose_yaml": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "git": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StackGit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "main_service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Compose service new domains point at by default."
+          },
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string",
+            "description": "`inline` (paste YAML) or `git`."
+          },
+          "start": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Run `docker compose up` right away. Defaults to false."
+          }
+        }
+      },
       "CreateToken": {
         "type": "object",
         "required": [
@@ -2246,6 +2509,38 @@
           }
         }
       },
+      "DeployTemplate": {
+        "type": "object",
+        "required": [
+          "name",
+          "server_id"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Run `docker compose up` right away. Defaults to true."
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "DeploymentView": {
         "type": "object",
         "required": [
@@ -2380,6 +2675,13 @@
               "null"
             ],
             "format": "uuid"
+          },
+          "compose_service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Compose service inside a stack that receives the traffic."
           },
           "host": {
             "type": "string"
@@ -2518,6 +2820,21 @@
             "type": "string"
           },
           "title": {
+            "type": "string"
+          }
+        }
+      },
+      "GeneratedValue": {
+        "type": "object",
+        "required": [
+          "key",
+          "value"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
             "type": "string"
           }
         }
@@ -3216,6 +3533,318 @@
           }
         }
       },
+      "StackGit": {
+        "type": "object",
+        "required": [
+          "provider_id",
+          "repo",
+          "branch",
+          "compose_file"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "compose_file": {
+            "type": "string",
+            "description": "Path of the compose file inside the repository."
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "repo": {
+            "type": "string"
+          }
+        }
+      },
+      "StackLogsView": {
+        "type": "object",
+        "required": [
+          "service",
+          "logs"
+        ],
+        "properties": {
+          "logs": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          }
+        }
+      },
+      "StackServiceView": {
+        "type": "object",
+        "required": [
+          "name",
+          "container",
+          "routed"
+        ],
+        "properties": {
+          "container": {
+            "type": "string"
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "routed": {
+            "type": "boolean"
+          },
+          "running": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Null when the server cannot be reached."
+          }
+        }
+      },
+      "StackView": {
+        "type": "object",
+        "required": [
+          "service",
+          "project",
+          "source",
+          "compose_yaml",
+          "generated_yaml",
+          "compose_path",
+          "services",
+          "warnings",
+          "variables",
+          "missing_variables"
+        ],
+        "properties": {
+          "compose_path": {
+            "type": "string"
+          },
+          "compose_yaml": {
+            "type": "string"
+          },
+          "generated_yaml": {
+            "type": "string",
+            "description": "The file Rudder runs: project name, labels, and proxy network applied."
+          },
+          "git": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StackGit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "main_service": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "missing_variables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Referenced variables with no value under Environment."
+          },
+          "project": {
+            "type": "string"
+          },
+          "service": {
+            "$ref": "#/components/schemas/ServiceView"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackServiceView"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "template": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "`${NAME}` references in the compose file."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TemplateDeployed": {
+        "type": "object",
+        "required": [
+          "service",
+          "generated"
+        ],
+        "properties": {
+          "deployment": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DeploymentView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "generated": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeneratedValue"
+            },
+            "description": "Secrets generated for empty fields. Shown once; they are stored encrypted."
+          },
+          "service": {
+            "$ref": "#/components/schemas/ServiceView"
+          }
+        }
+      },
+      "TemplateDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TemplateView"
+          },
+          {
+            "type": "object",
+            "required": [
+              "compose"
+            ],
+            "properties": {
+              "compose": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "TemplateVariableView": {
+        "type": "object",
+        "required": [
+          "name",
+          "label",
+          "description",
+          "kind",
+          "required"
+        ],
+        "properties": {
+          "default": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "domain, string, email, secret, number, or boolean."
+          },
+          "label": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TemplateView": {
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "description",
+          "category",
+          "tags",
+          "website",
+          "main_service",
+          "port",
+          "notes",
+          "variables",
+          "services",
+          "images"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "main_service": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "slug": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateVariableView"
+            }
+          },
+          "website": {
+            "type": "string"
+          }
+        }
+      },
       "TestResult": {
         "type": "object",
         "required": [
@@ -3522,6 +4151,39 @@
           }
         }
       },
+      "UpdateStack": {
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "compose_yaml": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "git": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StackGit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "main_service": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      },
       "UpdateUser": {
         "type": "object",
         "required": [
@@ -3624,6 +4286,10 @@
     {
       "name": "backups",
       "description": "S3 destinations, backup jobs, runs, and restores"
+    },
+    {
+      "name": "stacks",
+      "description": "Docker Compose stacks and app templates"
     }
   ]
 }

@@ -15,6 +15,7 @@ import { RegistriesPage } from "./pages/RegistriesPage";
 import { S3DestinationsPage } from "./pages/S3DestinationsPage";
 import { ServersPage } from "./pages/ServersPage";
 import { ServicePage } from "./pages/ServicePage";
+import { TemplatesPage } from "./pages/TemplatesPage";
 import { LoginPage, SetupPage } from "./pages/AuthPages";
 import { TokensPage } from "./pages/TokensPage";
 import { UsersPage } from "./pages/UsersPage";
@@ -49,6 +50,7 @@ function AppRoutes() {
         <Route path="servers" element={<ServersPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="services/:id" element={<ServicePage />} />
+        <Route path="templates" element={<TemplatesPage />} />
         <Route path="backups" element={<BackupsPage />} />
         <Route path="s3-destinations" element={<S3DestinationsPage />} />
         <Route path="certificates" element={<CertificatesPage />} />

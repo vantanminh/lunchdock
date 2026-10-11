@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { BackupJobForm, BackupJobs } from "../components/backups";
 import { DatabasePanel, ServiceLogs } from "../components/DatabasePanel";
+import { StackLogs, StackOverview, StackSourceEditor, useStack } from "../components/stacks";
 import { Badge, Button, Card, Empty, Field, Tabs, TextInput } from "../components/ui";
 import { errorMessage } from "../format";
 import type { Schemas } from "../types";
@@ -44,6 +45,7 @@ interface Domain {
   host: string;
   path_prefix: string;
   ssl_mode: string;
+  compose_service: string | null;
   matched_certificate_name: string | null;
   is_preview: boolean;
   published: boolean;
@@ -118,6 +120,10 @@ export function ServicePage() {
   const [branch, setBranch] = useState("main");
   const [strategy, setStrategy] = useState("dockerfile");
   const [tab, setTab] = useState<Tab>("general");
+  const [composeService, setComposeService] = useState("");
+  const isStack = service.data?.kind === "compose";
+  const stack = useStack(id, isStack);
+  const stackServices = isStack ? (stack.data?.services ?? []).map((item) => item.name) : [];
   const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string | null>(null);
 
@@ -179,6 +185,7 @@ export function ServicePage() {
           host,
           target_port: Number(port),
           ssl_mode: sslMode,
+          compose_service: isStack ? composeService || undefined : undefined,
         }),
       }),
     onSuccess: async () => {
@@ -253,6 +260,8 @@ export function ServicePage() {
       {tab === "general" && current ? (
         current.kind === "database" ? (
           <DatabasePanel service={current as unknown as Schemas["ServiceView"]} />
+        ) : current.kind === "compose" ? (
+          <StackOverview serviceId={id} />
         ) : (
           <>
             <Card title="Deploy image">
@@ -286,7 +295,8 @@ export function ServicePage() {
           </>
         )
       ) : null}
-      {tab === "source" ? (
+      {tab === "source" && isStack ? <StackSourceEditor serviceId={id} /> : null}
+      {tab === "source" && !isStack ? (
         <>
           <Card title="Git source">
             <form
@@ -376,6 +386,24 @@ export function ServicePage() {
               <Field label="Port">
                 <TextInput value={port} onChange={(event) => setPort(event.target.value)} />
               </Field>
+              {isStack ? (
+                <Field label="Compose service">
+                  <select
+                    className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
+                    value={composeService}
+                    onChange={(event) => setComposeService(event.target.value)}
+                  >
+                    <option value="">
+                      Main service{stack.data?.main_service ? ` (${stack.data.main_service})` : ""}
+                    </option>
+                    {stackServices.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
               <Field label="SSL">
                 <select
                   className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
@@ -402,6 +430,7 @@ export function ServicePage() {
                 <li key={domain.id}>
                   {domain.host}
                   {domain.path_prefix !== "/" ? domain.path_prefix : ""} · {domain.ssl_mode}
+                  {domain.compose_service ? ` · → ${domain.compose_service}` : ""}
                   {domain.matched_certificate_name
                     ? ` · cert ${domain.matched_certificate_name}`
                     : ""}
@@ -429,7 +458,7 @@ export function ServicePage() {
                       {deployment.logs}
                     </pre>
                   ) : null}
-                  {deployment.status === "succeeded" ? (
+                  {deployment.status === "succeeded" && !isStack ? (
                     <Button quiet className="mt-2" onClick={() => rollback.mutate(deployment.id)}>
                       Roll back
                     </Button>
@@ -443,7 +472,13 @@ export function ServicePage() {
           </Card>
         </>
       ) : null}
-      {tab === "logs" ? <ServiceLogs serviceId={id} /> : null}
+      {tab === "logs" ? (
+        isStack ? (
+          <StackLogs serviceId={id} />
+        ) : (
+          <ServiceLogs serviceId={id} />
+        )
+      ) : null}
       {tab === "backups" && current ? (
         <>
           <Card title="Backup jobs">

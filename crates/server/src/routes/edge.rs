@@ -64,6 +64,8 @@ pub struct DomainView {
     pub cache_enabled: bool,
     pub is_preview: bool,
     pub published: bool,
+    /// Compose service inside a stack that receives the traffic.
+    pub compose_service: Option<String>,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -76,6 +78,8 @@ pub struct CreateDomain {
     pub certificate_id: Option<Uuid>,
     pub basic_auth_user: Option<String>,
     pub basic_auth_password: Option<String>,
+    /// Required for compose stacks unless the stack has a main service.
+    pub compose_service: Option<String>,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -171,6 +175,7 @@ struct DomainRow {
     basic_auth_user: Option<String>,
     cache_enabled: bool,
     is_preview: bool,
+    compose_service: Option<String>,
 }
 
 struct RegistryRow {
@@ -352,16 +357,18 @@ async fn create_domain(
     if let Some(certificate_id) = body.certificate_id {
         let _ = load_certificate(&state, certificate_id).await?;
     }
+    let compose_service =
+        crate::stacks::domain_target(&state, service_id, body.compose_service.as_deref()).await?;
     let inserted = sqlx::query_as!(
         DomainRow,
         r#"
         INSERT INTO domains (
             service_id, host, path_prefix, target_port, https_redirect, ssl_mode, certificate_id,
-            basic_auth_user, basic_auth_hash
+            basic_auth_user, basic_auth_hash, compose_service
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,
-                  certificate_id, basic_auth_user, cache_enabled, is_preview
+                  certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service
         "#,
         service_id,
         domain.host,
@@ -372,6 +379,7 @@ async fn create_domain(
         body.certificate_id,
         body.basic_auth_user,
         hash,
+        compose_service,
     )
     .fetch_one(&state.pool)
     .await;
@@ -396,6 +404,7 @@ async fn create_domain(
         None,
     )
     .await;
+    crate::stacks::refresh_network_later(&state, service_id);
     let published = publish::publish_server(&state, server_id).await?;
     let certs = load_certificates(&state).await?;
     Ok((
@@ -419,19 +428,22 @@ async fn create_preview(
     if !(1..=65535).contains(&port) {
         return Err(bad("invalid", "target port must be between 1 and 65535"));
     }
+    let compose_service = crate::stacks::domain_target(&state, service_id, None).await?;
     let inserted = sqlx::query_as!(
         DomainRow,
         r#"
         INSERT INTO domains (
-            service_id, host, path_prefix, target_port, https_redirect, ssl_mode, is_preview
+            service_id, host, path_prefix, target_port, https_redirect, ssl_mode, is_preview,
+            compose_service
         )
-        VALUES ($1, $2, '/', $3, TRUE, 'letsencrypt', TRUE)
+        VALUES ($1, $2, '/', $3, TRUE, 'letsencrypt', TRUE, $4)
         RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,
-                  certificate_id, basic_auth_user, cache_enabled, is_preview
+                  certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service
         "#,
         service_id,
         host,
         port,
+        compose_service,
     )
     .fetch_one(&state.pool)
     .await;
@@ -498,7 +510,7 @@ async fn update_domain(
                 certificate_id = $7, basic_auth_user = $8, basic_auth_hash = $9
             WHERE id = $1
             RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,
-                      certificate_id, basic_auth_user, cache_enabled, is_preview
+                      certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service
             "#,
             id,
             normalized.host,
@@ -521,7 +533,7 @@ async fn update_domain(
                 certificate_id = $7, basic_auth_user = COALESCE($8, basic_auth_user)
             WHERE id = $1
             RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,
-                      certificate_id, basic_auth_user, cache_enabled, is_preview
+                      certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service
             "#,
             id,
             normalized.host,
@@ -1024,7 +1036,7 @@ async fn domain_rows(state: &AppState, service_id: Uuid) -> Result<Vec<DomainRow
         DomainRow,
         r#"
         SELECT id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,
-               certificate_id, basic_auth_user, cache_enabled, is_preview
+               certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service
         FROM domains
         WHERE service_id = $1
         ORDER BY host, path_prefix
@@ -1041,7 +1053,7 @@ async fn load_domain(state: &AppState, id: Uuid) -> Result<DomainRow, ApiError> 
         DomainRow,
         r#"
         SELECT id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,
-               certificate_id, basic_auth_user, cache_enabled, is_preview
+               certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service
         FROM domains
         WHERE id = $1
         "#,
@@ -1085,6 +1097,7 @@ fn domain_view(row: DomainRow, certs: &[CertificateRow], published: bool) -> Dom
         cache_enabled: row.cache_enabled,
         is_preview: row.is_preview,
         published,
+        compose_service: row.compose_service,
     }
 }
 

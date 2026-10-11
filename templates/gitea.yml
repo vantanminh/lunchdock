@@ -1,0 +1,48 @@
+slug: gitea
+name: Gitea
+description: Lightweight Git hosting with pull requests, issues, packages, and Actions.
+category: Development
+tags: [git, code, ci, forge]
+website: https://about.gitea.com
+main_service: gitea
+port: 3000
+notes: The install page appears on first visit with the database already filled in. SSH clone is not routed; use HTTPS.
+variables:
+  - name: DOMAIN
+    label: Domain
+    kind: domain
+  - name: DB_PASSWORD
+    label: Database password
+    kind: secret
+compose: |
+  services:
+    gitea:
+      image: gitea/gitea:1.22
+      restart: unless-stopped
+      environment:
+        USER_UID: "1000"
+        USER_GID: "1000"
+        GITEA__database__DB_TYPE: postgres
+        GITEA__database__HOST: db:5432
+        GITEA__database__NAME: gitea
+        GITEA__database__USER: gitea
+        GITEA__database__PASSWD: ${DB_PASSWORD}
+        GITEA__server__DOMAIN: ${DOMAIN}
+        GITEA__server__SSH_DOMAIN: ${DOMAIN}
+        GITEA__server__ROOT_URL: https://${DOMAIN}/
+      volumes:
+        - gitea_data:/data
+      depends_on:
+        - db
+    db:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        POSTGRES_USER: gitea
+        POSTGRES_PASSWORD: ${DB_PASSWORD}
+        POSTGRES_DB: gitea
+      volumes:
+        - gitea_db:/var/lib/postgresql/data
+  volumes:
+    gitea_data: {}
+    gitea_db: {}

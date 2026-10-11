@@ -1144,7 +1144,10 @@ async fn mark_failed(
     }
 }
 
-async fn load_deployment(state: &AppState, id: Uuid) -> Result<DeploymentView, ApiError> {
+pub(crate) async fn load_deployment(
+    state: &AppState,
+    id: Uuid,
+) -> Result<DeploymentView, ApiError> {
     let row = sqlx::query_as!(
         DeploymentRow,
         r#"

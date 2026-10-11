@@ -1,0 +1,42 @@
+slug: umami
+name: Umami
+description: Simple, privacy-focused web analytics without cookies.
+category: Analytics
+tags: [analytics, privacy, web]
+website: https://umami.is
+main_service: umami
+port: 3000
+notes: Sign in with admin / umami and change the password right away.
+variables:
+  - name: DOMAIN
+    label: Domain
+    kind: domain
+  - name: DB_PASSWORD
+    label: Database password
+    kind: secret
+  - name: APP_SECRET
+    label: App secret
+    kind: secret
+    length: 48
+compose: |
+  services:
+    umami:
+      image: ghcr.io/umami-software/umami:postgresql-latest
+      restart: unless-stopped
+      environment:
+        DATABASE_URL: postgresql://umami:${DB_PASSWORD}@db:5432/umami
+        DATABASE_TYPE: postgresql
+        APP_SECRET: ${APP_SECRET}
+      depends_on:
+        - db
+    db:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        POSTGRES_USER: umami
+        POSTGRES_PASSWORD: ${DB_PASSWORD}
+        POSTGRES_DB: umami
+      volumes:
+        - umami_db:/var/lib/postgresql/data
+  volumes:
+    umami_db: {}

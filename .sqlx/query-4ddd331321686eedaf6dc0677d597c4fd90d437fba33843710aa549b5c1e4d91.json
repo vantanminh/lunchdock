@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH old AS (\n            SELECT id, status FROM services WHERE id = $1 AND kind = 'compose' FOR UPDATE\n        )\n        UPDATE services s\n        SET status = 'deploying', updated_at = now()\n        FROM old\n        WHERE s.id = old.id AND old.status <> 'deploying'\n        RETURNING old.status\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4ddd331321686eedaf6dc0677d597c4fd90d437fba33843710aa549b5c1e4d91"
+}

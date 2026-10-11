@@ -404,7 +404,7 @@ async fn execute_local(
         state,
         service_id,
         &provider,
-        source,
+        &source.repo,
         &workspace,
         &mut env,
         &mut secrets,
@@ -495,6 +495,65 @@ async fn execute_local(
     .await
     .map_err(|error| error.to_string())?;
     Ok(())
+}
+
+/// Clone `repo` into `dest`, or fast-forward an existing checkout with
+/// `fetch` + `reset --hard` so untracked files (bind-mounted data) survive.
+/// Credentials live in a temporary directory that is removed afterwards.
+pub(crate) async fn sync_repo(
+    state: &AppState,
+    service_id: Uuid,
+    provider_id: Uuid,
+    repo: &str,
+    branch: &str,
+    dest: &Path,
+) -> Result<String, String> {
+    let dest_text = dest
+        .to_str()
+        .filter(|path| path_is_safe(path))
+        .ok_or_else(|| "data directory path cannot be used for a checkout".to_string())?;
+    let clone = git_clone_argv(branch, repo, dest_text).map_err(|error| error.to_string())?;
+    let provider = load_provider(state, provider_id).await?;
+    let scratch = state
+        .config
+        .data_dir
+        .join("builds")
+        .join(format!("sync-{}", Uuid::new_v4().simple()));
+    std::fs::create_dir_all(&scratch)
+        .map_err(|_| "could not create the checkout directory".to_string())?;
+    let _cleanup = CleanDir(scratch.clone());
+    let mut env = Vec::new();
+    let mut secrets = Vec::new();
+    prepare_auth(
+        state,
+        service_id,
+        &provider,
+        repo,
+        &scratch,
+        &mut env,
+        &mut secrets,
+    )
+    .await?;
+    let secret_refs: Vec<&str> = secrets.iter().map(String::as_str).collect();
+    let timeout = Duration::from_secs(120);
+    if dest.join(".git").is_dir() {
+        let fetch: Vec<String> = ["git", "fetch", "--depth", "1", repo, branch]
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+        let mut log = run_command(&fetch, dest, &env, &secret_refs, timeout).await?;
+        let reset: Vec<String> = ["git", "reset", "--hard", "FETCH_HEAD"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+        log.push_str(&run_command(&reset, dest, &[], &secret_refs, timeout).await?);
+        return Ok(log);
+    }
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|_| "could not create the checkout directory".to_string())?;
+    }
+    run_command(&clone, &scratch, &env, &secret_refs, timeout).await
 }
 
 fn parse_source(spec: &Value) -> Result<GitSource, String> {
@@ -612,12 +671,12 @@ async fn prepare_auth(
     state: &AppState,
     service_id: Uuid,
     provider: &ProviderSecret,
-    source: &GitSource,
+    repo: &str,
     workspace: &Path,
     env: &mut Vec<(String, String)>,
     secrets: &mut Vec<String>,
 ) -> Result<(), String> {
-    let ssh = source.repo.starts_with("git@") || source.repo.starts_with("ssh://");
+    let ssh = repo.starts_with("git@") || repo.starts_with("ssh://");
     if ssh {
         let key = load_private_key(state, service_id).await?;
         secrets.push(key.clone());
@@ -627,7 +686,7 @@ async fn prepare_auth(
         env.push(("GIT_SSH_COMMAND".into(), command));
         return Ok(());
     }
-    if !source.repo.starts_with("https://") {
+    if !repo.starts_with("https://") {
         return Ok(());
     }
     let token = match provider.kind.as_str() {
@@ -652,8 +711,7 @@ async fn prepare_auth(
     } else {
         "x-access-token"
     };
-    let host = source
-        .repo
+    let host = repo
         .strip_prefix("https://")
         .and_then(|rest| rest.split('/').next())
         .filter(|host| !host.is_empty())

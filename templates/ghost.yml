@@ -1,0 +1,48 @@
+slug: ghost
+name: Ghost
+description: Publishing platform for blogs and newsletters.
+category: CMS
+tags: [blog, cms, newsletter, publishing]
+website: https://ghost.org
+main_service: ghost
+port: 2368
+notes: Finish setup at /ghost. Email sending needs SMTP settings added under Environment.
+variables:
+  - name: DOMAIN
+    label: Domain
+    kind: domain
+  - name: DB_PASSWORD
+    label: Database password
+    kind: secret
+  - name: DB_ROOT_PASSWORD
+    label: Database root password
+    kind: secret
+compose: |
+  services:
+    ghost:
+      image: ghost:5-alpine
+      restart: unless-stopped
+      environment:
+        url: https://${DOMAIN}
+        database__client: mysql
+        database__connection__host: db
+        database__connection__user: ghost
+        database__connection__password: ${DB_PASSWORD}
+        database__connection__database: ghost
+      volumes:
+        - ghost_content:/var/lib/ghost/content
+      depends_on:
+        - db
+    db:
+      image: mysql:8.0
+      restart: unless-stopped
+      environment:
+        MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+        MYSQL_DATABASE: ghost
+        MYSQL_USER: ghost
+        MYSQL_PASSWORD: ${DB_PASSWORD}
+      volumes:
+        - ghost_db:/var/lib/mysql
+  volumes:
+    ghost_content: {}
+    ghost_db: {}

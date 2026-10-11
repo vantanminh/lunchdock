@@ -5,3 +5,4 @@ pub mod databases;
 pub mod edge;
 pub mod git;
 pub mod health;
+pub mod stacks;

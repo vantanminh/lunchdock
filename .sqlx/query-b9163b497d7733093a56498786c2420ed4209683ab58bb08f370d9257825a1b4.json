@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO domains (\n            service_id, host, path_prefix, target_port, https_redirect, ssl_mode, certificate_id,\n            basic_auth_user, basic_auth_hash\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n        RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,\n                  certificate_id, basic_auth_user, cache_enabled, is_preview\n        ",
+  "query": "\n        INSERT INTO domains (\n            service_id, host, path_prefix, target_port, https_redirect, ssl_mode, is_preview,\n            compose_service\n        )\n        VALUES ($1, $2, '/', $3, TRUE, 'letsencrypt', TRUE, $4)\n        RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,\n                  certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service\n        ",
   "describe": {
     "columns": [
       {
@@ -57,18 +57,18 @@
         "ordinal": 10,
         "name": "is_preview",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "compose_service",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
         "Text",
-        "Text",
         "Int4",
-        "Bool",
-        "Text",
-        "Uuid",
-        "Text",
         "Text"
       ]
     },
@@ -83,8 +83,9 @@
       true,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "584de09b76c5ac85a4314ab061a2135cb1a2615359550c6a7fbdfaefa7bc5943"
+  "hash": "b9163b497d7733093a56498786c2420ed4209683ab58bb08f370d9257825a1b4"
 }

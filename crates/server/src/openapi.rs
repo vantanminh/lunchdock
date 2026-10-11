@@ -31,6 +31,11 @@ use crate::routes::git::{
     BuildAccepted, BuildQueueView, CreateGitProvider, GitProviderView, SourceView, UpdateSource,
 };
 use crate::routes::health::HealthResponse;
+use crate::routes::stacks::{
+    CreateStack, DeployTemplate, GeneratedValue, StackLogsView, StackServiceView, StackView,
+    TemplateDeployed, TemplateDetail, TemplateVariableView, TemplateView, UpdateStack,
+};
+use crate::stacks::StackGit;
 
 #[derive(OpenApiDerive)]
 #[openapi(
@@ -101,7 +106,19 @@ use crate::routes::health::HealthResponse;
         BackupRunView,
         RunAccepted,
         RestoreRequest,
-        EventView
+        EventView,
+        StackGit,
+        CreateStack,
+        UpdateStack,
+        StackServiceView,
+        StackView,
+        StackLogsView,
+        TemplateVariableView,
+        TemplateView,
+        TemplateDetail,
+        DeployTemplate,
+        GeneratedValue,
+        TemplateDeployed
     )),
     modifiers(&SecurityAddon),
     tags(
@@ -111,7 +128,8 @@ use crate::routes::health::HealthResponse;
         (name = "edge", description = "Domains, certificates, registries, and image deploys"),
         (name = "source", description = "Git providers, webhooks, and builds"),
         (name = "databases", description = "Managed databases and their lifecycle"),
-        (name = "backups", description = "S3 destinations, backup jobs, runs, and restores")
+        (name = "backups", description = "S3 destinations, backup jobs, runs, and restores"),
+        (name = "stacks", description = "Docker Compose stacks and app templates")
     )
 )]
 struct ApiDoc;
@@ -697,6 +715,87 @@ const ROUTES: &[Route] = &[
         request: None,
         response: None,
         status: 200,
+    },
+    Route {
+        path: "/api/v1/environments/{id}/stacks",
+        method: HttpMethod::Post,
+        tag: "stacks",
+        summary: "Create a compose stack from YAML or Git",
+        request: Some("CreateStack"),
+        response: Some("StackView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/services/{id}/stack",
+        method: HttpMethod::Get,
+        tag: "stacks",
+        summary: "Stack source, generated compose file, and service states",
+        request: None,
+        response: Some("StackView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/stack",
+        method: HttpMethod::Put,
+        tag: "stacks",
+        summary: "Replace the stack source",
+        request: Some("UpdateStack"),
+        response: Some("StackView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/stack",
+        method: HttpMethod::Delete,
+        tag: "stacks",
+        summary: "Stop and delete a stack; ?volumes=true also removes named volumes",
+        request: None,
+        response: None,
+        status: 204,
+    },
+    Route {
+        path: "/api/v1/services/{id}/stack/{action}",
+        method: HttpMethod::Post,
+        tag: "stacks",
+        summary: "Run up, down, restart, or pull in the background",
+        request: None,
+        response: Some("DeploymentView"),
+        status: 202,
+    },
+    Route {
+        path: "/api/v1/services/{id}/stack/logs",
+        method: HttpMethod::Get,
+        tag: "stacks",
+        summary: "Logs of one compose service (?service=&tail=)",
+        request: None,
+        response: Some("StackLogsView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/templates",
+        method: HttpMethod::Get,
+        tag: "stacks",
+        summary: "App template gallery",
+        request: None,
+        response: Some("TemplateView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/templates/{slug}",
+        method: HttpMethod::Get,
+        tag: "stacks",
+        summary: "One template with its compose file",
+        request: None,
+        response: Some("TemplateDetail"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/environments/{id}/templates/{slug}/deploy",
+        method: HttpMethod::Post,
+        tag: "stacks",
+        summary: "Deploy a template as a stack",
+        request: Some("DeployTemplate"),
+        response: Some("TemplateDeployed"),
+        status: 201,
     },
 ];
 

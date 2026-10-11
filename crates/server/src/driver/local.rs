@@ -32,6 +32,7 @@ pub const HELPER_IMAGE: &str = "alpine:3.20";
 pub struct LocalDriver {
     docker: Option<Docker>,
     root: PathBuf,
+    socket: Option<PathBuf>,
 }
 
 impl LocalDriver {
@@ -56,6 +57,7 @@ impl LocalDriver {
         Self {
             docker,
             root: root.into(),
+            socket: socket.map(std::path::Path::to_path_buf),
         }
     }
 
@@ -335,9 +337,18 @@ impl NodeDriver for LocalDriver {
         file: &str,
         action: ComposeAction,
     ) -> Result<String, Error> {
-        let args = compose_args(project, file, action)?;
-        let output = Command::new("docker")
+        let path = confined_path(&self.root, file)?;
+        let path = path
+            .to_str()
+            .ok_or_else(|| Error::Validation("compose file path is not UTF-8".into()))?;
+        let args = compose_args(project, path, action)?;
+        let mut command = Command::new("docker");
+        if let Some(socket) = &self.socket {
+            command.env("DOCKER_HOST", format!("unix://{}", socket.display()));
+        }
+        let output = command
             .args(&args)
+            .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()

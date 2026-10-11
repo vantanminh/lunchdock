@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE domains\n            SET host = $2, path_prefix = $3, target_port = $4, https_redirect = $5, ssl_mode = $6,\n                certificate_id = $7, basic_auth_user = COALESCE($8, basic_auth_user)\n            WHERE id = $1\n            RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,\n                      certificate_id, basic_auth_user, cache_enabled, is_preview\n            ",
+  "query": "\n        SELECT id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,\n               certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service\n        FROM domains\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -57,18 +57,16 @@
         "ordinal": 10,
         "name": "is_preview",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "compose_service",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Int4",
-        "Bool",
-        "Text",
-        "Uuid",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -82,8 +80,9 @@
       true,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "95512e103d3e039ade4a0016cba0f792c4bd03f2f2ab74b7166ed3f07574b0ce"
+  "hash": "1e320c264e00a1cb7a2164f2266d3f1e49713a651ad5cd5a9c62f1209f09fc1c"
 }

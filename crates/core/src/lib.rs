@@ -17,6 +17,8 @@ mod image_ref;
 mod retention;
 mod rollout;
 mod schedule;
+mod stack;
+mod template;
 mod traefik;
 mod validate;
 mod webhook;
@@ -54,6 +56,11 @@ pub use rollout::{
     retire_container, rollout, HealthKind, HealthSpec, RolloutOutput, RolloutPlan, StartedContainer,
 };
 pub use schedule::{is_due, next_after, parse_timezone, validate_schedule, PRESETS};
+pub use stack::{
+    compose_variables, render_env_file, transform_compose, validate_compose_service, StackPlan,
+    StackService, MAX_COMPOSE_BYTES,
+};
+pub use template::{ResolvedTemplate, Template, TemplateVariable, VariableKind};
 pub use traefik::{
     preview_hostname, render_dynamic_config, validate_host, validate_path_prefix, ProxyRoute,
     TlsMaterial, TlsMode, PROXY_NETWORK, TRAEFIK_CERT_DIR,

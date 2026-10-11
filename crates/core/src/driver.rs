@@ -192,6 +192,7 @@ pub trait NodeDriver: Send + Sync {
     async fn container_logs(&self, id: &str, tail: u32) -> Result<String, Error>;
     async fn exec(&self, id: &str, command: Vec<String>) -> Result<ExecOutput, Error>;
     async fn write_file(&self, relative_path: &str, bytes: &[u8]) -> Result<(), Error>;
+    /// Run `docker compose`. `file` is relative to the node's data directory.
     async fn compose(
         &self,
         project: &str,

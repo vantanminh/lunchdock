@@ -24,6 +24,9 @@ struct RouteRow {
     basic_auth_hash: Option<String>,
     service_name: String,
     container_name: Option<String>,
+    compose_service: Option<String>,
+    stack_container: Option<String>,
+    project: Option<String>,
 }
 
 struct PanelRoute {
@@ -84,6 +87,9 @@ async fn render_for_server(
                d.basic_auth_user,
                d.basic_auth_hash,
                s.name AS service_name,
+               d.compose_service,
+               s.spec -> 'containers' ->> d.compose_service AS "stack_container?",
+               s.spec ->> 'project' AS "project?",
                (
                    SELECT sc.container_name
                    FROM service_containers sc
@@ -145,7 +151,11 @@ async fn render_for_server(
 fn route_from_row(row: RouteRow) -> Result<ProxyRoute, ApiError> {
     let port = u16::try_from(row.target_port)
         .map_err(|_| bad("invalid", "target port is out of range"))?;
-    let container = row.container_name.unwrap_or(row.service_name);
+    let container = match (row.compose_service, row.stack_container, row.project) {
+        (Some(_), Some(container), _) => container,
+        (Some(service), None, Some(project)) => format!("{project}-{service}-1"),
+        _ => row.container_name.unwrap_or(row.service_name),
+    };
     Ok(ProxyRoute {
         name: router_name(row.id),
         host: row.host,

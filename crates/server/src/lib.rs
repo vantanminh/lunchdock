@@ -21,8 +21,10 @@ mod openapi;
 mod publish;
 mod routes;
 mod s3;
+mod stacks;
 mod state;
 pub mod telemetry;
+mod templates;
 
 use anyhow::Context;
 use tokio::net::TcpListener;
@@ -128,6 +130,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::git::router())
         .merge(routes::databases::router())
         .merge(routes::backups::router())
+        .merge(routes::stacks::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),
