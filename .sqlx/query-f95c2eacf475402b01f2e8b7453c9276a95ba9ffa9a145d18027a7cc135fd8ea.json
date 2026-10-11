@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO service_containers (\n            service_id, deployment_id, container_id, container_name, image_ref, generation, state\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, 'running')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f95c2eacf475402b01f2e8b7453c9276a95ba9ffa9a145d18027a7cc135fd8ea"
+}

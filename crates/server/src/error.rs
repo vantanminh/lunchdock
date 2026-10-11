@@ -29,6 +29,10 @@ impl ApiError {
             "database request failed",
         )
     }
+
+    pub fn public_message(&self) -> String {
+        self.message.clone()
+    }
 }
 
 #[derive(Serialize)]

@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, common_name, sans, issuer, not_before, not_after, created_at\n        FROM certificates\n        ORDER BY name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "common_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "sans",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "issuer",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "not_before",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "not_after",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "4392095b5de868ef7e398c38bd78fb3d50226a78a4abf329c96117406a1bcefc"
+}

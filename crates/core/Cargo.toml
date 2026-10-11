@@ -13,6 +13,11 @@ serde.workspace = true
 aes-gcm = "0.11.1"
 rand = "0.10.3"
 async-trait = "0.1.92"
+x509-parser = { version = "0.18.1", features = ["verify"] }
+rsa = { version = "0.9.10", features = ["pem"] }
+p256 = { version = "0.14.0", features = ["pem"] }
+tokio = { workspace = true, features = ["time", "macros", "rt-multi-thread"] }
 
 [dev-dependencies]
+rcgen = "0.14.10"
 serde_json.workspace = true

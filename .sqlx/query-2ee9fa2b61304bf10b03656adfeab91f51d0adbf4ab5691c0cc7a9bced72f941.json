@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE deployments\n        SET status = $2, error = $3, logs = $4, finished_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2ee9fa2b61304bf10b03656adfeab91f51d0adbf4ab5691c0cc7a9bced72f941"
+}

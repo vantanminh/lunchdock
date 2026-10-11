@@ -108,4 +108,17 @@ pub trait NodeDriver: Send + Sync {
         file: &str,
         action: crate::ComposeAction,
     ) -> Result<String, Error>;
+    async fn docker_health(&self, id: &str) -> Result<HealthState, Error>;
+    async fn http_ready(&self, id: &str, port: u16, path: &str) -> Result<bool, Error>;
+    async fn tcp_ready(&self, id: &str, port: u16) -> Result<bool, Error>;
+    async fn image_digest(&self, image: &str) -> Result<String, Error>;
+}
+
+/// Docker HEALTHCHECK state. `None` means the image defines no check.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HealthState {
+    None,
+    Starting,
+    Healthy,
+    Unhealthy,
 }

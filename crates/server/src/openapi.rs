@@ -5,6 +5,7 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::{OpenApi, Ref};
 use utoipa::{Modify, OpenApi as OpenApiDerive};
 
+use crate::deploy::DeploymentView;
 use crate::routes::account::{
     AuditView, CreateToken, CreateUser, CreatedToken, LoginRequest, PasswordChange,
     SessionResponse, SetupRequest, SetupStatus, TokenView, TotpDisable, TotpEnable,
@@ -13,6 +14,10 @@ use crate::routes::account::{
 use crate::routes::catalog::{
     CreateEnvironment, CreateProject, CreateServer, CreateService, EnvVarView, EnvironmentView,
     ProjectView, PutEnvVar, ServerView, ServiceView, UpdateServer, UpdateService,
+};
+use crate::routes::edge::{
+    CertificateView, CreateDomain, CreateRegistry, DeployBody, DomainView, PanelView,
+    PreviewDomain, RegistryView, RollbackBody, UpdateDomain, UpdatePanel, UploadCertificate,
 };
 use crate::routes::health::HealthResponse;
 
@@ -51,12 +56,27 @@ use crate::routes::health::HealthResponse;
         CreateService,
         UpdateService,
         EnvVarView,
-        PutEnvVar
+        PutEnvVar,
+        CertificateView,
+        UploadCertificate,
+        DomainView,
+        CreateDomain,
+        UpdateDomain,
+        PreviewDomain,
+        RegistryView,
+        CreateRegistry,
+        DeployBody,
+        RollbackBody,
+        DeploymentView,
+        PanelView,
+        UpdatePanel
     )),
     modifiers(&SecurityAddon),
     tags(
         (name = "system", description = "Process health"),
-        (name = "auth", description = "Setup, sessions, users, tokens, and audit")
+        (name = "auth", description = "Setup, sessions, users, tokens, and audit"),
+        (name = "catalog", description = "Servers, projects, environments, and services"),
+        (name = "edge", description = "Domains, certificates, registries, and image deploys")
     )
 )]
 struct ApiDoc;
@@ -309,6 +329,69 @@ const ROUTES: &[Route] = &[
         request: Some("PutEnvVar"),
         response: None,
         status: 204,
+    },
+    Route {
+        path: "/api/v1/certificates",
+        method: HttpMethod::Post,
+        tag: "edge",
+        summary: "Upload a certificate",
+        request: Some("UploadCertificate"),
+        response: Some("CertificateView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/certificates/match",
+        method: HttpMethod::Get,
+        tag: "edge",
+        summary: "Find the certificate that matches a host",
+        request: None,
+        response: Some("CertificateView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/domains",
+        method: HttpMethod::Post,
+        tag: "edge",
+        summary: "Attach a domain",
+        request: Some("CreateDomain"),
+        response: Some("DomainView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/registries",
+        method: HttpMethod::Post,
+        tag: "edge",
+        summary: "Save registry credentials",
+        request: Some("CreateRegistry"),
+        response: Some("RegistryView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/services/{id}/deploy",
+        method: HttpMethod::Post,
+        tag: "edge",
+        summary: "Deploy a container image",
+        request: Some("DeployBody"),
+        response: Some("DeploymentView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/rollback",
+        method: HttpMethod::Post,
+        tag: "edge",
+        summary: "Roll back to a successful deployment",
+        request: Some("RollbackBody"),
+        response: Some("DeploymentView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/panel",
+        method: HttpMethod::Patch,
+        tag: "edge",
+        summary: "Set the panel domain",
+        request: Some("UpdatePanel"),
+        response: Some("PanelView"),
+        status: 200,
     },
 ];
 

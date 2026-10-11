@@ -1,0 +1,73 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE certificates\n            SET name = $2, cert_pem_enc = $3, key_pem_enc = $4, chain_pem_enc = $5,\n                common_name = $6, sans = $7, issuer = $8, not_before = $9, not_after = $10,\n                updated_at = now()\n            WHERE id = $1\n            RETURNING id, name, common_name, sans, issuer, not_before, not_after, created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "common_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "sans",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "issuer",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "not_before",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "not_after",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Bytea",
+        "Bytea",
+        "Text",
+        "TextArray",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "36d27cf8a22cc16468e91143f6783b074964df04dfdd6e6cd166e8d1c29c5b5c"
+}

@@ -64,6 +64,31 @@ pub async fn ensure_partitions(pool: &PgPool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
+/// Deployments and services interrupted by a restart cannot still be in progress.
+pub async fn recover_interrupted(pool: &PgPool) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        UPDATE deployments
+        SET status = 'failed',
+            error = 'interrupted by process restart',
+            finished_at = COALESCE(finished_at, now())
+        WHERE status IN ('running', 'queued')
+        "#
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query!(
+        r#"
+        UPDATE services
+        SET status = 'failed', updated_at = now()
+        WHERE status = 'deploying'
+        "#
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// Insert the panel host the first time the control plane starts.
 pub async fn ensure_local_server(pool: &PgPool) -> Result<(), sqlx::Error> {
     let count =

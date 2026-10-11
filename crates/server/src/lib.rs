@@ -7,10 +7,12 @@ mod audit;
 mod auth;
 mod config;
 mod db;
+mod deploy;
 mod driver;
 mod embed;
 mod error;
 mod openapi;
+mod publish;
 mod routes;
 mod state;
 pub mod telemetry;
@@ -37,6 +39,9 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     db::ensure_local_server(&pool)
         .await
         .context("ensure local server")?;
+    db::recover_interrupted(&pool)
+        .await
+        .context("recover interrupted work")?;
     let settings = db::load_panel_settings(&pool).await?;
     tracing::info!(
         github_repo = %settings.github_repo,
@@ -47,6 +52,15 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
 
     let addr = config.bind;
     let state = AppState::new(pool, config);
+    let watch_state = state.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(300)).await;
+            if let Err(error) = deploy::watch_once(&watch_state).await {
+                tracing::warn!(%error, "image watch query failed");
+            }
+        }
+    });
     let app = router(state);
     let listener = TcpListener::bind(addr)
         .await
@@ -71,6 +85,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::health::router())
         .merge(routes::account::router())
         .merge(routes::catalog::router())
+        .merge(routes::edge::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

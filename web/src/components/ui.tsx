@@ -1,6 +1,6 @@
 import { Button as BaseButton } from "@base-ui/react/button";
 import { Input as BaseInput } from "@base-ui/react/input";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 
 const buttonClass =
   "inline-flex h-10 items-center justify-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
@@ -23,6 +23,15 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
     <BaseInput
       {...props}
       className={`h-10 w-full rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none focus:border-accent ${props.className ?? ""}`}
+    />
+  );
+}
+
+export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      className={`min-h-28 w-full rounded-md border border-line bg-paper px-3 py-2 font-mono text-xs text-ink outline-none focus:border-accent ${props.className ?? ""}`}
     />
   );
 }

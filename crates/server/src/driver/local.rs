@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use bollard::auth::DockerCredentials;
 use bollard::container::LogOutput;
 use bollard::exec::{CreateExecOptions, StartExecResults};
+use bollard::models::HealthStatusEnum;
 use bollard::models::{
     ContainerCreateBody, HostConfig, PortBinding, RestartPolicy, RestartPolicyNameEnum,
 };
@@ -19,9 +20,10 @@ use bollard::Docker;
 use futures_util::StreamExt;
 use rudder_core::{
     compose_args, validate_env_key, validate_image_ref, validate_name, ComposeAction,
-    ContainerSpec, DockerInfo, Error, ExecOutput, NodeDriver, RegistryAuth,
+    ContainerSpec, DockerInfo, Error, ExecOutput, HealthState, NodeDriver, RegistryAuth,
+    PROXY_NETWORK,
 };
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
 
 pub struct LocalDriver {
@@ -302,7 +304,14 @@ impl NodeDriver for LocalDriver {
                 .await
                 .map_err(Self::node)?;
         }
-        tokio::fs::write(path, bytes).await.map_err(Self::node)?;
+        tokio::fs::write(&path, bytes).await.map_err(Self::node)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            tokio::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+                .await
+                .map_err(Self::node)?;
+        }
         Ok(())
     }
 
@@ -336,6 +345,123 @@ impl NodeDriver for LocalDriver {
             )))
         }
     }
+
+    async fn docker_health(&self, id: &str) -> Result<HealthState, Error> {
+        let inspected = self
+            .docker()?
+            .inspect_container(id, None)
+            .await
+            .map_err(Self::node)?;
+        let status = inspected
+            .state
+            .and_then(|state| state.health)
+            .and_then(|health| health.status);
+        Ok(match status {
+            Some(HealthStatusEnum::HEALTHY) => HealthState::Healthy,
+            Some(HealthStatusEnum::STARTING) => HealthState::Starting,
+            Some(HealthStatusEnum::UNHEALTHY) => HealthState::Unhealthy,
+            _ => HealthState::None,
+        })
+    }
+
+    async fn http_ready(&self, id: &str, port: u16, path: &str) -> Result<bool, Error> {
+        if port == 0
+            || !path.starts_with('/')
+            || path
+                .bytes()
+                .any(|byte| byte.is_ascii_whitespace() || byte == 0)
+        {
+            return Err(Error::Validation("invalid health check path".into()));
+        }
+        let Some(ip) = container_ip(&self.inspect(id).await?) else {
+            return Ok(false);
+        };
+        let address = format!("{ip}:{port}");
+        let stream = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            tokio::net::TcpStream::connect(&address),
+        )
+        .await;
+        let mut stream = match stream {
+            Ok(Ok(stream)) => stream,
+            _ => return Ok(false),
+        };
+        let request = format!("GET {path} HTTP/1.0\r\nHost: {ip}\r\nConnection: close\r\n\r\n");
+        if stream.write_all(request.as_bytes()).await.is_err() {
+            return Ok(false);
+        }
+        let mut buffer = [0_u8; 64];
+        let read = stream.read(&mut buffer).await.unwrap_or(0);
+        Ok(http_status_ok(&buffer[..read]))
+    }
+
+    async fn tcp_ready(&self, id: &str, port: u16) -> Result<bool, Error> {
+        if port == 0 {
+            return Err(Error::Validation("invalid health check port".into()));
+        }
+        let Some(ip) = container_ip(&self.inspect(id).await?) else {
+            return Ok(false);
+        };
+        let address = format!("{ip}:{port}");
+        let connected = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            tokio::net::TcpStream::connect(&address),
+        )
+        .await;
+        Ok(matches!(connected, Ok(Ok(_))))
+    }
+
+    async fn image_digest(&self, image: &str) -> Result<String, Error> {
+        validate_image_ref(image)?;
+        let inspected = self
+            .docker()?
+            .inspect_image(image)
+            .await
+            .map_err(Self::node)?;
+        if let Some(digest) = inspected
+            .repo_digests
+            .into_iter()
+            .flatten()
+            .find(|digest| !digest.is_empty())
+        {
+            return Ok(digest);
+        }
+        inspected
+            .id
+            .filter(|id| !id.is_empty())
+            .ok_or_else(|| Error::Node("image has no digest".into()))
+    }
+}
+
+impl LocalDriver {
+    async fn inspect(&self, id: &str) -> Result<bollard::models::ContainerInspectResponse, Error> {
+        self.docker()?
+            .inspect_container(id, None)
+            .await
+            .map_err(Self::node)
+    }
+}
+
+fn container_ip(inspected: &bollard::models::ContainerInspectResponse) -> Option<String> {
+    let networks = inspected.network_settings.as_ref()?.networks.as_ref()?;
+    if let Some(endpoint) = networks.get(PROXY_NETWORK) {
+        if let Some(ip) = endpoint.ip_address.as_ref().filter(|ip| !ip.is_empty()) {
+            return Some(ip.clone());
+        }
+    }
+    networks
+        .values()
+        .find_map(|endpoint| endpoint.ip_address.clone().filter(|ip| !ip.is_empty()))
+}
+
+fn http_status_ok(bytes: &[u8]) -> bool {
+    let text = String::from_utf8_lossy(bytes);
+    let mut parts = text.split_whitespace();
+    let _version = parts.next();
+    matches!(
+        parts.next().and_then(|code| code.chars().next()),
+        Some('2' | '3')
+    )
 }
 
 fn protocol(value: &str) -> Result<&str, Error> {

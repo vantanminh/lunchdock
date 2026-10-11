@@ -1002,7 +1002,7 @@ fn check_kind(kind: &str) -> Result<(), ApiError> {
     }
 }
 
-fn core_error(error: CoreError) -> ApiError {
+pub(crate) fn core_error(error: CoreError) -> ApiError {
     match error {
         CoreError::InvalidName(name) => bad("invalid_name", format!("invalid name '{name}'")),
         CoreError::Validation(message) => bad("invalid", message),
@@ -1015,22 +1015,22 @@ fn core_error(error: CoreError) -> ApiError {
     }
 }
 
-fn bad(code: &'static str, message: impl Into<String>) -> ApiError {
+pub(crate) fn bad(code: &'static str, message: impl Into<String>) -> ApiError {
     ApiError::new(StatusCode::BAD_REQUEST, code, message)
 }
 
-fn conflict(code: &'static str, message: impl Into<String>) -> ApiError {
+pub(crate) fn conflict(code: &'static str, message: impl Into<String>) -> ApiError {
     ApiError::new(StatusCode::CONFLICT, code, message)
 }
 
-fn not_found(message: impl Into<String>) -> ApiError {
+pub(crate) fn not_found(message: impl Into<String>) -> ApiError {
     ApiError::new(StatusCode::NOT_FOUND, "not_found", message)
 }
 
-fn is_unique(error: &sqlx::Error) -> bool {
+pub(crate) fn is_unique(error: &sqlx::Error) -> bool {
     matches!(error, sqlx::Error::Database(db) if db.is_unique_violation())
 }
 
-fn is_fk(error: &sqlx::Error) -> bool {
+pub(crate) fn is_fk(error: &sqlx::Error) -> bool {
     matches!(error, sqlx::Error::Database(db) if db.is_foreign_key_violation())
 }

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { Button, Card, Field, TextInput } from "../components/ui";
@@ -211,7 +212,10 @@ export function ProjectsPage() {
               <ul className="mt-4 divide-y divide-line text-sm">
                 {(services.data ?? []).map((service) => (
                   <li key={service.id} className="py-2">
-                    {service.name} · {service.kind} · {service.status}
+                    <Link className="font-medium text-accent" to={`/services/${service.id}`}>
+                      {service.name}
+                    </Link>{" "}
+                    · {service.kind} · {service.status}
                   </li>
                 ))}
               </ul>

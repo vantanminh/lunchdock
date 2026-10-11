@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE service_containers\n        SET state = 'stopped'\n        WHERE service_id = $1 AND state = 'running'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5f74d45d0910296e7ff6f1b3fd3dc280c77db7a7a3ff109e6d76cf8d7b0b24b4"
+}
