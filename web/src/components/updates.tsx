@@ -114,7 +114,7 @@ export function UpdatesCard() {
     <>
       <Card title="Updates">
         {restartingFrom ? (
-          <p className="mb-3 rounded-md bg-sky-500/10 p-3 text-sm">
+          <p className="mb-3 rounded-md border border-line bg-sunken p-3 text-sm">
             Updating from {restartingFrom}. The panel backs itself up, restarts on the new version,
             and rolls back if the new version does not become healthy. This page reconnects on its
             own.
@@ -158,14 +158,14 @@ export function UpdatesCard() {
           </dd>
         </dl>
         {data.last_check?.error ? (
-          <p className="mt-3 text-sm text-red-600">{data.last_check.error}</p>
+          <p className="mt-3 text-sm text-danger">{data.last_check.error}</p>
         ) : null}
         {latest?.notes ? (
           <details className="mt-3 text-sm">
             <summary className="cursor-pointer text-muted">
               Release notes for {latest.version}
             </summary>
-            <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-zinc-500/10 p-3 font-sans">
+            <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-sunken p-3 font-sans">
               {latest.notes}
             </pre>
           </details>
@@ -273,7 +273,7 @@ export function UpdatesCard() {
                   </span>
                   <span className="ml-auto text-xs text-muted">{formatTime(entry.started_at)}</span>
                 </summary>
-                <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-zinc-500/10 p-3 text-xs">
+                <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-sunken p-3 text-xs">
                   {entry.logs || "No output yet."}
                 </pre>
               </details>

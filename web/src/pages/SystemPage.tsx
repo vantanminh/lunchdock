@@ -96,7 +96,7 @@ export function SystemPage() {
               />
             </Field>
           </div>
-          {mismatch ? <p className="text-sm text-red-600">The passphrases differ.</p> : null}
+          {mismatch ? <p className="text-sm text-danger">The passphrases differ.</p> : null}
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"

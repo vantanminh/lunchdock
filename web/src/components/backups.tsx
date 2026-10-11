@@ -615,7 +615,7 @@ function RunRow({
       {showLogs ? (
         <tr>
           <td colSpan={6}>
-            {run.error ? <p className="text-sm text-red-600">{run.error}</p> : null}
+            {run.error ? <p className="text-sm text-danger">{run.error}</p> : null}
             {run.checksum ? (
               <p className="font-mono text-xs break-all text-muted">sha256 {run.checksum}</p>
             ) : null}

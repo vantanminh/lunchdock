@@ -1,72 +1,149 @@
-import { Suspense, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { Suspense, useEffect, useState } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { api, setCsrf } from "../api";
 import { useAuth } from "../auth";
-import { Button } from "../components/ui";
+import { Icon, KnotreeMark, type IconName } from "../components/icons";
+import { Avatar, Skeleton } from "../components/ui";
 
-const links = [
-  ["/", "Dashboard"],
-  ["/servers", "Servers"],
-  ["/projects", "Projects"],
-  ["/templates", "Templates"],
-  ["/monitoring", "Monitoring"],
-  ["/alerts", "Alerts"],
-  ["/logs", "Logs"],
-  ["/backups", "Backups"],
-  ["/s3-destinations", "S3 destinations"],
-  ["/cache", "Cache"],
-  ["/certificates", "Certificates"],
-  ["/registries", "Registries"],
-  ["/git", "Git providers"],
-  ["/users", "Users"],
-  ["/tokens", "API tokens"],
-  ["/audit", "Audit log"],
-  ["/system", "System"],
-  ["/account", "Account"],
-] as const;
+type NavItem = readonly [to: string, label: string, icon: IconName];
+
+const groups: readonly { label: string; items: readonly NavItem[] }[] = [
+  {
+    label: "Deploy",
+    items: [
+      ["/", "Overview", "overview"],
+      ["/projects", "Projects", "folder"],
+      ["/templates", "Templates", "layers"],
+      ["/servers", "Servers", "server"],
+    ],
+  },
+  {
+    label: "Operate",
+    items: [
+      ["/monitoring", "Monitoring", "activity"],
+      ["/alerts", "Alerts", "bell"],
+      ["/logs", "Logs", "logs"],
+      ["/backups", "Backups", "archive"],
+      ["/cache", "Cache", "zap"],
+    ],
+  },
+  {
+    label: "Connections",
+    items: [
+      ["/s3-destinations", "S3 destinations", "bucket"],
+      ["/certificates", "Certificates", "shield"],
+      ["/registries", "Registries", "box"],
+      ["/git", "Git providers", "git"],
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      ["/users", "Users", "users"],
+      ["/tokens", "API tokens", "key"],
+      ["/audit", "Audit log", "history"],
+      ["/system", "System", "settings"],
+    ],
+  },
+];
+
+const allItems = [...groups.flatMap((group) => group.items.map((item) => ({ group, item })))];
+
+function currentPage(pathname: string) {
+  if (pathname.startsWith("/services/")) {
+    return { group: "Deploy", label: "Service" };
+  }
+  if (pathname === "/account") {
+    return { group: "You", label: "Account" };
+  }
+  const match = allItems.find(({ item: [to] }) =>
+    to === "/" ? pathname === "/" : pathname.startsWith(to),
+  );
+  return match ? { group: match.group.label, label: match.item[1] } : null;
+}
 
 export function Shell() {
-  const { user, refresh } = useAuth();
+  const { pathname } = useLocation();
+  const [open, setOpen] = useState(false);
+  const page = currentPage(pathname);
 
-  async function logout() {
-    await api("/api/v1/logout", { method: "POST" });
-    setCsrf(null);
-    await refresh();
-  }
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.title = page ? `${page.label} · Rudder` : "Rudder";
+  }, [page]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[220px_1fr]">
-      <aside className="border-b border-line bg-panel md:border-r md:border-b-0">
-        <div className="flex items-center justify-between px-4 py-4 md:block">
-          <div>
-            <p className="text-xs font-semibold tracking-[0.18em] text-accent uppercase">Rudder</p>
-            <p className="mt-1 text-sm text-muted">{user?.display_name}</p>
-          </div>
-          <Button quiet className="md:mt-4 md:w-full" onClick={() => void logout()}>
-            Sign out
-          </Button>
+    <div className="min-h-screen lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-control bg-surface px-3 py-2 focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        Skip to content
+      </a>
+
+      <div className="hidden border-r border-line bg-surface lg:block">
+        <aside className="sticky top-0 h-screen">
+          <Sidebar />
+        </aside>
+      </div>
+
+      {open ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="absolute inset-0 bg-ink/30 backdrop-blur-[1px]"
+            onClick={() => setOpen(false)}
+          />
+          <aside className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] animate-fade-up border-r border-line bg-surface shadow-overlay">
+            <Sidebar onClose={() => setOpen(false)} />
+          </aside>
         </div>
-        <nav className="flex gap-1 overflow-x-auto px-2 pb-3 md:block md:px-2">
-          {links.map(([to, label]) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) =>
-                `block rounded-md px-3 py-2 text-sm whitespace-nowrap ${isActive ? "bg-paper font-medium text-ink" : "text-muted"}`
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
-      <div className="min-w-0">
-        <header className="flex justify-end border-b border-line px-4 py-3">
-          <ThemeToggle />
+      ) : null}
+
+      <div className="flex min-h-screen min-w-0 flex-col">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-paper/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+          <button
+            type="button"
+            className="-ml-1 inline-flex size-9 items-center justify-center rounded-control text-ink-soft hover:bg-sunken lg:hidden"
+            aria-label="Open menu"
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+          >
+            <Icon name="menu" size={20} />
+          </button>
+          <Link to="/" className="flex items-center gap-2 lg:hidden" aria-label="Rudder overview">
+            <KnotreeMark size={24} />
+            <span className="text-[15px] font-semibold tracking-[-0.01em]">Rudder</span>
+          </Link>
+          {page ? (
+            <nav aria-label="Breadcrumb" className="hidden items-center gap-1.5 text-sm lg:flex">
+              <span className="text-muted">{page.group}</span>
+              <Icon name="chevronRight" size={14} className="text-faint" />
+              <span className="font-medium text-ink">{page.label}</span>
+            </nav>
+          ) : null}
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
+          </div>
         </header>
-        <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
-          <Suspense fallback={<p className="text-sm text-muted">Loading…</p>}>
+        <main
+          id="main"
+          className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+        >
+          <Suspense fallback={<PageSkeleton />}>
             <Outlet />
           </Suspense>
         </main>
@@ -75,11 +152,120 @@ export function Shell() {
   );
 }
 
+function Sidebar({ onClose }: { onClose?: () => void }) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
+        <Link to="/" className="flex items-center gap-2.5" aria-label="Rudder overview">
+          <KnotreeMark size={26} />
+          <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Knotree</span>
+          <span className="border-l border-line-strong pl-2.5 text-[15px] text-muted">Rudder</span>
+        </Link>
+        {onClose ? (
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="inline-flex size-8 items-center justify-center rounded-control text-muted hover:bg-sunken hover:text-ink"
+            onClick={onClose}
+          >
+            <Icon name="close" />
+          </button>
+        ) : null}
+      </div>
+      <nav aria-label="Main" className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        {groups.map((group) => (
+          <div key={group.label}>
+            <p className="px-2.5 pb-1.5 text-xs font-medium text-faint">{group.label}</p>
+            <ul className="space-y-0.5">
+              {group.items.map(([to, label, icon]) => (
+                <li key={to}>
+                  <NavLink
+                    to={to}
+                    end={to === "/"}
+                    className={({ isActive }) =>
+                      `group flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm transition-colors ${
+                        isActive
+                          ? "bg-sunken font-medium text-ink"
+                          : "text-ink-soft hover:bg-sunken/60 hover:text-ink"
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <Icon
+                          name={icon}
+                          className={
+                            isActive ? "text-pine" : "text-faint group-hover:text-ink-soft"
+                          }
+                        />
+                        {label}
+                      </>
+                    )}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </nav>
+      <UserCard />
+    </div>
+  );
+}
+
+function UserCard() {
+  const { user, refresh } = useAuth();
+  const [pending, setPending] = useState(false);
+
+  async function logout() {
+    setPending(true);
+    try {
+      await api("/api/v1/logout", { method: "POST" });
+      setCsrf(null);
+      await refresh();
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const name = user?.display_name || user?.email || "";
+  return (
+    <div className="flex shrink-0 items-center gap-2 border-t border-line p-3">
+      <NavLink
+        to="/account"
+        className={({ isActive }) =>
+          `flex min-w-0 flex-1 items-center gap-2.5 rounded-control p-1.5 transition-colors hover:bg-sunken ${isActive ? "bg-sunken" : ""}`
+        }
+      >
+        <Avatar name={name} size={32} />
+        <span className="min-w-0 leading-tight">
+          <span className="block truncate text-sm font-medium text-ink">{name}</span>
+          <span className="block truncate text-xs text-muted capitalize">{user?.role}</span>
+        </span>
+      </NavLink>
+      <button
+        type="button"
+        aria-label="Sign out"
+        title="Sign out"
+        disabled={pending}
+        onClick={() => void logout()}
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-control text-muted transition-colors hover:bg-sunken hover:text-ink disabled:opacity-55"
+      >
+        <Icon name="logout" />
+      </button>
+    </div>
+  );
+}
+
 function ThemeToggle() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const label = dark ? "Use light theme" : "Use dark theme";
   return (
-    <Button
-      quiet
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className="inline-flex size-9 items-center justify-center rounded-control text-ink-soft transition-colors hover:bg-sunken hover:text-ink"
       onClick={() => {
         const next = !dark;
         document.documentElement.classList.toggle("dark", next);
@@ -87,7 +273,20 @@ function ThemeToggle() {
         setDark(next);
       }}
     >
-      {dark ? "Light mode" : "Dark mode"}
-    </Button>
+      <Icon name={dark ? "sun" : "moon"} size={18} />
+    </button>
+  );
+}
+
+function PageSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Loading">
+      <div className="space-y-2">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-4 w-80 max-w-full" />
+      </div>
+      <Skeleton className="h-48 w-full rounded-card" />
+      <Skeleton className="h-32 w-full rounded-card" />
+    </div>
   );
 }

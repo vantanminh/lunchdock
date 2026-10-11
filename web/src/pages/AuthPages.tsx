@@ -3,7 +3,8 @@ import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { rememberSession, useAuth } from "../auth";
-import { Button, Card, Field, TextInput } from "../components/ui";
+import { Icon, KnotreeMark } from "../components/icons";
+import { Button, Field, TextInput } from "../components/ui";
 import type { SessionResponse } from "../types";
 
 export function SetupPage() {
@@ -43,7 +44,7 @@ export function SetupPage() {
 
   return (
     <AuthFrame title="Create the owner" subtitle="This account administers the panel.">
-      <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
+      <form className="grid gap-4" onSubmit={(event) => void onSubmit(event)}>
         <Field label="Email">
           <TextInput
             type="email"
@@ -55,7 +56,7 @@ export function SetupPage() {
         <Field label="Display name">
           <TextInput value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
         </Field>
-        <Field label="Password">
+        <Field label="Password" hint="Use at least 12 characters. A short phrase works well.">
           <TextInput
             type="password"
             required
@@ -64,7 +65,7 @@ export function SetupPage() {
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
-        <Button type="submit" disabled={pending} className="w-full">
+        <Button type="submit" size="lg" disabled={pending} className="mt-2 w-full">
           {pending ? "Creating…" : "Create owner"}
         </Button>
       </form>
@@ -114,8 +115,8 @@ export function LoginPage() {
   }
 
   return (
-    <AuthFrame title="Sign in" subtitle="Rudder control plane">
-      <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
+    <AuthFrame title="Sign in" subtitle="Use your Rudder panel account.">
+      <form className="grid gap-4" onSubmit={(event) => void onSubmit(event)}>
         <Field label="Email">
           <TextInput
             type="email"
@@ -137,12 +138,14 @@ export function LoginPage() {
             <TextInput
               inputMode="numeric"
               autoComplete="one-time-code"
+              placeholder="000000"
+              className="h-12 text-center font-mono text-xl! tracking-[0.35em]"
               value={totp}
               onChange={(event) => setTotp(event.target.value)}
             />
           </Field>
         ) : null}
-        <Button type="submit" disabled={pending} className="w-full">
+        <Button type="submit" size="lg" disabled={pending} className="mt-2 w-full">
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
@@ -160,11 +163,25 @@ function AuthFrame({
   children: React.ReactNode;
 }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
-      <p className="text-xs font-semibold tracking-[0.18em] text-accent uppercase">Rudder</p>
-      <h1 className="mt-2 text-3xl font-semibold">{title}</h1>
-      <p className="mt-1 mb-6 text-sm text-muted">{subtitle}</p>
-      <Card>{children}</Card>
-    </main>
+    <div className="flex min-h-screen flex-col">
+      <header className="flex items-center gap-2.5 px-5 py-5 sm:px-8">
+        <KnotreeMark size={26} />
+        <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Knotree</span>
+        <span className="border-l border-line-strong pl-2.5 text-[15px] text-muted">Rudder</span>
+      </header>
+      <main className="flex flex-1 items-center justify-center px-4 pb-16">
+        <div className="w-full max-w-[400px] animate-fade-up rounded-auth border border-line bg-surface p-6 shadow-raised sm:p-8">
+          <span className="mb-5 inline-flex size-10 items-center justify-center rounded-alert border border-pine-line bg-pine-soft text-pine">
+            <Icon name="key" size={20} />
+          </span>
+          <h1 className="text-[22px] leading-tight font-semibold tracking-[-0.015em]">{title}</h1>
+          <p className="mt-1.5 mb-6 text-[14.5px] text-muted">{subtitle}</p>
+          {children}
+        </div>
+      </main>
+      <footer className="px-5 py-5 text-center text-xs text-faint sm:px-8">
+        Self-hosted deployment panel
+      </footer>
+    </div>
   );
 }

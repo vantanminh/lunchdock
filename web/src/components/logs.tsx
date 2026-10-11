@@ -28,9 +28,9 @@ export interface LogFilters {
 }
 
 const levelTone: Record<string, string> = {
-  error: "text-red-600 dark:text-red-400",
-  warn: "text-amber-600 dark:text-amber-400",
-  info: "text-sky-700 dark:text-sky-300",
+  error: "text-danger",
+  warn: "text-amber",
+  info: "text-pine",
   debug: "text-muted",
   trace: "text-muted",
 };
@@ -217,7 +217,7 @@ export function LogViewer({
         </span>
       </div>
       {search.error && !live ? (
-        <p className="text-sm text-red-600">{errorMessage(search.error, "Search failed")}</p>
+        <p className="text-sm text-danger">{errorMessage(search.error, "Search failed")}</p>
       ) : null}
       <div className="overflow-x-auto rounded-lg border border-line bg-paper">
         <table className="w-full font-mono text-xs">
