@@ -45,6 +45,9 @@ const ServersPage = lazy(() =>
 const ServicePage = lazy(() =>
   import("./pages/ServicePage").then((m) => ({ default: m.ServicePage })),
 );
+const SystemPage = lazy(() =>
+  import("./pages/SystemPage").then((m) => ({ default: m.SystemPage })),
+);
 const TemplatesPage = lazy(() =>
   import("./pages/TemplatesPage").then((m) => ({ default: m.TemplatesPage })),
 );
@@ -96,6 +99,7 @@ function AppRoutes() {
         <Route path="users" element={<UsersPage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="audit" element={<AuditPage />} />
+        <Route path="system" element={<SystemPage />} />
         <Route path="account" element={<AccountPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

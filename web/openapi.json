@@ -2145,6 +2145,64 @@
         }
       }
     },
+    "/api/v1/system": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Panel version, schema version, and pg_dump availability (admin)",
+        "operationId": "get_v1_system",
+        "responses": {
+          "200": {
+            "description": "Panel version, schema version, and pg_dump availability (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/backup": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Download an encrypted panel backup: database dump and master key (admin, write)",
+        "operationId": "post_v1_system_backup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PanelBackupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Download an encrypted panel backup: database dump and master key (admin, write)"
+          }
+        }
+      }
+    },
+    "/api/v1/system/settings-export": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Download the panel configuration as JSON, without secrets (admin)",
+        "operationId": "get_v1_system_settings-export",
+        "responses": {
+          "200": {
+            "description": "Download the panel configuration as JSON, without secrets (admin)"
+          }
+        }
+      }
+    },
     "/api/v1/templates": {
       "get": {
         "tags": [
@@ -4452,6 +4510,22 @@
           }
         }
       },
+      "PanelBackupRequest": {
+        "type": "object",
+        "required": [
+          "passphrase"
+        ],
+        "properties": {
+          "include_history": {
+            "type": "boolean",
+            "description": "Also include log lines, metric samples, and sessions."
+          },
+          "passphrase": {
+            "type": "string",
+            "description": "At least 12 characters. Needed to restore; it is not stored."
+          }
+        }
+      },
       "PanelView": {
         "type": "object",
         "required": [
@@ -5713,6 +5787,36 @@
           }
         }
       },
+      "SystemInfo": {
+        "type": "object",
+        "required": [
+          "version",
+          "schema",
+          "known_schema"
+        ],
+        "properties": {
+          "known_schema": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Highest migration this binary carries."
+          },
+          "pg_dump": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`pg_dump --version`, or `None` when it cannot run."
+          },
+          "schema": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Highest applied schema migration."
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
       "TemplateDeployed": {
         "type": "object",
         "required": [
@@ -6339,7 +6443,7 @@
   "tags": [
     {
       "name": "system",
-      "description": "Process health"
+      "description": "Process health, version, settings export, and panel backups"
     },
     {
       "name": "auth",

@@ -76,12 +76,20 @@ fn ancestors(path: &str) -> impl Iterator<Item = &str> {
         .map(move |(index, _)| &path[..index])
 }
 
-struct ChannelWriter {
+/// Blocking `Write` that forwards 64 KiB chunks to an async receiver.
+pub(crate) struct ChannelWriter {
     tx: mpsc::Sender<Result<Bytes, Error>>,
     buffer: Vec<u8>,
 }
 
 impl ChannelWriter {
+    pub(crate) fn new(tx: mpsc::Sender<Result<Bytes, Error>>) -> Self {
+        Self {
+            tx,
+            buffer: Vec::with_capacity(FLUSH_AT),
+        }
+    }
+
     fn send(&mut self) -> std::io::Result<()> {
         if self.buffer.is_empty() {
             return Ok(());
@@ -117,10 +125,7 @@ pub fn filter_tar(stream: ByteStream, filter: Filter) -> ByteStream {
     ));
     let error_tx = tx.clone();
     tokio::task::spawn_blocking(move || {
-        let writer = ChannelWriter {
-            tx,
-            buffer: Vec::with_capacity(FLUSH_AT),
-        };
+        let writer = ChannelWriter::new(tx);
         if let Err(error) = rewrite(input, writer, &filter) {
             let _ = error_tx.blocking_send(Err(Error::Node(format!("tar filter: {error}"))));
         }
@@ -128,7 +133,7 @@ pub fn filter_tar(stream: ByteStream, filter: Filter) -> ByteStream {
     Box::pin(tokio_stream_from(rx))
 }
 
-fn tokio_stream_from(
+pub(crate) fn tokio_stream_from(
     rx: mpsc::Receiver<Result<Bytes, Error>>,
 ) -> impl futures_util::Stream<Item = Result<Bytes, Error>> {
     futures_util::stream::unfold(rx, |mut rx| async move {

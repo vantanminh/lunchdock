@@ -21,6 +21,7 @@ mod logs;
 mod monitor;
 mod nodes;
 mod openapi;
+mod panel;
 mod publish;
 mod routes;
 mod s3;
@@ -45,13 +46,14 @@ pub use monitor::rollup::{
 };
 pub use monitor::{evaluate_alerts, insert_samples, Sample};
 pub use nodes::driver_for as node_driver;
+pub use panel::{Manifest as PanelManifest, RestoreOptions, RestoreReport};
 pub use state::AppState;
 
 /// Bind the HTTP server, run migrations, and serve until shutdown.
 pub async fn run(config: Config) -> anyhow::Result<()> {
     agent::install_crypto_provider();
     let pool = db::connect(&config).await?;
-    sqlx::migrate!("./migrations")
+    db::MIGRATOR
         .run(&pool)
         .await
         .context("apply database migrations")?;
@@ -94,6 +96,17 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         }
     });
     start_monitoring(&state);
+    let publish_state = state.clone();
+    tokio::spawn(async move {
+        let local = sqlx::query_scalar!(r#"SELECT id FROM servers WHERE kind = 'local' LIMIT 1"#)
+            .fetch_optional(&publish_state.pool)
+            .await;
+        if let Ok(Some(id)) = local {
+            if let Err(error) = publish::publish_server(&publish_state, id).await {
+                tracing::warn!(message = %error.public_message(), "startup publish failed");
+            }
+        }
+    });
     let watch_state = state.clone();
     let backup_state = state.clone();
     tokio::spawn(async move {
@@ -188,6 +201,60 @@ pub fn start_monitoring(state: &AppState) {
     });
 }
 
+/// Highest schema migration this binary applies.
+pub fn known_migration() -> i64 {
+    db::known_migration()
+}
+
+/// Restore a panel backup into an empty database before the panel starts.
+pub async fn restore_panel(options: RestoreOptions) -> anyhow::Result<RestoreReport> {
+    panel::restore(options).await
+}
+
+/// Write an encrypted panel backup to `out`, or to stdout when `out` is `-`.
+/// Returns the number of bytes written.
+pub async fn backup_panel(
+    config: &Config,
+    passphrase: &str,
+    include_history: bool,
+    out: &std::path::Path,
+) -> anyhow::Result<u64> {
+    use futures_util::StreamExt;
+    use tokio::io::AsyncWriteExt;
+
+    let pool = db::connect(config).await?;
+    let archive = panel::archive(&pool, config, include_history)
+        .await
+        .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+    let mut stream =
+        panel::seal(archive, passphrase).map_err(|error| anyhow::anyhow!(error.to_string()))?;
+    let mut writer: std::pin::Pin<Box<dyn tokio::io::AsyncWrite + Send>> =
+        if out == std::path::Path::new("-") {
+            Box::pin(tokio::io::stdout())
+        } else {
+            Box::pin(
+                tokio::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .mode(0o600)
+                    .open(out)
+                    .await
+                    .with_context(|| format!("create {}", out.display()))?,
+            )
+        };
+    let mut written = 0u64;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| anyhow::anyhow!(error.to_string()))?;
+        writer.write_all(&chunk).await?;
+        written += chunk.len() as u64;
+    }
+    writer.flush().await?;
+    writer.shutdown().await?;
+    pool.close().await;
+    Ok(written)
+}
+
 /// The OpenAPI document as pretty JSON, used to generate frontend types.
 pub fn openapi_json() -> String {
     openapi::document()
@@ -210,6 +277,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::logs::router())
         .merge(routes::monitoring::router())
         .merge(routes::agents::router())
+        .merge(routes::system::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

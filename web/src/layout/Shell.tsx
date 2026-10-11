@@ -21,6 +21,7 @@ const links = [
   ["/users", "Users"],
   ["/tokens", "API tokens"],
   ["/audit", "Audit log"],
+  ["/system", "System"],
   ["/account", "Account"],
 ] as const;
 

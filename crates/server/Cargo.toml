@@ -52,6 +52,8 @@ object_store = { version = "0.14.2", default-features = false, features = ["aws"
 async-compression = { version = "0.4.50", features = ["tokio", "gzip", "zstd"] }
 tokio-util = { version = "0.7.20", features = ["io", "io-util"] }
 tar = "0.4.46"
+url = "2.5"
+percent-encoding = "2.3"
 globset = "0.4"
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "hostname", "smtp-transport", "tokio1", "tokio1-rustls", "aws-lc-rs", "rustls-platform-verifier"] }
 hmac = "0.13"

@@ -10,6 +10,13 @@ use sqlx::PgPool;
 
 use crate::Config;
 
+pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+
+/// Highest schema migration this binary carries.
+pub fn known_migration() -> i64 {
+    MIGRATOR.iter().map(|m| m.version).max().unwrap_or(0)
+}
+
 pub async fn connect(config: &Config) -> anyhow::Result<PgPool> {
     PgPoolOptions::new()
         .max_connections(20)

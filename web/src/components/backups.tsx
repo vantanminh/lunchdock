@@ -20,6 +20,8 @@ export interface BackupTarget {
   serviceId?: string;
   serverId?: string;
   isDatabase?: boolean;
+  /** Back up the panel itself: its database with the master key, or the settings export. */
+  panel?: boolean;
 }
 
 const lines = (value: string) =>
@@ -47,11 +49,12 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
   const servers = useQuery({
     queryKey: ["servers"],
     queryFn: () => api<{ id: string; name: string }[]>("/api/v1/servers"),
-    enabled: !target.serverId && !target.serviceId,
+    enabled: !target.serverId && !target.serviceId && !target.panel,
   });
   const [form, setForm] = useState({
     name: "",
-    target_kind: target.isDatabase ? "database" : "volume",
+    target_kind: target.panel ? "panel_db" : target.isDatabase ? "database" : "volume",
+    include_history: false,
     server_id: target.serverId ?? "",
     target_value: "",
     schedule_cron: "@daily",
@@ -96,13 +99,15 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
             ? { source: form.target_value }
             : form.target_kind === "path"
               ? { path: form.target_value }
-              : {};
+              : form.target_kind === "panel_db"
+                ? { include_history: form.include_history }
+                : {};
       return api<Job>("/api/v1/backup-jobs", {
         method: "POST",
         body: JSON.stringify({
           name: form.name,
           target_kind: form.target_kind,
-          server_id: form.server_id || undefined,
+          server_id: (!target.panel && form.server_id) || undefined,
           service_id: target.serviceId,
           target_spec: targetSpec,
           schedule_cron: form.schedule_cron,
@@ -158,7 +163,8 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
     setForm({ ...form, [key]: event.target.value });
   const check = (key: keyof typeof form) => (event: { target: { checked: boolean } }) =>
     setForm({ ...form, [key]: event.target.checked });
-  const isArchive = form.target_kind !== "database";
+  const isPanel = form.target_kind.startsWith("panel_");
+  const isArchive = form.target_kind !== "database" && !isPanel;
   const presetNames = (presets.data?.schedules ?? []).map((preset) => preset.name);
 
   if (destinations.data?.length === 0) {
@@ -191,13 +197,22 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
         </Field>
         <Field label="What to back up">
           <Select value={form.target_kind} onChange={set("target_kind")}>
-            {target.isDatabase ? <option value="database">Database dump</option> : null}
-            <option value="volume">Docker volume</option>
-            <option value="bind">Bind mount</option>
-            <option value="path">Host path</option>
+            {target.panel ? (
+              <>
+                <option value="panel_db">Panel database and master key</option>
+                <option value="panel_settings">Settings export (JSON, no secrets)</option>
+              </>
+            ) : (
+              <>
+                {target.isDatabase ? <option value="database">Database dump</option> : null}
+                <option value="volume">Docker volume</option>
+                <option value="bind">Bind mount</option>
+                <option value="path">Host path</option>
+              </>
+            )}
           </Select>
         </Field>
-        {!target.serverId && !target.serviceId ? (
+        {!target.serverId && !target.serviceId && !target.panel ? (
           <Field label="Server">
             <Select required value={form.server_id} onChange={set("server_id")}>
               <option value="">Choose</option>
@@ -258,14 +273,32 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
             />
           </div>
         </Field>
-        <Field label="Encryption passphrase (optional)">
+        <Field
+          label={
+            form.target_kind === "panel_db"
+              ? "Encryption passphrase (required, 12+ characters)"
+              : "Encryption passphrase (optional)"
+          }
+        >
           <TextInput
             type="password"
             autoComplete="new-password"
+            required={form.target_kind === "panel_db"}
+            minLength={form.target_kind === "panel_db" ? 12 : undefined}
             value={form.passphrase}
             onChange={set("passphrase")}
           />
         </Field>
+        {form.target_kind === "panel_db" ? (
+          <label className="flex items-center gap-2 self-end text-sm">
+            <input
+              type="checkbox"
+              checked={form.include_history}
+              onChange={check("include_history")}
+            />
+            Include log lines, metric samples, and sessions
+          </label>
+        ) : null}
       </div>
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Destinations</legend>
@@ -316,7 +349,7 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
           <Field label={`Filename template (${(presets.data?.filename_tokens ?? []).join(" ")})`}>
             <TextInput value={form.filename_template} onChange={set("filename_template")} />
           </Field>
-          {isArchive ? (
+          {isPanel ? null : isArchive ? (
             <>
               <Field label="Include globs (one per line)">
                 <TextArea value={form.include_globs} onChange={set("include_globs")} />
@@ -356,16 +389,20 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
               </Field>
             </>
           )}
-          <Field label="Pre-hook command (runs in the container)">
-            <TextInput
-              value={form.pre_hook}
-              placeholder="sh -c 'echo start'"
-              onChange={set("pre_hook")}
-            />
-          </Field>
-          <Field label="Post-hook command">
-            <TextInput value={form.post_hook} onChange={set("post_hook")} />
-          </Field>
+          {isPanel ? null : (
+            <>
+              <Field label="Pre-hook command (runs in the container)">
+                <TextInput
+                  value={form.pre_hook}
+                  placeholder="sh -c 'echo start'"
+                  onChange={set("pre_hook")}
+                />
+              </Field>
+              <Field label="Post-hook command">
+                <TextInput value={form.post_hook} onChange={set("post_hook")} />
+              </Field>
+            </>
+          )}
           <Field label="Timeout (seconds)">
             <TextInput value={form.timeout_secs} onChange={set("timeout_secs")} />
           </Field>
@@ -596,11 +633,34 @@ function RunRow({
       {showRestore ? (
         <tr>
           <td colSpan={6}>
-            <RestoreForm job={job} run={run} />
+            {job.target_kind.startsWith("panel_") ? (
+              <PanelRestoreHint />
+            ) : (
+              <RestoreForm job={job} run={run} />
+            )}
           </td>
         </tr>
       ) : null}
     </>
+  );
+}
+
+export function PanelRestoreHint() {
+  return (
+    <div className="my-2 space-y-2 rounded-md border border-line p-3 text-sm">
+      <p>
+        Panel backups are restored on a fresh host before the panel starts. Download the backup,
+        copy it to the new server, and run:
+      </p>
+      <pre className="overflow-auto rounded-md bg-paper p-2 font-mono text-xs">
+        curl -fsSL https://github.com/vantanminh/lunchdock/releases/latest/download/install.sh -o
+        install.sh
+        {"\n"}sudo sh install.sh --restore rudder-panel-….tar.zst.enc
+      </pre>
+      <p className="text-muted">
+        The installer asks for the backup passphrase and writes the master key from the backup.
+      </p>
+    </div>
   );
 }
 

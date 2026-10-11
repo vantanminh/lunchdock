@@ -10,3 +10,4 @@ pub mod health;
 pub mod logs;
 pub mod monitoring;
 pub mod stacks;
+pub mod system;

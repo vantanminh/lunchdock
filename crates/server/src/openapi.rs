@@ -48,6 +48,7 @@ use crate::routes::stacks::{
     CreateStack, DeployTemplate, GeneratedValue, StackLogsView, StackServiceView, StackView,
     TemplateDeployed, TemplateDetail, TemplateVariableView, TemplateView, UpdateStack,
 };
+use crate::routes::system::{PanelBackupRequest, SystemInfo};
 use crate::stacks::StackGit;
 use rudder_core::{
     CacheHostStats, CachePurgeResult, CacheRule, CacheStats, RuleAction, RuleMatch, RuleMode,
@@ -173,11 +174,13 @@ use rudder_core::{
         SaveAlert,
         ChannelView,
         SaveChannel,
-        PruneResult
+        PruneResult,
+        SystemInfo,
+        PanelBackupRequest
     )),
     modifiers(&SecurityAddon),
     tags(
-        (name = "system", description = "Process health"),
+        (name = "system", description = "Process health, version, settings export, and panel backups"),
         (name = "auth", description = "Setup, sessions, users, tokens, and audit"),
         (name = "catalog", description = "Servers, projects, environments, and services"),
         (name = "edge", description = "Domains, certificates, registries, and image deploys"),
@@ -241,6 +244,33 @@ const ROUTES: &[Route] = &[
         summary: "Health",
         request: None,
         response: Some("HealthResponse"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/system",
+        method: HttpMethod::Get,
+        tag: "system",
+        summary: "Panel version, schema version, and pg_dump availability (admin)",
+        request: None,
+        response: Some("SystemInfo"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/system/settings-export",
+        method: HttpMethod::Get,
+        tag: "system",
+        summary: "Download the panel configuration as JSON, without secrets (admin)",
+        request: None,
+        response: None,
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/system/backup",
+        method: HttpMethod::Post,
+        tag: "system",
+        summary: "Download an encrypted panel backup: database dump and master key (admin, write)",
+        request: Some("PanelBackupRequest"),
+        response: None,
         status: 200,
     },
     Route {

@@ -1313,6 +1313,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Panel version, schema version, and pg_dump availability (admin) */
+        get: operations["get_v1_system"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Download an encrypted panel backup: database dump and master key (admin, write) */
+        post: operations["post_v1_system_backup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/settings-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download the panel configuration as JSON, without secrets (admin) */
+        get: operations["get_v1_system_settings-export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/templates": {
         parameters: {
             query?: never;
@@ -2030,6 +2081,12 @@ export interface components {
             /** Format: date-time */
             since: string;
         };
+        PanelBackupRequest: {
+            /** @description Also include log lines, metric samples, and sessions. */
+            include_history?: boolean;
+            /** @description At least 12 characters. Needed to restore; it is not stored. */
+            passphrase: string;
+        };
         PanelView: {
             acme_email?: string | null;
             matched_certificate_name?: string | null;
@@ -2422,6 +2479,21 @@ export interface components {
             /** @description `${NAME}` references in the compose file. */
             variables: string[];
             warnings: string[];
+        };
+        SystemInfo: {
+            /**
+             * Format: int64
+             * @description Highest migration this binary carries.
+             */
+            known_schema: number;
+            /** @description `pg_dump --version`, or `None` when it cannot run. */
+            pg_dump?: string | null;
+            /**
+             * Format: int64
+             * @description Highest applied schema migration.
+             */
+            schema: number;
+            version: string;
         };
         TemplateDeployed: {
             deployment?: components["schemas"]["DeploymentView"] | null;
@@ -4556,6 +4628,66 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SetupStatus"];
                 };
+            };
+        };
+    };
+    get_v1_system: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Panel version, schema version, and pg_dump availability (admin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemInfo"];
+                };
+            };
+        };
+    };
+    post_v1_system_backup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PanelBackupRequest"];
+            };
+        };
+        responses: {
+            /** @description Download an encrypted panel backup: database dump and master key (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "get_v1_system_settings-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Download the panel configuration as JSON, without secrets (admin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

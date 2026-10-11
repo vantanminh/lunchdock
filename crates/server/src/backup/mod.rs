@@ -466,6 +466,38 @@ async fn prepare(
         service_id: job.service_id,
         ..RunMeta::default()
     };
+    if matches!(job.target_kind.as_str(), "panel_db" | "panel_settings") {
+        let (stream, extension) = if job.target_kind == "panel_db" {
+            let include_history = job
+                .target_spec
+                .get("include_history")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            log.line("dumping the panel database with pg_dump");
+            let stream = crate::panel::archive(&state.pool, &state.config, include_history)
+                .await
+                .map_err(core_error)?;
+            (stream, ".tar")
+        } else {
+            let export = crate::panel::settings_export(&state.pool).await?;
+            let bytes = serde_json::to_vec_pretty(&export)
+                .map_err(|_| bad("invalid", "could not serialize the settings export"))?;
+            (
+                Box::pin(futures_util::stream::once(async move {
+                    Ok(bytes::Bytes::from(bytes))
+                })) as ByteStream,
+                ".json",
+            )
+        };
+        return Ok(Prepared {
+            stream,
+            after: After::default(),
+            meta,
+            extension,
+            service_name: String::new(),
+            engine: "panel".into(),
+        });
+    }
     if job.target_kind == "database" {
         let service_id = job
             .service_id
@@ -1135,6 +1167,12 @@ pub async fn start_restore(
     request: RestoreRequest,
 ) -> Result<Uuid, ApiError> {
     let source = load_source_run(state, source_run_id).await?;
+    if source.meta.target_kind.starts_with("panel_") {
+        return Err(conflict(
+            "offline_restore",
+            "panel backups are restored before the panel starts: download the backup and run `install.sh --restore <file>`",
+        ));
+    }
     let job = load_job(state, source.job_id).await?;
     if let Some(volume) = &request.target_volume {
         ArchiveSource::Volume {

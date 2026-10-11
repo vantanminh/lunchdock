@@ -592,11 +592,11 @@ async fn validate_fields(state: &AppState, fields: &JobFields) -> Result<(), Api
     }
     if !matches!(
         fields.target_kind.as_str(),
-        "database" | "volume" | "bind" | "path"
+        "database" | "volume" | "bind" | "path" | "panel_db" | "panel_settings"
     ) {
         return Err(bad(
             "invalid",
-            "target_kind must be database, volume, bind, or path",
+            "target_kind must be database, volume, bind, path, panel_db, or panel_settings",
         ));
     }
     if let Some(cron) = &fields.schedule_cron {
@@ -695,9 +695,49 @@ async fn validate_fields(state: &AppState, fields: &JobFields) -> Result<(), Api
             }
             validate_host_path(spec_text("path").unwrap_or("")).map_err(core_error)?;
         }
+        "panel_db" | "panel_settings" => {
+            if fields.server_id.is_some() || fields.service_id.is_some() {
+                return Err(bad(
+                    "invalid",
+                    "panel backups belong to the panel, not to a server or service",
+                ));
+            }
+            if fields.consistency.stop_service
+                || !fields.consistency.pre_hook.is_empty()
+                || !fields.consistency.post_hook.is_empty()
+            {
+                return Err(bad(
+                    "invalid",
+                    "panel backups have no service to stop or hook",
+                ));
+            }
+        }
         _ => {}
     }
     Ok(())
+}
+
+/// Panel database backups carry the master key, so they must stay encrypted.
+fn check_panel_passphrase(
+    target_kind: &str,
+    new_value: Option<&str>,
+    already_encrypted: bool,
+) -> Result<(), ApiError> {
+    if target_kind != "panel_db" {
+        return Ok(());
+    }
+    match new_value {
+        Some("") => Err(bad(
+            "invalid",
+            "panel database backups must stay encrypted",
+        )),
+        Some(value) => crate::panel::validate_passphrase(value).map_err(core_error),
+        None if already_encrypted => Ok(()),
+        None => Err(bad(
+            "invalid",
+            "panel database backups include the master key; set an encryption passphrase of at least 12 characters",
+        )),
+    }
 }
 
 fn merge(existing: Option<&BackupJobView>, body: &SaveBackupJob) -> Result<JobFields, ApiError> {
@@ -823,6 +863,13 @@ async fn create_job(
     auth.require_write()?;
     let fields = merge(None, &body)?;
     validate_fields(&state, &fields).await?;
+    check_panel_passphrase(
+        &fields.target_kind,
+        body.encryption_passphrase
+            .as_deref()
+            .filter(|value| !value.is_empty()),
+        false,
+    )?;
     let passphrase = match body
         .encryption_passphrase
         .as_deref()
@@ -909,6 +956,11 @@ async fn update_job(
         .ok_or_else(|| not_found("backup job not found"))?;
     let fields = merge(Some(&existing), &body)?;
     validate_fields(&state, &fields).await?;
+    check_panel_passphrase(
+        &fields.target_kind,
+        body.encryption_passphrase.as_deref(),
+        existing.encrypted,
+    )?;
     let (set_passphrase, passphrase) = match body.encryption_passphrase.as_deref() {
         None => (false, None),
         Some("") => (true, None),

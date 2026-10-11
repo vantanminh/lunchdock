@@ -50,6 +50,8 @@ pub struct Config {
     pub agent_url: Option<String>,
     /// Release binaries served at `/downloads`, such as the agent for each architecture.
     pub dist_dir: PathBuf,
+    /// `pg_dump` used for panel backups.
+    pub pg_dump: PathBuf,
 }
 
 impl Config {
@@ -164,6 +166,11 @@ impl Config {
                 .filter(|v| !v.is_empty())
                 .map_or(DEFAULT_DIST_DIR, String::as_str),
         );
+        let pg_dump = PathBuf::from(
+            vars.get("RUDDER_PG_DUMP")
+                .filter(|v| !v.is_empty())
+                .map_or("pg_dump", String::as_str),
+        );
         Ok(Self {
             database_url,
             bind,
@@ -180,6 +187,7 @@ impl Config {
             agent_bind,
             agent_url,
             dist_dir,
+            pg_dump,
         })
     }
 }
@@ -203,6 +211,7 @@ impl fmt::Debug for Config {
             .field("agent_url", &self.agent_url)
             .field("dist_dir", &self.dist_dir)
             .field("host_proc", &self.host_proc)
+            .field("pg_dump", &self.pg_dump)
             .finish()
     }
 }

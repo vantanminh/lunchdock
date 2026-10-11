@@ -55,7 +55,7 @@ pub use driver::{
     DockerInfo, ExecOutput, ExecSpec, HealthState, LogLine, LogLineStream, LogStreamKind,
     NodeDriver, PortMapping, RegistryAuth, TerminalInput, TerminalInputStream, VolumeMount,
 };
-pub use envelope::{Decryptor, Encryptor};
+pub use envelope::{Decryptor, Encryptor, MAGIC as ENVELOPE_MAGIC};
 pub use error::Error;
 pub use github_app::github_app_jwt;
 pub use image_ref::{
