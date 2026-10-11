@@ -7,10 +7,12 @@ mod buildspec;
 mod certs;
 mod compose;
 mod crypto;
+mod database;
 mod driver;
 mod error;
 mod github_app;
 mod image_ref;
+mod retention;
 mod rollout;
 mod traefik;
 mod validate;
@@ -26,6 +28,7 @@ pub use certs::{
 };
 pub use compose::{compose_args, ComposeAction};
 pub use crypto::Cipher;
+pub use database::{connection_string, database_runtime, DatabaseRequest, DatabaseRuntime, Engine};
 pub use driver::{
     ContainerSpec, DockerInfo, ExecOutput, HealthState, NodeDriver, PortMapping, RegistryAuth,
     VolumeMount,
@@ -36,6 +39,7 @@ pub use image_ref::{
     container_name, image_registry, normalize_registry, select_registry, validate_registry_url,
     RegistryRecord,
 };
+pub use retention::{expired_ids, BackupPoint, RetentionPolicy};
 pub use rollout::{
     retire_container, rollout, HealthKind, HealthSpec, RolloutOutput, RolloutPlan, StartedContainer,
 };
