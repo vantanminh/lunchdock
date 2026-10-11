@@ -12,7 +12,7 @@ Rudder samples every server and every running service every 10 seconds. The samp
 
 Server metrics come from `/proc` (`stat`, `meminfo`, `loadavg`, `net/dev`) and from `statvfs` on the data directory. When the panel runs in a container, mount the host's `/proc` read-only and set `RUDDER_HOST_PROC=/host/proc`, otherwise you see the container's own view. The installer does this for you. Loopback, `veth`, Docker bridge, and CNI interfaces are left out of the network totals.
 
-Service metrics come from the Docker stats API for containers labelled `rudder.managed=true`. A compose stack's containers are added together. CPU is a percentage of one core, so a busy service on a 4-core server can reach 400%.
+Service metrics come from the Docker stats API for containers labelled `rudder.managed=true`. A compose stack's containers are added together. CPU is a share of the whole server, like the server's own CPU, so a service that keeps one core of a 4-core server busy shows 25%.
 
 The panel measures its own server. Remote servers send theirs through the agent.
 

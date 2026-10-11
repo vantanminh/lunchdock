@@ -13,6 +13,8 @@ path = "src/main.rs"
 
 [dependencies]
 rudder-core = { path = "../core", features = ["openapi"] }
+rudder-node = { path = "../node" }
+rudder-proto = { path = "../proto" }
 anyhow.workspace = true
 thiserror.workspace = true
 serde.workspace = true
@@ -53,10 +55,17 @@ tar = "0.4.46"
 globset = "0.4"
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "hostname", "smtp-transport", "tokio1", "tokio1-rustls", "aws-lc-rs", "rustls-platform-verifier"] }
 hmac = "0.13"
+tonic = { version = "0.14.5", features = ["tls-aws-lc"] }
+tokio-stream = "0.1"
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"] }
+rcgen = { version = "0.14.10", default-features = false, features = ["pem", "x509-parser", "aws_lc_rs"] }
+time = "0.3"
 rand_core06 = { version = "0.6", package = "rand_core", features = ["getrandom"] }
 
 [dev-dependencies]
 http-body-util = "0.1.5"
-rcgen = "0.14.10"
+rcgen = { version = "0.14.10", default-features = false, features = ["pem", "aws_lc_rs"] }
+x509-parser = "0.18"
+rudder-agent = { path = "../agent" }
 tower = { version = "0.5.3", features = ["util"] }
 tokio-tungstenite = "0.29.0"

@@ -4,7 +4,7 @@ pub mod notify;
 pub mod rollup;
 
 use std::collections::{HashMap, HashSet};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use rudder_core::{
@@ -28,9 +28,10 @@ pub struct Sample {
     pub value: f64,
 }
 
+/// Previous cumulative network counters of one server, for rates.
 #[derive(Default)]
-struct Counters {
-    at: Option<Instant>,
+pub struct Counters {
+    at: Option<DateTime<Utc>>,
     host: Option<(u64, u64)>,
     containers: HashMap<String, (u64, u64)>,
 }
@@ -107,15 +108,42 @@ async fn sample_local(state: &AppState, counters: &mut Counters) -> anyhow::Resu
     let driver = state.local_driver.clone();
     let host = driver.host_stats().await?;
     let containers = driver.container_stats().await.unwrap_or_default();
-    let index = service_index(&state.pool).await?;
-    let now = Instant::now();
-    let elapsed = counters
-        .at
-        .map_or(0.0, |at| now.duration_since(at).as_secs_f64());
-    counters.at = Some(now);
-    let samples = build_samples(server_id, &host, &containers, &index, counters, elapsed);
-    insert_samples(&state.pool, Utc::now(), &samples).await?;
+    record_stats(
+        &state.pool,
+        server_id,
+        Utc::now(),
+        &host,
+        &containers,
+        counters,
+    )
+    .await?;
     Ok(())
+}
+
+/// Turn one reading of a server into samples and store them. Agents call this
+/// with the time the reading was taken, which may be in the past after a reconnect.
+pub async fn record_stats(
+    pool: &PgPool,
+    server_id: Uuid,
+    at: DateTime<Utc>,
+    host: &HostStats,
+    containers: &[ContainerStats],
+    counters: &mut Counters,
+) -> Result<(), sqlx::Error> {
+    let index = service_index(pool).await?;
+    let elapsed = match counters.at {
+        Some(previous) if at > previous => (at - previous).num_milliseconds() as f64 / 1000.0,
+        Some(_) => {
+            // Out of order or duplicate: rates would be meaningless.
+            counters.host = None;
+            counters.containers.clear();
+            0.0
+        }
+        None => 0.0,
+    };
+    counters.at = Some(at);
+    let samples = build_samples(server_id, host, containers, &index, counters, elapsed);
+    insert_samples(pool, at, &samples).await
 }
 
 fn build_samples(

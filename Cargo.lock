@@ -272,6 +272,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b281d307588d634de920874890732659e2e7672f72b5e10e81badc1a8a83621e"
 dependencies = [
  "aws-lc-sys",
+ "untrusted 0.7.1",
  "zeroize",
 ]
 
@@ -3578,6 +3579,7 @@ version = "0.14.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8774e05a7d0de114588e6a28fe7e71694b82614ed569d86d8b389dfbc98b8ad8"
 dependencies = [
+ "aws-lc-rs",
  "pem",
  "ring",
  "rustls-pki-types",
@@ -3704,7 +3706,7 @@ dependencies = [
  "cfg-if",
  "getrandom 0.2.17",
  "libc",
- "untrusted",
+ "untrusted 0.9.0",
  "windows-sys 0.52.0",
 ]
 
@@ -3753,8 +3755,20 @@ name = "rudder-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
+ "chrono",
+ "futures-util",
+ "rcgen",
+ "reqwest",
  "rudder-core",
+ "rudder-node",
+ "rudder-proto",
+ "rustls",
+ "serde",
+ "serde_json",
  "tokio",
+ "tokio-stream",
+ "tonic",
  "tracing",
  "tracing-subscriber",
 ]
@@ -3821,6 +3835,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "rudder-node"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bollard",
+ "bytes",
+ "futures-util",
+ "hex",
+ "reqwest",
+ "rudder-core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "rudder-proto"
 version = "0.1.0"
 dependencies = [
@@ -3860,8 +3891,12 @@ dependencies = [
  "rand_core 0.6.4",
  "rcgen",
  "reqwest",
+ "rudder-agent",
  "rudder-core",
+ "rudder-node",
+ "rudder-proto",
  "rust-embed",
+ "rustls",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -3870,9 +3905,12 @@ dependencies = [
  "subtle",
  "tar",
  "thiserror",
+ "time",
  "tokio",
+ "tokio-stream",
  "tokio-tungstenite",
  "tokio-util",
+ "tonic",
  "totp-rs",
  "tower",
  "tower-http 0.7.1",
@@ -3881,6 +3919,7 @@ dependencies = [
  "utoipa",
  "utoipa-swagger-ui",
  "uuid",
+ "x509-parser",
 ]
 
 [[package]]
@@ -4040,7 +4079,7 @@ dependencies = [
  "aws-lc-rs",
  "ring",
  "rustls-pki-types",
- "untrusted",
+ "untrusted 0.9.0",
 ]
 
 [[package]]
@@ -5023,6 +5062,7 @@ dependencies = [
  "socket2",
  "sync_wrapper",
  "tokio",
+ "tokio-rustls",
  "tokio-stream",
  "tower",
  "tower-layer",
@@ -5310,6 +5350,12 @@ name = "unsafe-libyaml"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
+
+[[package]]
+name = "untrusted"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "untrusted"
@@ -5866,6 +5912,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d43b0f71ce057da06bc0851b23ee24f3f86190b07203dd8f567d0b706a185202"
 dependencies = [
  "asn1-rs",
+ "aws-lc-rs",
  "data-encoding",
  "der-parser",
  "lazy_static",

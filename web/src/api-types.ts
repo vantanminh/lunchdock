@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exchange a join token and a CSR for an agent client certificate */
+        post: operations["post_v1_agent_enroll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/alert-kinds": {
         parameters: {
             query?: never;
@@ -842,7 +859,7 @@ export interface paths {
         /** List servers */
         get: operations["get_v1_servers"];
         put?: never;
-        /** Add a server */
+        /** Add a server; remote servers get a one-time join command */
         post: operations["post_v1_servers"];
         delete?: never;
         options?: never;
@@ -861,6 +878,23 @@ export interface paths {
         get: operations["get_v1_servers__id__cache_stats"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/servers/{id}/join-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue a new join token for a remote server (valid for one hour) */
+        post: operations["post_v1_servers__id__join-token"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1715,6 +1749,10 @@ export interface components {
             password: string;
             role: string;
         };
+        CreatedServer: components["schemas"]["ServerView"] & {
+            join_command?: string | null;
+            join_token?: string | null;
+        };
         CreatedToken: {
             /** Format: date-time */
             expires_at?: string | null;
@@ -1815,6 +1853,22 @@ export interface components {
             /** Format: int32 */
             target_port: number;
         };
+        EnrollRequest: {
+            /** @description PKCS#10 request for the agent's own key, PEM. */
+            csr_pem: string;
+            hostname?: string;
+            join_token: string;
+        };
+        EnrollResponse: {
+            ca_pem: string;
+            client_cert_pem: string;
+            /** @description Where the agent dials its gRPC session. */
+            grpc_url: string;
+            /** Format: uuid */
+            server_id: string;
+            /** @description TLS server name to verify on that connection. */
+            tls_name: string;
+        };
         EnvVarView: {
             is_build_secret: boolean;
             key: string;
@@ -1887,6 +1941,12 @@ export interface components {
         };
         IngestResult: {
             accepted: number;
+        };
+        JoinToken: {
+            /** Format: date-time */
+            expires_at: string;
+            join_command: string;
+            join_token: string;
         };
         LifecycleView: {
             container_id?: string | null;
@@ -2215,6 +2275,13 @@ export interface components {
             created_at: string;
             description: string;
             docker_version?: string | null;
+            /**
+             * Format: date-time
+             * @description When the agent last exchanged a join token for a certificate.
+             */
+            enrolled_at?: string | null;
+            /** @description Hostname the agent reported. */
+            hostname?: string | null;
             /** Format: uuid */
             id: string;
             kind: string;
@@ -2228,6 +2295,11 @@ export interface components {
             os_info?: string | null;
             public_ip?: string | null;
             status: string;
+            /**
+             * Format: int64
+             * @description Telemetry items the agent discarded because its buffer was full.
+             */
+            telemetry_dropped: number;
         };
         ServiceCachePurge: {
             all?: boolean | null;
@@ -2527,6 +2599,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    post_v1_agent_enroll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EnrollRequest"];
+            };
+        };
+        responses: {
+            /** @description Exchange a join token and a CSR for an agent client certificate */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollResponse"];
                 };
             };
         };
@@ -3822,13 +3918,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Add a server */
+            /** @description Add a server; remote servers get a one-time join command */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServerView"];
+                    "application/json": components["schemas"]["CreatedServer"];
                 };
             };
         };
@@ -3849,6 +3945,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CacheStats"];
+                };
+            };
+        };
+    };
+    "post_v1_servers__id__join-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Issue a new join token for a remote server (valid for one hour) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JoinToken"];
                 };
             };
         };

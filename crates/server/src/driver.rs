@@ -1,5 +1,6 @@
-//! Local Docker driver. Remote servers use the same [`NodeDriver`] calls later.
+//! Machine drivers. `LocalDriver` talks to the panel host's Docker; remote servers
+//! are reached through their agent session.
 
-mod local;
+pub mod remote;
 
-pub use local::{LocalDriver, DEFAULT_CACHE_ADMIN};
+pub use rudder_node::{LocalDriver, DEFAULT_CACHE_ADMIN};

@@ -1,4 +1,5 @@
 pub mod account;
+pub mod agents;
 pub mod backups;
 pub mod cache;
 pub mod catalog;

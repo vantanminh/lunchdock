@@ -14,6 +14,7 @@ use crate::routes::account::{
     SessionResponse, SetupRequest, SetupStatus, TokenView, TotpDisable, TotpEnable,
     TotpSetupResponse, UpdateUser, UserView,
 };
+use crate::routes::agents::{EnrollRequest, EnrollResponse, JoinToken};
 use crate::routes::backups::{
     BackupJobView, BackupRunView, DestinationView, EventView, RunAccepted, SaveBackupJob,
     SaveDestination, TestResult,
@@ -23,8 +24,9 @@ use crate::routes::cache::{
     ServiceCacheView, UpdateDomainCache,
 };
 use crate::routes::catalog::{
-    CreateEnvironment, CreateProject, CreateServer, CreateService, EnvVarView, EnvironmentView,
-    ProjectView, PutEnvVar, ServerView, ServiceSummary, ServiceView, UpdateServer, UpdateService,
+    CreateEnvironment, CreateProject, CreateServer, CreateService, CreatedServer, EnvVarView,
+    EnvironmentView, ProjectView, PutEnvVar, ServerView, ServiceSummary, ServiceView, UpdateServer,
+    UpdateService,
 };
 use crate::routes::databases::{
     ConnectionView, CreateDatabase, DatabaseEngineView, LifecycleView, LogsView, UpdateDatabase,
@@ -76,7 +78,11 @@ use rudder_core::{
         CreatedToken,
         AuditView,
         ServerView,
+        CreatedServer,
         CreateServer,
+        JoinToken,
+        EnrollRequest,
+        EnrollResponse,
         UpdateServer,
         ProjectView,
         CreateProject,
@@ -403,10 +409,28 @@ const ROUTES: &[Route] = &[
         path: "/api/v1/servers",
         method: HttpMethod::Post,
         tag: "catalog",
-        summary: "Add a server",
+        summary: "Add a server; remote servers get a one-time join command",
         request: Some("CreateServer"),
-        response: Some("ServerView"),
+        response: Some("CreatedServer"),
         status: 201,
+    },
+    Route {
+        path: "/api/v1/servers/{id}/join-token",
+        method: HttpMethod::Post,
+        tag: "catalog",
+        summary: "Issue a new join token for a remote server (valid for one hour)",
+        request: None,
+        response: Some("JoinToken"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/agent/enroll",
+        method: HttpMethod::Post,
+        tag: "agent",
+        summary: "Exchange a join token and a CSR for an agent client certificate",
+        request: Some("EnrollRequest"),
+        response: Some("EnrollResponse"),
+        status: 200,
     },
     Route {
         path: "/api/v1/projects",

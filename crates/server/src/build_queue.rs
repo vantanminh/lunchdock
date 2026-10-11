@@ -302,14 +302,14 @@ async fn run_claimed(
     .execute(&state.pool)
     .await
     .map_err(ApiError::database)?;
-    if job.server_kind != "local" {
+    if job.server_kind != "local" && state.agents.session(job.server_id).is_none() {
         fail_job(
             state,
             queue_id,
             deployment_id,
             job.service_id,
             job.current_container_id.is_some(),
-            "remote builds run on the agent, which is not connected yet",
+            "the agent for this server is not connected",
         )
         .await?;
         return Ok(());

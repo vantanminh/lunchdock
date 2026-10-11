@@ -10,7 +10,7 @@ use sqlx::PgPool;
 use tokio::sync::{Mutex, Semaphore};
 use uuid::Uuid;
 
-use crate::agents::AgentRegistry;
+use crate::agent::AgentRegistry;
 use crate::driver::LocalDriver;
 use crate::logs::LogHub;
 use crate::Config;

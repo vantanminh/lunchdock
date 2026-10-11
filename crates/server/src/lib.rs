@@ -3,7 +3,7 @@
 //! The binary in `main.rs` loads configuration, initializes tracing, and calls
 //! [`run`]. Tests construct an [`AppState`] and the [`router`] directly.
 
-mod agents;
+mod agent;
 mod audit;
 mod auth;
 mod backup;
@@ -33,6 +33,7 @@ use anyhow::Context;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 
+pub use agent::serve as serve_agents;
 pub use build_queue::build_once;
 pub use config::{Config, ConfigError, LogFormat};
 pub use db::ensure_partitions;
@@ -43,10 +44,12 @@ pub use monitor::rollup::{
     retention_once as apply_metrics_retention, rollup_once as rollup_metrics,
 };
 pub use monitor::{evaluate_alerts, insert_samples, Sample};
+pub use nodes::driver_for as node_driver;
 pub use state::AppState;
 
 /// Bind the HTTP server, run migrations, and serve until shutdown.
 pub async fn run(config: Config) -> anyhow::Result<()> {
+    agent::install_crypto_provider();
     let pool = db::connect(&config).await?;
     sqlx::migrate!("./migrations")
         .run(&pool)
@@ -124,6 +127,17 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             }
         }
     });
+    if let Some(agent_addr) = state.config.agent_bind {
+        let agent_listener = TcpListener::bind(agent_addr)
+            .await
+            .with_context(|| format!("bind agent listener {agent_addr}"))?;
+        let agent_state = state.clone();
+        tokio::spawn(async move {
+            if let Err(error) = agent::serve(agent_state, agent_listener).await {
+                tracing::error!(error = %format!("{error:#}"), "agent listener stopped");
+            }
+        });
+    }
     let app = router(state);
     let listener = TcpListener::bind(addr)
         .await
@@ -195,6 +209,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::cache::router())
         .merge(routes::logs::router())
         .merge(routes::monitoring::router())
+        .merge(routes::agents::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

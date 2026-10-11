@@ -3,7 +3,8 @@
 use crate::{validate_name, Error};
 
 /// What `docker compose` should do to a stack.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ComposeAction {
     Up,
     Down,

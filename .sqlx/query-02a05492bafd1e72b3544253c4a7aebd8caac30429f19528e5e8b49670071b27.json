@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, name, kind, status, public_ip, description, agent_version, docker_version,\n               os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,\n                  auto_prune, last_pruned_at\n        FROM servers\n        ORDER BY created_at\n        ",
+  "query": "\n        SELECT id, name, kind, status, public_ip, description, agent_version, docker_version,\n               os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,\n                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped\n        FROM servers\n        ORDER BY created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -77,6 +77,21 @@
         "ordinal": 14,
         "name": "last_pruned_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "hostname",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "enrolled_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "telemetry_dropped",
+        "type_info": "Int8"
       }
     ],
     "parameters": {
@@ -97,8 +112,11 @@
       true,
       false,
       false,
-      true
+      true,
+      true,
+      true,
+      false
     ]
   },
-  "hash": "c342161e75b16fcc4c4945f9786b29cf87dd10d8445eb887f6e6e76ae00c3bf0"
+  "hash": "02a05492bafd1e72b3544253c4a7aebd8caac30429f19528e5e8b49670071b27"
 }

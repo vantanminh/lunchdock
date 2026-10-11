@@ -31,6 +31,36 @@
         }
       }
     },
+    "/api/v1/agent/enroll": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Exchange a join token and a CSR for an agent client certificate",
+        "operationId": "post_v1_agent_enroll",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Exchange a join token and a CSR for an agent client certificate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/alert-kinds": {
       "get": {
         "tags": [
@@ -1413,7 +1443,7 @@
         "tags": [
           "catalog"
         ],
-        "summary": "Add a server",
+        "summary": "Add a server; remote servers get a one-time join command",
         "operationId": "post_v1_servers",
         "requestBody": {
           "content": {
@@ -1426,11 +1456,11 @@
         },
         "responses": {
           "201": {
-            "description": "Add a server",
+            "description": "Add a server; remote servers get a one-time join command",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServerView"
+                  "$ref": "#/components/schemas/CreatedServer"
                 }
               }
             }
@@ -1452,6 +1482,27 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CacheStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers/{id}/join-token": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Issue a new join token for a remote server (valid for one hour)",
+        "operationId": "post_v1_servers__id__join-token",
+        "responses": {
+          "200": {
+            "description": "Issue a new join token for a remote server (valid for one hour)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinToken"
                 }
               }
             }
@@ -3440,6 +3491,30 @@
           }
         }
       },
+      "CreatedServer": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ServerView"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "join_command": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "join_token": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        ]
+      },
       "CreatedToken": {
         "type": "object",
         "required": [
@@ -3806,6 +3881,55 @@
           }
         }
       },
+      "EnrollRequest": {
+        "type": "object",
+        "required": [
+          "join_token",
+          "csr_pem"
+        ],
+        "properties": {
+          "csr_pem": {
+            "type": "string",
+            "description": "PKCS#10 request for the agent's own key, PEM."
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "join_token": {
+            "type": "string"
+          }
+        }
+      },
+      "EnrollResponse": {
+        "type": "object",
+        "required": [
+          "server_id",
+          "client_cert_pem",
+          "ca_pem",
+          "grpc_url",
+          "tls_name"
+        ],
+        "properties": {
+          "ca_pem": {
+            "type": "string"
+          },
+          "client_cert_pem": {
+            "type": "string"
+          },
+          "grpc_url": {
+            "type": "string",
+            "description": "Where the agent dials its gRPC session."
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tls_name": {
+            "type": "string",
+            "description": "TLS server name to verify on that connection."
+          }
+        }
+      },
       "EnvVarView": {
         "type": "object",
         "required": [
@@ -4042,6 +4166,26 @@
           "accepted": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "JoinToken": {
+        "type": "object",
+        "required": [
+          "join_token",
+          "join_command",
+          "expires_at"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "join_command": {
+            "type": "string"
+          },
+          "join_token": {
+            "type": "string"
           }
         }
       },
@@ -5017,7 +5161,8 @@
           "status",
           "description",
           "created_at",
-          "auto_prune"
+          "auto_prune",
+          "telemetry_dropped"
         ],
         "properties": {
           "agent_version": {
@@ -5049,6 +5194,21 @@
               "string",
               "null"
             ]
+          },
+          "enrolled_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the agent last exchanged a join token for a certificate."
+          },
+          "hostname": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hostname the agent reported."
           },
           "id": {
             "type": "string",
@@ -5095,6 +5255,11 @@
           },
           "status": {
             "type": "string"
+          },
+          "telemetry_dropped": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Telemetry items the agent discarded because its buffer was full."
           }
         }
       },

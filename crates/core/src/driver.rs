@@ -212,7 +212,7 @@ pub struct ExecOutput {
 /// Everything the control plane does on a machine.
 ///
 /// Business logic depends on this trait. `LocalDriver` talks to the local
-/// socket. `RemoteDriver` will forward the same calls to an agent.
+/// socket. `RemoteDriver` forwards the same calls to a server's agent.
 #[async_trait]
 pub trait NodeDriver: Send + Sync {
     async fn docker_info(&self) -> Result<DockerInfo, Error>;
@@ -267,6 +267,16 @@ pub trait NodeDriver: Send + Sync {
         Err(unsupported("archive_write"))
     }
 
+    /// `docker save` of one image, as a tar stream.
+    async fn save_image(&self, _image: &str) -> Result<ByteStream, Error> {
+        Err(unsupported("save_image"))
+    }
+
+    /// `docker load` from a stream written by [`NodeDriver::save_image`].
+    async fn load_image(&self, _input: ByteStream) -> Result<(), Error> {
+        Err(unsupported("load_image"))
+    }
+
     /// Remove a named volume. Used when a database service is deleted.
     async fn remove_volume(&self, _name: &str) -> Result<(), Error> {
         Err(unsupported("remove_volume"))
@@ -316,12 +326,12 @@ pub trait NodeDriver: Send + Sync {
         Err(unsupported("terminal"))
     }
 
-    /// Counters and usage from the node's HTTP cache.
     /// Server-wide CPU, memory, disk, load, and network counters.
     async fn host_stats(&self) -> Result<crate::HostStats, Error> {
         Err(unsupported("host_stats"))
     }
 
+    /// Counters and usage from the node's HTTP cache.
     async fn cache_stats(&self) -> Result<crate::CacheStats, Error> {
         Err(unsupported("cache_stats"))
     }

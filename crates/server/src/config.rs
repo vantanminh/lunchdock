@@ -14,6 +14,8 @@ use thiserror::Error;
 const DEFAULT_BIND: &str = "0.0.0.0:3000";
 const DEFAULT_DATA_DIR: &str = "/var/lib/rudder";
 const DEFAULT_GITHUB_REPO: &str = "vantanminh/lunchdock";
+const DEFAULT_AGENT_BIND: &str = "0.0.0.0:7443";
+const DEFAULT_DIST_DIR: &str = "/usr/share/rudder/dist";
 
 /// How tracing lines are encoded.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,6 +44,12 @@ pub struct Config {
     pub cache_admin_url: String,
     /// procfs of the host, for server metrics. `/host/proc` when the panel runs in a container.
     pub host_proc: PathBuf,
+    /// gRPC listener agents dial. `None` when set to `off`.
+    pub agent_bind: Option<SocketAddr>,
+    /// Address agents are told to dial, such as `https://panel.example.com:7443`.
+    pub agent_url: Option<String>,
+    /// Release binaries served at `/downloads`, such as the agent for each architecture.
+    pub dist_dir: PathBuf,
 }
 
 impl Config {
@@ -126,6 +134,36 @@ impl Config {
             .get("RUDDER_HOST_PROC")
             .filter(|v| !v.is_empty())
             .map_or_else(|| PathBuf::from("/proc"), PathBuf::from);
+        let agent_bind = match vars.get("RUDDER_AGENT_BIND").map(String::as_str) {
+            Some("off") => None,
+            value => Some(
+                value
+                    .filter(|v| !v.is_empty())
+                    .unwrap_or(DEFAULT_AGENT_BIND)
+                    .parse::<SocketAddr>()
+                    .map_err(|error| ConfigError::Invalid {
+                        name: "RUDDER_AGENT_BIND",
+                        reason: error.to_string(),
+                    })?,
+            ),
+        };
+        let agent_url = vars
+            .get("RUDDER_AGENT_URL")
+            .filter(|v| !v.is_empty())
+            .cloned();
+        if let Some(url) = &agent_url {
+            if !url.starts_with("https://") {
+                return Err(ConfigError::Invalid {
+                    name: "RUDDER_AGENT_URL",
+                    reason: "expected an https:// URL".into(),
+                });
+            }
+        }
+        let dist_dir = PathBuf::from(
+            vars.get("RUDDER_DIST_DIR")
+                .filter(|v| !v.is_empty())
+                .map_or(DEFAULT_DIST_DIR, String::as_str),
+        );
         Ok(Self {
             database_url,
             bind,
@@ -139,6 +177,9 @@ impl Config {
             docker_socket,
             cache_admin_url,
             host_proc,
+            agent_bind,
+            agent_url,
+            dist_dir,
         })
     }
 }
@@ -158,6 +199,9 @@ impl fmt::Debug for Config {
             .field("trust_proxy", &self.trust_proxy)
             .field("docker_socket", &self.docker_socket)
             .field("cache_admin_url", &self.cache_admin_url)
+            .field("agent_bind", &self.agent_bind)
+            .field("agent_url", &self.agent_url)
+            .field("dist_dir", &self.dist_dir)
             .field("host_proc", &self.host_proc)
             .finish()
     }

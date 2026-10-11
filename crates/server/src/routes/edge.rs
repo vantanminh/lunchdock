@@ -326,7 +326,8 @@ async fn list_domains(
     Path(service_id): Path<Uuid>,
 ) -> Result<Json<Vec<DomainView>>, ApiError> {
     let server_id = service_server(&state, service_id).await?;
-    let local = server_is_local(&state, server_id).await?;
+    let local =
+        server_is_local(&state, server_id).await? || state.agents.session(server_id).is_some();
     let rows = domain_rows(&state, service_id).await?;
     let certs = load_certificates(&state).await?;
     let mut views = Vec::new();

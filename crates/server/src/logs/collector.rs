@@ -1,10 +1,11 @@
 //! Follows container output on the local server and feeds it into the log pipeline.
 //!
 //! Remote servers ship their own lines through the agent; this loop only
-//! touches the local Docker daemon.
+//! touches the local Docker daemon. Both paths share [`resolve`] and [`to_entry`],
+//! so attribution and redaction are the same everywhere.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, LazyLock, RwLock};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
@@ -24,10 +25,10 @@ const RESUME_WINDOW_SECS: i64 = 3600;
 const FIRST_SEEN_LOOKBACK_SECS: i64 = 15;
 
 /// Host to (service, project), used to attribute proxy access logs.
-type HostMap = Arc<RwLock<HashMap<String, (Uuid, Uuid)>>>;
+static HOSTS: LazyLock<RwLock<HashMap<String, (Uuid, Uuid)>>> = LazyLock::new(RwLock::default);
 
 #[derive(Debug, Clone)]
-struct Target {
+pub(crate) struct Target {
     source: &'static str,
     service_id: Option<Uuid>,
     project_id: Option<Uuid>,
@@ -37,9 +38,8 @@ struct Target {
 
 pub async fn run(state: AppState) {
     let mut followed: HashMap<String, JoinHandle<()>> = HashMap::new();
-    let hosts: HostMap = Arc::default();
     loop {
-        if let Err(error) = tick(&state, &mut followed, &hosts).await {
+        if let Err(error) = tick(&state, &mut followed).await {
             tracing::debug!(target: "rudder_server::logs", %error, "log collector tick failed");
         }
         tokio::time::sleep(TICK).await;
@@ -49,15 +49,14 @@ pub async fn run(state: AppState) {
 async fn tick(
     state: &AppState,
     followed: &mut HashMap<String, JoinHandle<()>>,
-    hosts: &HostMap,
 ) -> anyhow::Result<()> {
+    refresh_hosts(state).await?;
     let server_id = sqlx::query_scalar!("SELECT id FROM servers WHERE kind = 'local' LIMIT 1")
         .fetch_optional(&state.pool)
         .await?;
     let Some(server_id) = server_id else {
         return Ok(());
     };
-    refresh_hosts(state, hosts).await?;
     followed.retain(|_, handle| !handle.is_finished());
     let containers = state.local_driver.list_containers().await?;
     let live: std::collections::HashSet<&str> = containers.iter().map(|c| c.id.as_str()).collect();
@@ -78,21 +77,13 @@ async fn tick(
         let since = resume_point(state, server_id, &container.id).await?;
         let driver: Arc<dyn NodeDriver> = state.local_driver.clone();
         let sender = state.logs.sender();
-        let task = follow(
-            driver,
-            sender,
-            server_id,
-            container.clone(),
-            target,
-            since,
-            hosts.clone(),
-        );
+        let task = follow(driver, sender, server_id, container.clone(), target, since);
         followed.insert(container.id.clone(), tokio::spawn(task));
     }
     Ok(())
 }
 
-async fn refresh_hosts(state: &AppState, hosts: &HostMap) -> Result<(), sqlx::Error> {
+async fn refresh_hosts(state: &AppState) -> Result<(), sqlx::Error> {
     let rows = sqlx::query!(
         r#"
         SELECT d.host, s.id AS service_id, e.project_id
@@ -112,13 +103,17 @@ async fn refresh_hosts(state: &AppState, hosts: &HostMap) -> Result<(), sqlx::Er
             )
         })
         .collect();
-    if let Ok(mut slot) = hosts.write() {
+    if let Ok(mut slot) = HOSTS.write() {
         *slot = map;
     }
     Ok(())
 }
 
-async fn resolve(state: &AppState, container: &ContainerInfo) -> anyhow::Result<Option<Target>> {
+/// Which source and service a container's lines belong to. `None` means skip it.
+pub(crate) async fn resolve(
+    state: &AppState,
+    container: &ContainerInfo,
+) -> anyhow::Result<Option<Target>> {
     if container.name == TRAEFIK_CONTAINER {
         return Ok(Some(system_target("proxy")));
     }
@@ -223,7 +218,6 @@ async fn follow(
     container: ContainerInfo,
     target: Target,
     since: DateTime<Utc>,
-    hosts: HostMap,
 ) {
     let mut stream = match driver.follow_logs(&container.id, since.timestamp()).await {
         Ok(stream) => stream,
@@ -232,7 +226,6 @@ async fn follow(
             return;
         }
     };
-    let secrets: Vec<&str> = target.secrets.iter().map(String::as_str).collect();
     while let Some(item) = stream.next().await {
         let Ok(line) = item else { break };
         let logged_at = line
@@ -240,51 +233,123 @@ async fn follow(
             .as_deref()
             .and_then(rudder_core::parse_docker_timestamp)
             .unwrap_or_else(Utc::now);
-        if logged_at <= since || line.text.trim().is_empty() {
+        if logged_at <= since {
             continue;
         }
-        let text = if secrets.is_empty() {
-            line.text
-        } else {
-            rudder_core::redact(&line.text, &secrets)
-        };
-        let parsed = rudder_core::parse_line(&text);
-        let mut fields = parsed.fields;
-        fields.insert("container".into(), container.name.clone().into());
-        fields.insert("container_id".into(), container.id.clone().into());
-        let stream_name = match line.stream {
-            LogStreamKind::Stdout => "stdout",
-            LogStreamKind::Stderr => "stderr",
-        };
-        fields.insert("stream".into(), stream_name.into());
-        if let Some(name) = &target.compose_service {
-            fields.insert("compose_service".into(), name.clone().into());
-        }
-        let (mut service_id, mut project_id) = (target.service_id, target.project_id);
-        if target.source == "proxy" {
-            if let Some(host) = fields.get("RequestHost").and_then(|v| v.as_str()) {
-                let host = host.split(':').next().unwrap_or(host).to_ascii_lowercase();
-                if let Some((service, project)) =
-                    hosts.read().ok().and_then(|map| map.get(&host).copied())
-                {
-                    service_id = Some(service);
-                    project_id = Some(project);
-                }
-            }
-        }
-        let entry = NewLog {
+        let Some(entry) = to_entry(
+            server_id,
+            &container,
+            &target,
+            line.stream,
             logged_at,
-            server_id: Some(server_id),
-            project_id,
-            service_id,
-            source: target.source.into(),
-            level: parsed.level.into(),
-            message: parsed.message,
-            http_status: parsed.http_status,
-            fields: serde_json::Value::Object(fields),
+            line.text,
+        ) else {
+            continue;
         };
         if sender.send(entry).await.is_err() {
             return;
         }
+    }
+}
+
+/// `GET example.com/path → 200 (12 ms)` for a Traefik JSON access log line.
+fn proxy_summary(fields: &serde_json::Map<String, serde_json::Value>) -> String {
+    let text = |key: &str| fields.get(key).and_then(|v| v.as_str()).unwrap_or("");
+    let method = text("RequestMethod");
+    if method.is_empty() {
+        return String::new();
+    }
+    let status = fields
+        .get("DownstreamStatus")
+        .and_then(serde_json::Value::as_i64)
+        .map_or_else(|| "-".to_owned(), |code| code.to_string());
+    let millis = fields
+        .get("Duration")
+        .and_then(serde_json::Value::as_f64)
+        .map(|nanos| nanos / 1_000_000.0);
+    let mut line = format!(
+        "{method} {}{} → {status}",
+        text("RequestHost"),
+        text("RequestPath")
+    );
+    if let Some(ms) = millis {
+        line.push_str(&format!(" ({ms:.0} ms)"));
+    }
+    line
+}
+
+/// Redact, parse, and attribute one line of container output.
+pub(crate) fn to_entry(
+    server_id: Uuid,
+    container: &ContainerInfo,
+    target: &Target,
+    stream: LogStreamKind,
+    logged_at: DateTime<Utc>,
+    text: String,
+) -> Option<NewLog> {
+    if text.trim().is_empty() {
+        return None;
+    }
+    let text = if target.secrets.is_empty() {
+        text
+    } else {
+        let secrets: Vec<&str> = target.secrets.iter().map(String::as_str).collect();
+        rudder_core::redact(&text, &secrets)
+    };
+    let parsed = rudder_core::parse_line(&text);
+    let mut fields = parsed.fields;
+    fields.insert("container".into(), container.name.clone().into());
+    fields.insert("container_id".into(), container.id.clone().into());
+    let stream_name = match stream {
+        LogStreamKind::Stdout => "stdout",
+        LogStreamKind::Stderr => "stderr",
+    };
+    fields.insert("stream".into(), stream_name.into());
+    if let Some(name) = &target.compose_service {
+        fields.insert("compose_service".into(), name.clone().into());
+    }
+    let (mut service_id, mut project_id) = (target.service_id, target.project_id);
+    if target.source == "proxy" {
+        if let Some(host) = fields.get("RequestHost").and_then(|v| v.as_str()) {
+            let host = host.split(':').next().unwrap_or(host).to_ascii_lowercase();
+            if let Some((service, project)) =
+                HOSTS.read().ok().and_then(|map| map.get(&host).copied())
+            {
+                service_id = Some(service);
+                project_id = Some(project);
+            }
+        }
+    }
+    let mut message = parsed.message;
+    if target.source == "proxy" && message.is_empty() {
+        message = proxy_summary(&fields);
+    }
+    Some(NewLog {
+        logged_at,
+        server_id: Some(server_id),
+        project_id,
+        service_id,
+        source: target.source.into(),
+        level: parsed.level.into(),
+        message,
+        http_status: parsed.http_status,
+        fields: serde_json::Value::Object(fields),
+    })
+}
+
+#[cfg(test)]
+mod proxy_tests {
+    #[test]
+    fn summarizes_traefik_access_lines() {
+        let fields = serde_json::json!({
+            "RequestMethod": "GET",
+            "RequestHost": "app.example.com",
+            "RequestPath": "/health",
+            "DownstreamStatus": 200,
+            "Duration": 3_400_000.0
+        });
+        let summary = super::proxy_summary(fields.as_object().unwrap());
+        assert_eq!(summary, "GET app.example.com/health → 200 (3 ms)");
+        assert_eq!(super::proxy_summary(&serde_json::Map::new()), "");
     }
 }

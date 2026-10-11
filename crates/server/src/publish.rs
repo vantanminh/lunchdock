@@ -44,7 +44,8 @@ struct CertBlob {
     chain_pem_enc: Option<Vec<u8>>,
 }
 
-/// Refresh the local Traefik file. Remote servers wait for the agent.
+/// Write a server's Traefik routes, certificates, and cache rules. Changes for a
+/// remote server whose agent is offline are applied when it reconnects.
 pub async fn publish_server(state: &AppState, server_id: Uuid) -> Result<bool, ApiError> {
     let kind = sqlx::query_scalar!(r#"SELECT kind FROM servers WHERE id = $1"#, server_id)
         .fetch_optional(&state.pool)
@@ -53,31 +54,33 @@ pub async fn publish_server(state: &AppState, server_id: Uuid) -> Result<bool, A
     let Some(kind) = kind else {
         return Err(crate::routes::catalog::not_found("server not found"));
     };
-    if kind != "local" {
+    let driver: std::sync::Arc<dyn NodeDriver> = if kind == "local" {
+        state.local_driver.clone()
+    } else if let Some(driver) = state.agents.driver(server_id) {
+        driver
+    } else {
         tracing::info!(%server_id, "routing change stored; the agent applies it when connected");
         return Ok(false);
-    }
+    };
     let (routes, note, sites) =
         render_for_server(&state.pool, server_id, state.config.bind.port()).await?;
     let yaml = (routes, note);
     let cache_document = crate::cache::render_document(&state.pool, sites).await?;
-    crate::cache::ensure_token(state.local_driver.as_ref()).await?;
-    state
-        .local_driver
+    crate::cache::ensure_token(driver.as_ref()).await?;
+    driver
         .write_file(
             rudder_core::CACHE_RULES_FILE,
             &serde_json::to_vec_pretty(&cache_document).unwrap_or_default(),
         )
         .await
         .map_err(core_error)?;
-    let materials = write_certificates(state).await?;
+    let materials = write_certificates(state, driver.as_ref()).await?;
     let document = render_dynamic_config(&yaml.0, &materials).map_err(core_error)?;
     let mut body = document;
     if !yaml.1.is_empty() {
         let _ = write!(body, "\n# panel certificate {}\n", yaml.1);
     }
-    state
-        .local_driver
+    driver
         .write_file("traefik/dynamic/routes.yml", body.as_bytes())
         .await
         .map_err(core_error)?;
@@ -215,7 +218,10 @@ pub(crate) fn tls_mode(value: &str) -> Result<TlsMode, ApiError> {
     }
 }
 
-async fn write_certificates(state: &AppState) -> Result<Vec<TlsMaterial>, ApiError> {
+async fn write_certificates(
+    state: &AppState,
+    driver: &dyn NodeDriver,
+) -> Result<Vec<TlsMaterial>, ApiError> {
     let rows = sqlx::query_as!(
         CertBlob,
         r#"
@@ -241,13 +247,11 @@ async fn write_certificates(state: &AppState) -> Result<Vec<TlsMaterial>, ApiErr
         }
         let cert_rel = format!("traefik/certs/{}.crt", row.id);
         let key_rel = format!("traefik/certs/{}.key", row.id);
-        state
-            .local_driver
+        driver
             .write_file(&cert_rel, full.as_bytes())
             .await
             .map_err(core_error)?;
-        state
-            .local_driver
+        driver
             .write_file(&key_rel, key.as_bytes())
             .await
             .map_err(core_error)?;

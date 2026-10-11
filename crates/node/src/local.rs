@@ -522,6 +522,33 @@ impl NodeDriver for LocalDriver {
             .ok_or_else(|| Error::Node("image has no digest".into()))
     }
 
+    async fn save_image(&self, image: &str) -> Result<ByteStream, Error> {
+        validate_image_ref(image)?;
+        let docker = self.docker()?;
+        docker.inspect_image(image).await.map_err(Self::node)?;
+        Ok(Box::pin(
+            docker
+                .export_image(image)
+                .map(|item| item.map_err(Self::node)),
+        ))
+    }
+
+    async fn load_image(&self, input: ByteStream) -> Result<(), Error> {
+        let options = bollard::query_parameters::ImportImageOptionsBuilder::default()
+            .quiet(true)
+            .build();
+        let mut progress = self.docker()?.import_image_stream(options, input, None);
+        while let Some(item) = progress.next().await {
+            let info = item.map_err(Self::node)?;
+            if let Some(detail) = info.error_detail {
+                return Err(Error::Node(
+                    detail.message.unwrap_or_else(|| "image load failed".into()),
+                ));
+            }
+        }
+        Ok(())
+    }
+
     async fn exec_read(&self, id: &str, spec: ExecSpec) -> Result<ByteStream, Error> {
         let docker = self.docker()?.clone();
         let tool = check_exec(&spec)?;

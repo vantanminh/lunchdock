@@ -126,92 +126,76 @@ pub fn render_dynamic_config(
     routes: &[ProxyRoute],
     certs: &[TlsMaterial],
 ) -> Result<String, Error> {
-    let mut yaml = String::from("http:\n  routers:\n");
-    if routes.is_empty() {
-        yaml.push_str("    {}\n");
-    }
+    // Traefik's file provider rejects empty sections such as `middlewares: {}`,
+    // so only sections with entries are written.
+    let mut routers = String::new();
+    let mut services = String::new();
+    let mut middlewares = String::new();
     for route in routes {
         validate_route(route)?;
         let rule = format!(
             "Host(`{}`) && PathPrefix(`{}`)",
             route.host, route.path_prefix
         );
-        yaml.push_str(&format!("    {}:\n", route.name));
-        yaml.push_str(&format!("      rule: \"{rule}\"\n"));
-        yaml.push_str("      service: ");
-        yaml.push_str(&route.name);
-        yaml.push('\n');
+        routers.push_str(&format!("    {}:\n", route.name));
+        routers.push_str(&format!("      rule: \"{rule}\"\n"));
+        routers.push_str(&format!("      service: {}\n", route.name));
         match route.tls {
             TlsMode::None => {
-                yaml.push_str("      entryPoints:\n        - web\n");
+                routers.push_str("      entryPoints:\n        - web\n");
             }
             TlsMode::LetsEncrypt => {
-                yaml.push_str("      entryPoints:\n        - websecure\n");
-                yaml.push_str("      tls:\n        certResolver: letsencrypt\n");
+                routers.push_str("      entryPoints:\n        - websecure\n");
+                routers.push_str("      tls:\n        certResolver: letsencrypt\n");
             }
             TlsMode::Custom => {
-                yaml.push_str("      entryPoints:\n        - websecure\n");
-                yaml.push_str("      tls: {}\n");
+                routers.push_str("      entryPoints:\n        - websecure\n");
+                routers.push_str("      tls: {}\n");
             }
         }
-        let mut middlewares = Vec::new();
-        if route.basic_auth_user.is_some() {
-            middlewares.push(format!("{}-auth", route.name));
-        }
-        if !middlewares.is_empty() {
-            yaml.push_str("      middlewares:\n");
-            for name in &middlewares {
-                yaml.push_str(&format!("        - {name}\n"));
-            }
+        if let (Some(user), Some(hash)) = (&route.basic_auth_user, &route.basic_auth_hash) {
+            routers.push_str(&format!(
+                "      middlewares:\n        - {}-auth\n",
+                route.name
+            ));
+            middlewares.push_str(&format!("    {}-auth:\n", route.name));
+            middlewares.push_str("      basicAuth:\n        users:\n");
+            middlewares.push_str(&format!("          - \"{user}:{hash}\"\n"));
         }
         if route.https_redirect && route.tls != TlsMode::None {
-            yaml.push_str(&format!("    {}-http:\n", route.name));
-            yaml.push_str(&format!("      rule: \"{rule}\"\n"));
-            yaml.push_str("      entryPoints:\n        - web\n");
-            yaml.push_str(&format!(
+            routers.push_str(&format!("    {}-http:\n", route.name));
+            routers.push_str(&format!("      rule: \"{rule}\"\n"));
+            routers.push_str("      entryPoints:\n        - web\n");
+            routers.push_str(&format!(
                 "      middlewares:\n        - {}-https\n",
                 route.name
             ));
-            yaml.push_str("      service: ");
-            yaml.push_str(&route.name);
-            yaml.push('\n');
+            routers.push_str(&format!("      service: {}\n", route.name));
+            middlewares.push_str(&format!("    {}-https:\n", route.name));
+            middlewares.push_str(
+                "      redirectScheme:\n        scheme: https\n        permanent: true\n",
+            );
         }
-    }
-    yaml.push_str("  services:\n");
-    if routes.is_empty() {
-        yaml.push_str("    {}\n");
-    }
-    for route in routes {
-        yaml.push_str(&format!("    {}:\n", route.name));
-        yaml.push_str("      loadBalancer:\n        servers:\n");
-        yaml.push_str(&format!(
+        services.push_str(&format!("    {}:\n", route.name));
+        services.push_str("      loadBalancer:\n        servers:\n");
+        services.push_str(&format!(
             "          - url: \"http://{}:{}\"\n",
             route.container, route.port
         ));
     }
-    yaml.push_str("  middlewares:\n");
-    let mut any_middleware = false;
-    for route in routes {
-        if route.https_redirect && route.tls != TlsMode::None {
-            any_middleware = true;
-            yaml.push_str(&format!("    {}-https:\n", route.name));
-            yaml.push_str(
-                "      redirectScheme:\n        scheme: https\n        permanent: true\n",
-            );
-        }
-        if let (Some(user), Some(hash)) = (&route.basic_auth_user, &route.basic_auth_hash) {
-            any_middleware = true;
-            yaml.push_str(&format!("    {}-auth:\n", route.name));
-            yaml.push_str("      basicAuth:\n        users:\n");
-            yaml.push_str(&format!("          - \"{user}:{hash}\"\n"));
+    let mut yaml = String::from("# Written by Rudder. Changes are overwritten.\n");
+    if !routers.is_empty() {
+        yaml.push_str("http:\n  routers:\n");
+        yaml.push_str(&routers);
+        yaml.push_str("  services:\n");
+        yaml.push_str(&services);
+        if !middlewares.is_empty() {
+            yaml.push_str("  middlewares:\n");
+            yaml.push_str(&middlewares);
         }
     }
-    if !any_middleware {
-        yaml.push_str("    {}\n");
-    }
-    yaml.push_str("tls:\n  certificates:\n");
-    if certs.is_empty() {
-        yaml.push_str("    []\n");
+    if !certs.is_empty() {
+        yaml.push_str("tls:\n  certificates:\n");
     }
     for cert in certs {
         validate_cert_path(&cert.cert_file)?;

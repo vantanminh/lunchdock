@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::routing::get;
 use axum::Json;
 use chrono::{DateTime, Duration, Utc};
-use rudder_core::{validate_env_key, validate_name, Error as CoreError, NodeDriver};
+use rudder_core::{validate_env_key, validate_name, Error as CoreError};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use utoipa::ToSchema;
@@ -34,6 +34,12 @@ pub struct ServerView {
     /// Remove dangling images and build cache once a day.
     pub auto_prune: bool,
     pub last_pruned_at: Option<DateTime<Utc>>,
+    /// Hostname the agent reported.
+    pub hostname: Option<String>,
+    /// When the agent last exchanged a join token for a certificate.
+    pub enrolled_at: Option<DateTime<Utc>>,
+    /// Telemetry items the agent discarded because its buffer was full.
+    pub telemetry_dropped: i64,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -194,7 +200,7 @@ async fn list_servers(
         r#"
         SELECT id, name, kind, status, public_ip, description, agent_version, docker_version,
                os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
-                  auto_prune, last_pruned_at
+                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped
         FROM servers
         ORDER BY created_at
         "#
@@ -208,6 +214,7 @@ async fn list_servers(
 async fn create_server(
     State(state): State<AppState>,
     auth: AuthUser,
+    headers: axum::http::HeaderMap,
     Json(body): Json<CreateServer>,
 ) -> Result<(StatusCode, Json<CreatedServer>), ApiError> {
     auth.require_write()?;
@@ -245,7 +252,7 @@ async fn create_server(
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,
                   os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
-                  auto_prune, last_pruned_at
+                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped
         "#,
         body.name,
         body.kind,
@@ -278,16 +285,9 @@ async fn create_server(
         None,
     )
     .await;
-    let command = join_token.as_ref().map(|token| {
-        format!(
-            "rudder-agent join --server {} --token {token}",
-            state
-                .config
-                .public_url
-                .clone()
-                .unwrap_or_else(|| "https://panel.example".into())
-        )
-    });
+    let command = join_token
+        .as_ref()
+        .map(|token| crate::routes::agents::join_command(&state, &headers, token));
     Ok((
         StatusCode::CREATED,
         Json(CreatedServer {
@@ -320,7 +320,7 @@ async fn update_server(
         WHERE id = $1
         RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,
                   os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
-                  auto_prune, last_pruned_at
+                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped
         "#,
         id,
         body.name,
@@ -387,6 +387,7 @@ async fn delete_server(
         .execute(&state.pool)
         .await
         .map_err(ApiError::database)?;
+    state.agents.disconnect(id);
     audit::record(
         &state.pool,
         Some(auth.id),
@@ -406,20 +407,11 @@ async fn probe_server(
     Path(id): Path<Uuid>,
 ) -> Result<Json<ServerView>, ApiError> {
     auth.require_write()?;
-    let kind = sqlx::query!(r#"SELECT kind FROM servers WHERE id = $1"#, id)
-        .fetch_optional(&state.pool)
+    let info = crate::nodes::driver_for(&state, id)
+        .await?
+        .docker_info()
         .await
-        .map_err(ApiError::database)?;
-    let Some(kind) = kind else {
-        return Err(not_found("server not found"));
-    };
-    if kind.kind != "local" {
-        return Err(conflict(
-            "agent_required",
-            "remote servers report status through the agent",
-        ));
-    }
-    let info = state.local_driver.docker_info().await.map_err(core_error)?;
+        .map_err(core_error)?;
     let row = sqlx::query_as!(
         ServerRow,
         r#"
@@ -434,7 +426,7 @@ async fn probe_server(
         WHERE id = $1
         RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,
                   os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,
-                  auto_prune, last_pruned_at
+                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped
         "#,
         id,
         info.version,
@@ -984,6 +976,9 @@ struct ServerRow {
     created_at: DateTime<Utc>,
     auto_prune: bool,
     last_pruned_at: Option<DateTime<Utc>>,
+    hostname: Option<String>,
+    enrolled_at: Option<DateTime<Utc>>,
+    telemetry_dropped: i64,
 }
 
 fn server_from_row(row: ServerRow) -> ServerView {
@@ -1003,6 +998,9 @@ fn server_from_row(row: ServerRow) -> ServerView {
         created_at: row.created_at,
         auto_prune: row.auto_prune,
         last_pruned_at: row.last_pruned_at,
+        hostname: row.hostname,
+        enrolled_at: row.enrolled_at,
+        telemetry_dropped: row.telemetry_dropped,
     }
 }
 

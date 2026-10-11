@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE servers\n        SET status = 'online',\n            docker_version = $2,\n            os_info = $3,\n            cpu_count = $4,\n            memory_bytes = $5,\n            last_heartbeat_at = now(),\n            updated_at = now()\n        WHERE id = $1\n        RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,\n                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,\n                  auto_prune, last_pruned_at\n        ",
+  "query": "\n        UPDATE servers\n        SET name = COALESCE($2, name),\n            public_ip = COALESCE($3, public_ip),\n            description = COALESCE($4, description),\n            auto_prune = COALESCE($5, auto_prune),\n            updated_at = now()\n        WHERE id = $1\n        RETURNING id, name, kind, status, public_ip, description, agent_version, docker_version,\n                  os_info, cpu_count, memory_bytes, last_heartbeat_at, created_at,\n                  auto_prune, last_pruned_at, hostname, enrolled_at, telemetry_dropped\n        ",
   "describe": {
     "columns": [
       {
@@ -77,6 +77,21 @@
         "ordinal": 14,
         "name": "last_pruned_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "hostname",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "enrolled_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "telemetry_dropped",
+        "type_info": "Int8"
       }
     ],
     "parameters": {
@@ -84,8 +99,8 @@
         "Uuid",
         "Text",
         "Text",
-        "Int4",
-        "Int8"
+        "Text",
+        "Bool"
       ]
     },
     "nullable": [
@@ -103,8 +118,11 @@
       true,
       false,
       false,
-      true
+      true,
+      true,
+      true,
+      false
     ]
   },
-  "hash": "5fe51a25949ce2d202c9cf43b9da38daa7c15c0c7b670332f2800a84cb781f5e"
+  "hash": "4eb0e1dac4513d71913986aa3002b7a45739ad16a04db7f1582d7c22c80914fe"
 }
