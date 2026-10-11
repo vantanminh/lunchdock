@@ -271,7 +271,10 @@ if ! docker inspect rudder-cache >/dev/null 2>&1; then
 	fi
 fi
 
-address="$(hostname -I 2>/dev/null | cut -d ' ' -f 1)"
+address="$(hostname -I 2>/dev/null | cut -d ' ' -f 1)" || address=""
+if [ -z "$address" ]; then
+	address="$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')" || address=""
+fi
 [ -n "$address" ] || address="127.0.0.1"
 if [ -n "$domain" ]; then
 	public_url="https://$domain"

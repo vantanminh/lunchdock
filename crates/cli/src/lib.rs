@@ -48,8 +48,10 @@ impl Context {
             url: var("RUDDER_URL"),
             token: var("RUDDER_TOKEN"),
             read_token: Box::new(|| {
-                use std::io::BufRead;
-                eprint!("API token: ");
+                use std::io::{BufRead, IsTerminal};
+                if std::io::stdin().is_terminal() {
+                    eprint!("API token: ");
+                }
                 let mut line = String::new();
                 std::io::stdin().lock().read_line(&mut line)?;
                 Ok(line.trim().to_owned())

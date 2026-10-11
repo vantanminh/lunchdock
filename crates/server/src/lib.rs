@@ -106,6 +106,9 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             .fetch_optional(&publish_state.pool)
             .await;
         if let Ok(Some(id)) = local {
+            if let Err(error) = routes::catalog::probe(&publish_state, id).await {
+                tracing::warn!(message = %error.public_message(), "local Docker probe failed");
+            }
             if let Err(error) = publish::publish_server(&publish_state, id).await {
                 tracing::warn!(message = %error.public_message(), "startup publish failed");
             }

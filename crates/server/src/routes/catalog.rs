@@ -407,7 +407,12 @@ async fn probe_server(
     Path(id): Path<Uuid>,
 ) -> Result<Json<ServerView>, ApiError> {
     auth.require_write()?;
-    let info = crate::nodes::driver_for(&state, id)
+    Ok(Json(probe(&state, id).await?))
+}
+
+/// Ask the server's Docker for its version and capacity and mark it online.
+pub(crate) async fn probe(state: &AppState, id: Uuid) -> Result<ServerView, ApiError> {
+    let info = crate::nodes::driver_for(state, id)
         .await?
         .docker_info()
         .await
@@ -437,7 +442,7 @@ async fn probe_server(
     .fetch_one(&state.pool)
     .await
     .map_err(ApiError::database)?;
-    Ok(Json(server_from_row(row)))
+    Ok(server_from_row(row))
 }
 
 async fn list_projects(

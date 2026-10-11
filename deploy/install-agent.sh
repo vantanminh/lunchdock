@@ -174,7 +174,7 @@ if [ "$edge" -eq 1 ]; then
 			"$TRAEFIK_IMAGE" --configFile=/etc/rudder/traefik/traefik.yml >/dev/null
 	fi
 	if ! docker inspect rudder-cache >/dev/null 2>&1; then
-		if docker pull "$CACHE_IMAGE" >/dev/null 2>&1; then
+		if docker image inspect "$CACHE_IMAGE" >/dev/null 2>&1 || docker pull "$CACHE_IMAGE" >/dev/null 2>&1; then
 			docker run -d --name rudder-cache --restart unless-stopped \
 				--network rudder-proxy -p 127.0.0.1:9090:9090 \
 				-v "$NODE_DATA/cache:/var/lib/rudder/cache" \
