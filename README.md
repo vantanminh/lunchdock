@@ -40,7 +40,7 @@ rudder cache purge shop/web --all
 
 ## Resource use
 
-These are measured values, not estimates. They come from the x86_64 musl release binaries on a 4-vCPU, 16 GB Ubuntu 24.04 VM with Postgres 16 on the same host. The script is at the end of this section.
+These are measured values, not estimates. They come from the x86_64 musl release binaries on a 4-vCPU, 16 GB Ubuntu 24.04 VM with Postgres 16 on the same host. The steps are at the end of this section.
 
 | Process | Idle RSS | Target | Startup |
 | --- | --- | --- | --- |
@@ -50,9 +50,10 @@ These are measured values, not estimates. They come from the x86_64 musl release
 
 - **Idle:** 60 seconds after start, with one agent connected, the panel sampling local Docker every 10 s, and the cache running with an empty rule set. Values are `VmRSS` and `VmHWM` from `/proc/<pid>/status`.
 - **Long-running check:** in the containerized install used for the update drill, after about 35 minutes with an agent connected and one app deployed, the panel container's `rudder-server` used 23.2 MiB, `rudder-cache` 5.2 MiB, and the remote `rudder-agent` 8.6 MiB.
+- **Fresh install after the walkthrough:** `docker stats` (cgroup memory) showed the `rudder` panel container at 22.7 MiB and each `rudder-cache` container at 1.5 MiB, with Traefik at 26.8 MiB and Postgres at 69.0 MiB. The second server's agent had a `VmRSS` of 10.1 MiB.
 - **Binary sizes:** `rudder-server` 38 MB, `rudder-agent` 12 MB, `rudder-cache` 8.4 MB, `rudder` 6.6 MB.
 
-Postgres, Traefik, and your apps are not included above.
+The table does not include Postgres, Traefik, or your apps.
 
 <details>
 <summary>How the numbers were taken</summary>
@@ -130,7 +131,7 @@ Rudder targets a few servers per panel. It has no Kubernetes, Swarm, clustering 
 
 Verified end to end on Docker-in-Docker hosts:
 
-- install, a deploy with a domain, and a second server through the agent,
+- `install.sh`, the first admin, `rudder login`/`deploy`/`logs`/`cache purge`, a deploy with a domain and HTTP caching, and a second server joined with `install-agent.sh` that serves its own deploy and cache (systemd replaced by a stub that runs the unit's `ExecStart`),
 - backup and restore onto a new host,
 - signed self-update with rollback.
 
