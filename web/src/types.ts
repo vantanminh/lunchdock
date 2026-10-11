@@ -36,3 +36,5 @@ export interface AuditEvent {
   ip: string | null;
   created_at: string;
 }
+
+export type Schemas = import("./api-types").components["schemas"];

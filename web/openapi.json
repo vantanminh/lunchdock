@@ -1,0 +1,3629 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Rudder API",
+    "description": "Control-plane API for the Rudder deployment panel.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "operationId": "get_health",
+        "responses": {
+          "200": {
+            "description": "Health",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Recent audit events",
+        "operationId": "get_v1_audit",
+        "responses": {
+          "200": {
+            "description": "Recent audit events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-jobs": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "List backup jobs",
+        "operationId": "get_v1_backup-jobs",
+        "responses": {
+          "200": {
+            "description": "List backup jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupJobView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Create a backup job",
+        "operationId": "post_v1_backup-jobs",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveBackupJob"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a backup job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupJobView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-jobs/{id}": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Get a backup job",
+        "operationId": "get_v1_backup-jobs__id_",
+        "responses": {
+          "200": {
+            "description": "Get a backup job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupJobView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Delete a backup job",
+        "operationId": "delete_v1_backup-jobs__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a backup job"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Update a backup job",
+        "operationId": "patch_v1_backup-jobs__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveBackupJob"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a backup job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupJobView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-jobs/{id}/run": {
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Back up now",
+        "operationId": "post_v1_backup-jobs__id__run",
+        "responses": {
+          "202": {
+            "description": "Back up now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-jobs/{id}/runs": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Backup and restore history",
+        "operationId": "get_v1_backup-jobs__id__runs",
+        "responses": {
+          "200": {
+            "description": "Backup and restore history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupRunView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-presets": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Schedule presets",
+        "operationId": "get_v1_backup-presets",
+        "responses": {
+          "200": {
+            "description": "Schedule presets"
+          }
+        }
+      }
+    },
+    "/api/v1/backup-runs/{id}": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Get a run with logs",
+        "operationId": "get_v1_backup-runs__id_",
+        "responses": {
+          "200": {
+            "description": "Get a run with logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupRunView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backup-runs/{id}/download": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Download the stored backup object (admin)",
+        "operationId": "get_v1_backup-runs__id__download",
+        "responses": {
+          "200": {
+            "description": "Download the stored backup object (admin)"
+          }
+        }
+      }
+    },
+    "/api/v1/backup-runs/{id}/restore": {
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Restore a backup",
+        "operationId": "post_v1_backup-runs__id__restore",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Restore a backup",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificates": {
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Upload a certificate",
+        "operationId": "post_v1_certificates",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadCertificate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Upload a certificate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificates/match": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Find the certificate that matches a host",
+        "operationId": "get_v1_certificates_match",
+        "responses": {
+          "200": {
+            "description": "Find the certificate that matches a host",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/database-engines": {
+      "get": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "List database engines and versions",
+        "operationId": "get_v1_database-engines",
+        "responses": {
+          "200": {
+            "description": "List database engines and versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseEngineView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/environments/{id}/databases": {
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Create a database",
+        "operationId": "post_v1_environments__id__databases",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDatabase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a database",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/environments/{id}/services": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Create a service",
+        "operationId": "post_v1_environments__id__services",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateService"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Recent system events",
+        "operationId": "get_v1_events",
+        "responses": {
+          "200": {
+            "description": "Recent system events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/git-providers": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Save a git provider",
+        "operationId": "post_v1_git-providers",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGitProvider"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Save a git provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitProviderView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign in",
+        "operationId": "post_v1_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sign in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign out",
+        "operationId": "post_v1_logout",
+        "responses": {
+          "204": {
+            "description": "Sign out"
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Current session",
+        "operationId": "get_v1_me",
+        "responses": {
+          "200": {
+            "description": "Current session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change password",
+        "operationId": "post_v1_me_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Change password"
+          }
+        }
+      }
+    },
+    "/api/v1/me/totp/disable": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Disable authenticator",
+        "operationId": "post_v1_me_totp_disable",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpDisable"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Disable authenticator"
+          }
+        }
+      }
+    },
+    "/api/v1/me/totp/enable": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Enable authenticator",
+        "operationId": "post_v1_me_totp_enable",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpEnable"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Enable authenticator"
+          }
+        }
+      }
+    },
+    "/api/v1/me/totp/setup": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Start authenticator setup",
+        "operationId": "post_v1_me_totp_setup",
+        "responses": {
+          "200": {
+            "description": "Start authenticator setup",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSetupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/panel": {
+      "patch": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Set the panel domain",
+        "operationId": "patch_v1_panel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePanel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set the panel domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Create a project",
+        "operationId": "post_v1_projects",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/registries": {
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Save registry credentials",
+        "operationId": "post_v1_registries",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRegistry"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Save registry credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/s3-destinations": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "List S3 destinations",
+        "operationId": "get_v1_s3-destinations",
+        "responses": {
+          "200": {
+            "description": "List S3 destinations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DestinationView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Create an S3 destination",
+        "operationId": "post_v1_s3-destinations",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDestination"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an S3 destination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DestinationView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/s3-destinations/{id}": {
+      "put": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Update an S3 destination",
+        "operationId": "put_v1_s3-destinations__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDestination"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update an S3 destination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DestinationView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Delete an unused S3 destination",
+        "operationId": "delete_v1_s3-destinations__id_",
+        "responses": {
+          "204": {
+            "description": "Delete an unused S3 destination"
+          }
+        }
+      }
+    },
+    "/api/v1/s3-destinations/{id}/test": {
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Test an S3 destination",
+        "operationId": "post_v1_s3-destinations__id__test",
+        "responses": {
+          "200": {
+            "description": "Test an S3 destination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servers": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List servers",
+        "operationId": "get_v1_servers",
+        "responses": {
+          "200": {
+            "description": "List servers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Add a server",
+        "operationId": "post_v1_servers",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Add a server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/build": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Queue a git build",
+        "operationId": "post_v1_services__id__build",
+        "responses": {
+          "202": {
+            "description": "Queue a git build",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/connection": {
+      "get": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Reveal the connection string (admin)",
+        "operationId": "get_v1_services__id__connection",
+        "responses": {
+          "200": {
+            "description": "Reveal the connection string (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/database": {
+      "delete": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Delete a database (optionally its volume)",
+        "operationId": "delete_v1_services__id__database",
+        "responses": {
+          "204": {
+            "description": "Delete a database (optionally its volume)"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Update database ports and limits",
+        "operationId": "patch_v1_services__id__database",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDatabase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update database ports and limits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/deploy": {
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Deploy a container image",
+        "operationId": "post_v1_services__id__deploy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeployBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deploy a container image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/domains": {
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Attach a domain",
+        "operationId": "post_v1_services__id__domains",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDomain"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attach a domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/env": {
+      "put": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Set an environment variable",
+        "operationId": "put_v1_services__id__env",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutEnvVar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Set an environment variable"
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/logs": {
+      "get": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Recent container logs",
+        "operationId": "get_v1_services__id__logs",
+        "responses": {
+          "200": {
+            "description": "Recent container logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/restart": {
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Restart a service",
+        "operationId": "post_v1_services__id__restart",
+        "responses": {
+          "200": {
+            "description": "Restart a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/rollback": {
+      "post": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Roll back to a successful deployment",
+        "operationId": "post_v1_services__id__rollback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Roll back to a successful deployment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/source": {
+      "put": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Set the git source",
+        "operationId": "put_v1_services__id__source",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set the git source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/start": {
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Start a service",
+        "operationId": "post_v1_services__id__start",
+        "responses": {
+          "200": {
+            "description": "Start a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/stop": {
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "Stop a service",
+        "operationId": "post_v1_services__id__stop",
+        "responses": {
+          "200": {
+            "description": "Stop a service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/webhook": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Accept a git push webhook",
+        "operationId": "post_v1_services__id__webhook",
+        "responses": {
+          "202": {
+            "description": "Accept a git push webhook"
+          }
+        }
+      }
+    },
+    "/api/v1/setup": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create the owner",
+        "operationId": "post_v1_setup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Create the owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/setup/status": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Setup status",
+        "operationId": "get_v1_setup_status",
+        "responses": {
+          "200": {
+            "description": "Setup status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tokens": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List API tokens",
+        "operationId": "get_v1_tokens",
+        "responses": {
+          "200": {
+            "description": "List API tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create an API token",
+        "operationId": "post_v1_tokens",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateToken"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an API token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedToken"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tokens/{id}": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Revoke an API token",
+        "operationId": "delete_v1_tokens__id_",
+        "responses": {
+          "204": {
+            "description": "Revoke an API token"
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List users",
+        "operationId": "get_v1_users",
+        "responses": {
+          "200": {
+            "description": "List users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create user",
+        "operationId": "post_v1_users",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUser"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{id}": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Delete a user",
+        "operationId": "delete_v1_users__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a user"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change a user's role",
+        "operationId": "patch_v1_users__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUser"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Change a user's role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuditView": {
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "resource_type",
+          "metadata",
+          "created_at"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor_user_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "resource_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resource_type": {
+            "type": "string"
+          }
+        }
+      },
+      "BackupJobView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "target_kind",
+          "target_spec",
+          "timezone",
+          "destination_ids",
+          "path_prefix",
+          "filename_template",
+          "retention",
+          "compression",
+          "compression_level",
+          "encrypted",
+          "tool_options",
+          "consistency",
+          "timeout_secs",
+          "retries",
+          "verify_after_upload",
+          "notify_on_success",
+          "enabled",
+          "created_at"
+        ],
+        "properties": {
+          "bandwidth_limit_bps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "compression": {
+            "type": "string"
+          },
+          "compression_level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "consistency": {},
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "destination_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "encrypted": {
+            "type": "boolean"
+          },
+          "filename_template": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_run_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "next_run_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "notify_on_success": {
+            "type": "boolean"
+          },
+          "path_prefix": {
+            "type": "string"
+          },
+          "retention": {},
+          "retries": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "schedule_cron": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "target_kind": {
+            "type": "string"
+          },
+          "target_spec": {},
+          "timeout_secs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "tool_options": {},
+          "verify_after_upload": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BackupRunView": {
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "kind",
+          "trigger",
+          "status",
+          "started_at",
+          "object_keys",
+          "destination_ids",
+          "meta",
+          "logs"
+        ],
+        "properties": {
+          "checksum": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "destination_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "duration_ms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "logs": {
+            "type": "string"
+          },
+          "meta": {},
+          "object_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "size_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string"
+          }
+        }
+      },
+      "BuildAccepted": {
+        "type": "object",
+        "required": [
+          "deployment_id",
+          "queue_id"
+        ],
+        "properties": {
+          "deployment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "queue_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "BuildQueueView": {
+        "type": "object",
+        "required": [
+          "id",
+          "deployment_id",
+          "status",
+          "cancel_requested",
+          "created_at"
+        ],
+        "properties": {
+          "cancel_requested": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deployment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "CertificateView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "sans",
+          "created_at"
+        ],
+        "properties": {
+          "common_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issuer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "not_after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "not_before": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "sans": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ConnectionView": {
+        "type": "object",
+        "required": [
+          "engine",
+          "host",
+          "port",
+          "database",
+          "username",
+          "password",
+          "internal_url"
+        ],
+        "properties": {
+          "database": {
+            "type": "string"
+          },
+          "engine": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "internal_url": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "public_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateDatabase": {
+        "type": "object",
+        "required": [
+          "name",
+          "engine",
+          "version",
+          "server_id"
+        ],
+        "properties": {
+          "database": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "engine": {
+            "type": "string",
+            "description": "postgres, mysql, mariadb, mongo, or redis."
+          },
+          "memory_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nano_cpus": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "public_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Publish the database port on the host. Omit to keep it internal.",
+            "minimum": 0
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Start the container right away. Defaults to true."
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateDomain": {
+        "type": "object",
+        "required": [
+          "host",
+          "target_port",
+          "ssl_mode"
+        ],
+        "properties": {
+          "basic_auth_password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "basic_auth_user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "host": {
+            "type": "string"
+          },
+          "https_redirect": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "path_prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ssl_mode": {
+            "type": "string"
+          },
+          "target_port": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CreateEnvironment": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateGitProvider": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind"
+        ],
+        "properties": {
+          "app_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "installation_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "private_key_pem": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateProject": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateRegistry": {
+        "type": "object",
+        "required": [
+          "name",
+          "url"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateServer": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "public_ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateService": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "server_id"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spec": {}
+        }
+      },
+      "CreateToken": {
+        "type": "object",
+        "required": [
+          "name",
+          "scopes"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CreateUser": {
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "role"
+        ],
+        "properties": {
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "CreatedToken": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "token"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "DatabaseEngineView": {
+        "type": "object",
+        "required": [
+          "engine",
+          "versions",
+          "default_port"
+        ],
+        "properties": {
+          "default_port": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "engine": {
+            "type": "string"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DeployBody": {
+        "type": "object",
+        "properties": {
+          "health_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "health_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "health_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "health_timeout_secs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registry_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "watch_tag": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "DeploymentView": {
+        "type": "object",
+        "required": [
+          "id",
+          "service_id",
+          "status",
+          "trigger",
+          "logs",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "image_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logs": {
+            "type": "string"
+          },
+          "service_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string"
+          }
+        }
+      },
+      "DestinationView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "region",
+          "bucket",
+          "path_style",
+          "access_key_hint",
+          "created_at"
+        ],
+        "properties": {
+          "access_key_hint": {
+            "type": "string",
+            "description": "Last four characters of the access key id."
+          },
+          "bucket": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endpoint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path_style": {
+            "type": "boolean"
+          },
+          "region": {
+            "type": "string"
+          }
+        }
+      },
+      "DomainView": {
+        "type": "object",
+        "required": [
+          "id",
+          "service_id",
+          "host",
+          "path_prefix",
+          "target_port",
+          "https_redirect",
+          "ssl_mode",
+          "cache_enabled",
+          "is_preview",
+          "published"
+        ],
+        "properties": {
+          "basic_auth_user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cache_enabled": {
+            "type": "boolean"
+          },
+          "certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "host": {
+            "type": "string"
+          },
+          "https_redirect": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_preview": {
+            "type": "boolean"
+          },
+          "matched_certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "matched_certificate_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path_prefix": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "service_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ssl_mode": {
+            "type": "string"
+          },
+          "target_port": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "EnvVarView": {
+        "type": "object",
+        "required": [
+          "key",
+          "is_build_secret"
+        ],
+        "properties": {
+          "is_build_secret": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          }
+        }
+      },
+      "EnvironmentView": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "EventView": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "severity",
+          "title",
+          "message",
+          "payload",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delivered_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "payload": {},
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "GitProviderView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "product"
+        ],
+        "properties": {
+          "product": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "LifecycleView": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "container_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "totp_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LogsView": {
+        "type": "object",
+        "required": [
+          "logs"
+        ],
+        "properties": {
+          "logs": {
+            "type": "string"
+          }
+        }
+      },
+      "PanelView": {
+        "type": "object",
+        "required": [
+          "panel_ssl_mode"
+        ],
+        "properties": {
+          "acme_email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "matched_certificate_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "panel_certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "panel_domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "panel_ssl_mode": {
+            "type": "string"
+          }
+        }
+      },
+      "PasswordChange": {
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "properties": {
+          "current_password": {
+            "type": "string"
+          },
+          "new_password": {
+            "type": "string"
+          }
+        }
+      },
+      "PreviewDomain": {
+        "type": "object",
+        "properties": {
+          "target_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ProjectView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "PutEnvVar": {
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "is_build_secret"
+        ],
+        "properties": {
+          "is_build_secret": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "RegistryView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "url",
+          "has_password"
+        ],
+        "properties": {
+          "has_password": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RestoreRequest": {
+        "type": "object",
+        "description": "Where a restore writes.",
+        "properties": {
+          "target_path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Host path for bind and path backups. Defaults to the original path."
+          },
+          "target_service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Database or service to restore into. Defaults to the job's service."
+          },
+          "target_volume": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Volume name for volume backups. Defaults to the original volume."
+          }
+        }
+      },
+      "RollbackBody": {
+        "type": "object",
+        "required": [
+          "deployment_id"
+        ],
+        "properties": {
+          "deployment_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "RunAccepted": {
+        "type": "object",
+        "required": [
+          "run_id"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SaveBackupJob": {
+        "type": "object",
+        "properties": {
+          "bandwidth_limit_bps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "compression": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "compression_level": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "consistency": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "destination_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "encryption_passphrase": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Client-side encryption passphrase. Empty string removes encryption."
+          },
+          "filename_template": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notify_on_success": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "path_prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retention": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "retries": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "schedule_cron": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Five-field cron or a preset such as `@daily`. Empty string clears it."
+          },
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "service_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "target_kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "database, volume, bind, or path."
+          },
+          "target_spec": {
+            "description": "`{\"volume\": \"name\"}`, `{\"source\": \"/bind/source\"}`, or `{\"path\": \"/host/path\"}`."
+          },
+          "timeout_secs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "timezone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tool_options": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "verify_after_upload": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "SaveDestination": {
+        "type": "object",
+        "required": [
+          "name",
+          "bucket"
+        ],
+        "properties": {
+          "access_key_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bucket": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "path_style": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "region": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "secret_access_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ServerView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "status",
+          "description",
+          "created_at"
+        ],
+        "properties": {
+          "agent_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cpu_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "docker_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "last_heartbeat_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "memory_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "os_info": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "public_ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ServiceView": {
+        "type": "object",
+        "required": [
+          "id",
+          "environment_id",
+          "server_id",
+          "name",
+          "kind",
+          "status",
+          "spec",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "environment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spec": {},
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "SessionResponse": {
+        "type": "object",
+        "required": [
+          "user"
+        ],
+        "properties": {
+          "csrf_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserView"
+          }
+        }
+      },
+      "SetupRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "SetupStatus": {
+        "type": "object",
+        "required": [
+          "needs_setup"
+        ],
+        "properties": {
+          "needs_setup": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SourceView": {
+        "type": "object",
+        "required": [
+          "provider_id",
+          "repo",
+          "branch",
+          "strategy",
+          "dockerfile",
+          "context",
+          "publish_dir",
+          "has_webhook_secret"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string"
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "has_webhook_secret": {
+            "type": "boolean"
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "public_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publish_dir": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "webhook_secret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TestResult": {
+        "type": "object",
+        "required": [
+          "ok",
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TokenView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TotpDisable": {
+        "type": "object",
+        "required": [
+          "password",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "TotpEnable": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "TotpSetupResponse": {
+        "type": "object",
+        "required": [
+          "secret",
+          "otpauth_url"
+        ],
+        "properties": {
+          "otpauth_url": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateDatabase": {
+        "type": "object",
+        "properties": {
+          "clear_public_port": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "memory_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "nano_cpus": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "public_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "UpdateDomain": {
+        "type": "object",
+        "properties": {
+          "basic_auth_password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "basic_auth_user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "clear_basic_auth": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "https_redirect": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "path_prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ssl_mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UpdatePanel": {
+        "type": "object",
+        "properties": {
+          "acme_email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "clear_domain": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "panel_certificate_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "panel_domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "panel_ssl_mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateServer": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "public_ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateService": {
+        "type": "object",
+        "properties": {
+          "server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "spec": {}
+        }
+      },
+      "UpdateSource": {
+        "type": "object",
+        "required": [
+          "provider_id",
+          "repo",
+          "branch",
+          "strategy"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "context": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dockerfile": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publish_dir": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "repo": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateUser": {
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "UploadCertificate": {
+        "type": "object",
+        "required": [
+          "name",
+          "cert_pem",
+          "key_pem"
+        ],
+        "properties": {
+          "cert_pem": {
+            "type": "string"
+          },
+          "chain_pem": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key_pem": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "UserView": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "role",
+          "totp_enabled"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string"
+          },
+          "totp_enabled": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API token",
+        "description": "Scoped API token. Send `Authorization: Bearer rdr_...`."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "system",
+      "description": "Process health"
+    },
+    {
+      "name": "auth",
+      "description": "Setup, sessions, users, tokens, and audit"
+    },
+    {
+      "name": "catalog",
+      "description": "Servers, projects, environments, and services"
+    },
+    {
+      "name": "edge",
+      "description": "Domains, certificates, registries, and image deploys"
+    },
+    {
+      "name": "source",
+      "description": "Git providers, webhooks, and builds"
+    },
+    {
+      "name": "databases",
+      "description": "Managed databases and their lifecycle"
+    },
+    {
+      "name": "backups",
+      "description": "S3 destinations, backup jobs, runs, and restores"
+    }
+  ]
+}

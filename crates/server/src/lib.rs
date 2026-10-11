@@ -111,6 +111,13 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// The OpenAPI document as pretty JSON, used to generate frontend types.
+pub fn openapi_json() -> String {
+    openapi::document()
+        .to_pretty_json()
+        .expect("OpenAPI document serializes")
+}
+
 /// HTTP router. Additional route groups are nested here as features land.
 pub fn router(state: AppState) -> axum::Router {
     axum::Router::new()

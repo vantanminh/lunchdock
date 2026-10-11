@@ -37,8 +37,16 @@ pub struct LocalDriver {
 impl LocalDriver {
     /// Build a client for the local socket. A missing socket does not stop the panel;
     /// Docker calls fail until the engine is available.
-    pub fn connect(root: impl Into<PathBuf>) -> Self {
-        let docker = match Docker::connect_with_unix_defaults() {
+    pub fn connect(root: impl Into<PathBuf>, socket: Option<&std::path::Path>) -> Self {
+        let connected = match socket {
+            Some(path) => Docker::connect_with_unix(
+                &path.to_string_lossy(),
+                120,
+                bollard::API_DEFAULT_VERSION,
+            ),
+            None => Docker::connect_with_unix_defaults(),
+        };
+        let docker = match connected {
             Ok(docker) => Some(docker),
             Err(error) => {
                 tracing::warn!(%error, "docker client was not created");

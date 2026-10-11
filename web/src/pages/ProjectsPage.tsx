@@ -47,6 +47,17 @@ export function ProjectsPage() {
   const [kind, setKind] = useState("application");
   const [serverId, setServerId] = useState("");
   const [image, setImage] = useState("");
+  const [engine, setEngine] = useState("postgres");
+  const [version, setVersion] = useState("");
+  const engines = useQuery({
+    queryKey: ["database-engines"],
+    queryFn: () =>
+      api<{ engine: string; versions: string[]; default_port: number }[]>(
+        "/api/v1/database-engines",
+      ),
+    enabled: kind === "database",
+  });
+  const engineVersions = engines.data?.find((item) => item.engine === engine)?.versions ?? [];
 
   const environments = useQuery({
     queryKey: ["environments", selected],
@@ -71,7 +82,8 @@ export function ProjectsPage() {
       setSelected(project.id);
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not create project"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : "Could not create project"),
   });
 
   const createEnvironment = useMutation({
@@ -90,21 +102,36 @@ export function ProjectsPage() {
 
   const createService = useMutation({
     mutationFn: () =>
-      api(`/api/v1/environments/${environmentId}/services`, {
-        method: "POST",
-        body: JSON.stringify({
-          name: serviceName,
-          kind,
-          server_id: serverId || servers.data?.[0]?.id,
-          spec: image ? { image } : {},
-        }),
-      }),
+      kind === "database"
+        ? api(`/api/v1/environments/${environmentId}/databases`, {
+            method: "POST",
+            body: JSON.stringify({
+              name: serviceName,
+              engine,
+              version: version || engineVersions[0],
+              server_id: serverId || servers.data?.[0]?.id,
+            }),
+          })
+        : api(`/api/v1/environments/${environmentId}/services`, {
+            method: "POST",
+            body: JSON.stringify({
+              name: serviceName,
+              kind,
+              server_id: serverId || servers.data?.[0]?.id,
+              spec: image ? { image } : {},
+            }),
+          }),
     onSuccess: async () => {
       setServiceName("");
-      toast.success("Service created");
+      toast.success(
+        kind === "database" ? "Database created with a generated password" : "Service created",
+      );
       await queryClient.invalidateQueries({ queryKey: ["services", environmentId] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not create service"),
+    onError: async (error) => {
+      toast.error(error instanceof ApiError ? error.message : "Could not create service");
+      await queryClient.invalidateQueries({ queryKey: ["services", environmentId] });
+    },
   });
 
   function onProject(event: FormEvent) {
@@ -159,7 +186,8 @@ export function ProjectsPage() {
                 <Button type="submit">Add environment</Button>
               </form>
               <p className="mt-3 text-sm text-muted">
-                {(environments.data ?? []).map((environment) => environment.name).join(", ") || "None yet"}
+                {(environments.data ?? []).map((environment) => environment.name).join(", ") ||
+                  "None yet"}
               </p>
             </Card>
             <Card title="Service">
@@ -202,9 +230,43 @@ export function ProjectsPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Image">
-                  <TextInput value={image} onChange={(event) => setImage(event.target.value)} />
-                </Field>
+                {kind === "database" ? (
+                  <>
+                    <Field label="Engine">
+                      <select
+                        className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
+                        value={engine}
+                        onChange={(event) => {
+                          setEngine(event.target.value);
+                          setVersion("");
+                        }}
+                      >
+                        {(engines.data ?? []).map((item) => (
+                          <option key={item.engine} value={item.engine}>
+                            {item.engine}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Version">
+                      <select
+                        className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
+                        value={version || engineVersions[0] || ""}
+                        onChange={(event) => setVersion(event.target.value)}
+                      >
+                        {engineVersions.map((item) => (
+                          <option key={item} value={item}>
+                            {item}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </>
+                ) : (
+                  <Field label="Image">
+                    <TextInput value={image} onChange={(event) => setImage(event.target.value)} />
+                  </Field>
+                )}
                 <Button type="submit" disabled={!environmentId}>
                   Add service
                 </Button>

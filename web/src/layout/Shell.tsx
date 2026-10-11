@@ -8,6 +8,8 @@ const links = [
   ["/", "Dashboard"],
   ["/servers", "Servers"],
   ["/projects", "Projects"],
+  ["/backups", "Backups"],
+  ["/s3-destinations", "S3 destinations"],
   ["/certificates", "Certificates"],
   ["/registries", "Registries"],
   ["/git", "Git providers"],

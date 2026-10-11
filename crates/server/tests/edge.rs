@@ -19,6 +19,11 @@ fn app(pool: PgPool, data_dir: &std::path::Path) -> axum::Router {
         ("RUDDER_COOKIE_SECURE".into(), "false".into()),
         ("RUDDER_PUBLIC_URL".into(), "https://panel.example".into()),
         ("RUDDER_DATA_DIR".into(), data_dir.display().to_string()),
+        // These assertions describe a host without Docker, even when one is running.
+        (
+            "RUDDER_DOCKER_SOCKET".into(),
+            data_dir.join("no-docker.sock").display().to_string(),
+        ),
     ]);
     let config = rudder_server::Config::from_map(&vars, |_| unreachable!()).unwrap();
     rudder_server::router(rudder_server::AppState::new(pool, config))

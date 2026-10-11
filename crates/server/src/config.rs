@@ -36,6 +36,8 @@ pub struct Config {
     pub cookie_secure: bool,
     /// When true, the first `X-Forwarded-For` hop is the client IP.
     pub trust_proxy: bool,
+    /// Docker Engine unix socket. `None` uses `DOCKER_HOST` or `/var/run/docker.sock`.
+    pub docker_socket: Option<PathBuf>,
 }
 
 impl Config {
@@ -101,6 +103,10 @@ impl Config {
         let cookie_secure = parse_bool(vars, "RUDDER_COOKIE_SECURE", true)?;
         let trust_proxy = parse_bool(vars, "RUDDER_TRUST_PROXY", true)?;
         let master_key = load_master_key(vars, read_file)?;
+        let docker_socket = vars
+            .get("RUDDER_DOCKER_SOCKET")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from);
         Ok(Self {
             database_url,
             bind,
@@ -111,6 +117,7 @@ impl Config {
             log_format,
             cookie_secure,
             trust_proxy,
+            docker_socket,
         })
     }
 }
@@ -128,6 +135,7 @@ impl fmt::Debug for Config {
             .field("log_format", &self.log_format)
             .field("cookie_secure", &self.cookie_secure)
             .field("trust_proxy", &self.trust_proxy)
+            .field("docker_socket", &self.docker_socket)
             .finish()
     }
 }

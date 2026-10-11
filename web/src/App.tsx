@@ -6,11 +6,13 @@ import { AuthProvider, useAuth } from "./auth";
 import { Shell } from "./layout/Shell";
 import { AccountPage } from "./pages/AccountPage";
 import { AuditPage } from "./pages/AuditPage";
+import { BackupsPage } from "./pages/BackupsPage";
 import { DashboardPage } from "./pages/Dashboard";
 import { CertificatesPage } from "./pages/CertificatesPage";
 import { GitProvidersPage } from "./pages/GitProvidersPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { RegistriesPage } from "./pages/RegistriesPage";
+import { S3DestinationsPage } from "./pages/S3DestinationsPage";
 import { ServersPage } from "./pages/ServersPage";
 import { ServicePage } from "./pages/ServicePage";
 import { LoginPage, SetupPage } from "./pages/AuthPages";
@@ -47,6 +49,8 @@ function AppRoutes() {
         <Route path="servers" element={<ServersPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="services/:id" element={<ServicePage />} />
+        <Route path="backups" element={<BackupsPage />} />
+        <Route path="s3-destinations" element={<S3DestinationsPage />} />
         <Route path="certificates" element={<CertificatesPage />} />
         <Route path="registries" element={<RegistriesPage />} />
         <Route path="git" element={<GitProvidersPage />} />
