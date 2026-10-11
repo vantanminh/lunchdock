@@ -7,6 +7,7 @@ mod audit;
 mod auth;
 mod config;
 mod db;
+mod driver;
 mod embed;
 mod error;
 mod openapi;
@@ -33,6 +34,9 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     db::ensure_partitions(&pool)
         .await
         .context("ensure daily partitions")?;
+    db::ensure_local_server(&pool)
+        .await
+        .context("ensure local server")?;
     let settings = db::load_panel_settings(&pool).await?;
     tracing::info!(
         github_repo = %settings.github_repo,
@@ -66,6 +70,7 @@ pub fn router(state: AppState) -> axum::Router {
     axum::Router::new()
         .merge(routes::health::router())
         .merge(routes::account::router())
+        .merge(routes::catalog::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

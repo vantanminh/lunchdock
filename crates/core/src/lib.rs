@@ -3,13 +3,19 @@
 //! Infrastructure crates depend on this crate. It does not talk to Docker,
 //! PostgreSQL, or the network.
 
+mod compose;
 mod crypto;
+mod driver;
 mod error;
 mod validate;
 
+pub use compose::{compose_args, ComposeAction};
 pub use crypto::Cipher;
+pub use driver::{
+    ContainerSpec, DockerInfo, ExecOutput, NodeDriver, PortMapping, RegistryAuth, VolumeMount,
+};
 pub use error::Error;
-pub use validate::validate_name;
+pub use validate::{validate_env_key, validate_image_ref, validate_name};
 
 /// Fill `N` bytes from the process CSPRNG.
 pub fn random_bytes<const N: usize>() -> [u8; N] {

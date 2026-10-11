@@ -63,3 +63,22 @@ pub async fn ensure_partitions(pool: &PgPool) -> Result<(), sqlx::Error> {
     }
     Ok(())
 }
+
+/// Insert the panel host the first time the control plane starts.
+pub async fn ensure_local_server(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let count =
+        sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM servers WHERE kind = 'local'"#)
+            .fetch_one(pool)
+            .await?;
+    if count == 0 {
+        sqlx::query!(
+            r#"
+            INSERT INTO servers (name, kind, status, description)
+            VALUES ('local', 'local', 'unknown', 'This machine')
+            "#
+        )
+        .execute(pool)
+        .await?;
+    }
+    Ok(())
+}

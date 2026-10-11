@@ -7,6 +7,8 @@ import { Shell } from "./layout/Shell";
 import { AccountPage } from "./pages/AccountPage";
 import { AuditPage } from "./pages/AuditPage";
 import { DashboardPage } from "./pages/Dashboard";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { ServersPage } from "./pages/ServersPage";
 import { LoginPage, SetupPage } from "./pages/AuthPages";
 import { TokensPage } from "./pages/TokensPage";
 import { UsersPage } from "./pages/UsersPage";
@@ -38,6 +40,8 @@ function AppRoutes() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="servers" element={<ServersPage />} />
+        <Route path="projects" element={<ProjectsPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="audit" element={<AuditPage />} />

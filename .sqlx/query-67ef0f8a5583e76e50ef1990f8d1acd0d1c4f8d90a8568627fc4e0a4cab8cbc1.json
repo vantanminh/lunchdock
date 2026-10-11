@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT key, is_build_secret\n        FROM env_vars\n        WHERE service_id = $1\n        ORDER BY key\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "is_build_secret",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "67ef0f8a5583e76e50ef1990f8d1acd0d1c4f8d90a8568627fc4e0a4cab8cbc1"
+}

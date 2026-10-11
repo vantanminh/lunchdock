@@ -25,6 +25,40 @@ pub fn is_valid_name(name: &str) -> bool {
         .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || *byte == b'-')
 }
 
+/// Image references are passed as a single Docker argument, never through a shell.
+pub fn validate_image_ref(image: &str) -> Result<(), Error> {
+    let ok = !image.is_empty()
+        && image.len() <= 512
+        && !image.chars().any(|ch| {
+            ch.is_whitespace()
+                || ch.is_control()
+                || matches!(ch, ';' | '|' | '&' | '$' | '`' | '\'' | '"' | '\\')
+        });
+    if ok {
+        Ok(())
+    } else {
+        Err(Error::Validation("invalid image reference".into()))
+    }
+}
+
+/// Environment variable names accepted by Docker.
+pub fn validate_env_key(key: &str) -> Result<(), Error> {
+    let bytes = key.as_bytes();
+    let ok = !bytes.is_empty()
+        && bytes.len() <= 128
+        && (bytes[0].is_ascii_alphabetic() || bytes[0] == b'_')
+        && bytes
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'_');
+    if ok {
+        Ok(())
+    } else {
+        Err(Error::Validation(format!(
+            "invalid environment variable name '{key}'"
+        )))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -45,5 +79,21 @@ mod tests {
         assert!(validate_name("web_app").is_err());
         assert!(validate_name("web app").is_err());
         assert!(validate_name(&"a".repeat(64)).is_err());
+    }
+
+    #[test]
+    fn image_refs_reject_shell_metacharacters() {
+        assert!(validate_image_ref("ghcr.io/acme/app:1.2").is_ok());
+        assert!(validate_image_ref("redis:7").is_ok());
+        assert!(validate_image_ref("nginx:1;rm -rf /").is_err());
+        assert!(validate_image_ref("has space").is_err());
+        assert!(validate_image_ref("").is_err());
+    }
+
+    #[test]
+    fn env_keys_are_identifiers() {
+        assert!(validate_env_key("DATABASE_URL").is_ok());
+        assert!(validate_env_key("1URL").is_err());
+        assert!(validate_env_key("MY-VAR").is_err());
     }
 }

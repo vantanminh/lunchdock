@@ -14,6 +14,10 @@ pub enum Error {
     /// AES-GCM rejected the key or the ciphertext.
     #[error("crypto failure")]
     Crypto,
+
+    /// A node driver could not complete the requested operation.
+    #[error("{0}")]
+    Node(String),
 }
 
 impl PartialEq for Error {
@@ -22,6 +26,7 @@ impl PartialEq for Error {
             (Self::InvalidName(a), Self::InvalidName(b)) => a == b,
             (Self::Validation(a), Self::Validation(b)) => a == b,
             (Self::Crypto, Self::Crypto) => true,
+            (Self::Node(a), Self::Node(b)) => a == b,
             _ => false,
         }
     }

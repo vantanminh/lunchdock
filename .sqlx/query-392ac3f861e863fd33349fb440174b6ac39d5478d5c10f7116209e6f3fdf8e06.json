@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO env_vars (service_id, key, value_enc, is_build_secret)\n        VALUES ($1, $2, $3, $4)\n        ON CONFLICT (service_id, key, is_build_secret)\n        DO UPDATE SET value_enc = EXCLUDED.value_enc\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "392ac3f861e863fd33349fb440174b6ac39d5478d5c10f7116209e6f3fdf8e06"
+}

@@ -6,6 +6,8 @@ import { Button } from "../components/ui";
 
 const links = [
   ["/", "Dashboard"],
+  ["/servers", "Servers"],
+  ["/projects", "Projects"],
   ["/users", "Users"],
   ["/tokens", "API tokens"],
   ["/audit", "Audit log"],

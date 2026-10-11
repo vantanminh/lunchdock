@@ -10,6 +10,10 @@ use crate::routes::account::{
     SessionResponse, SetupRequest, SetupStatus, TokenView, TotpDisable, TotpEnable,
     TotpSetupResponse, UpdateUser, UserView,
 };
+use crate::routes::catalog::{
+    CreateEnvironment, CreateProject, CreateServer, CreateService, EnvVarView, EnvironmentView,
+    ProjectView, PutEnvVar, ServerView, ServiceView, UpdateServer, UpdateService,
+};
 use crate::routes::health::HealthResponse;
 
 #[derive(OpenApiDerive)]
@@ -35,7 +39,19 @@ use crate::routes::health::HealthResponse;
         CreateToken,
         TokenView,
         CreatedToken,
-        AuditView
+        AuditView,
+        ServerView,
+        CreateServer,
+        UpdateServer,
+        ProjectView,
+        CreateProject,
+        EnvironmentView,
+        CreateEnvironment,
+        ServiceView,
+        CreateService,
+        UpdateService,
+        EnvVarView,
+        PutEnvVar
     )),
     modifiers(&SecurityAddon),
     tags(
@@ -248,6 +264,51 @@ const ROUTES: &[Route] = &[
         request: None,
         response: Some("AuditView"),
         status: 200,
+    },
+    Route {
+        path: "/api/v1/servers",
+        method: HttpMethod::Get,
+        tag: "catalog",
+        summary: "List servers",
+        request: None,
+        response: Some("ServerView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/servers",
+        method: HttpMethod::Post,
+        tag: "catalog",
+        summary: "Add a server",
+        request: Some("CreateServer"),
+        response: Some("ServerView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/projects",
+        method: HttpMethod::Post,
+        tag: "catalog",
+        summary: "Create a project",
+        request: Some("CreateProject"),
+        response: Some("ProjectView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/environments/{id}/services",
+        method: HttpMethod::Post,
+        tag: "catalog",
+        summary: "Create a service",
+        request: Some("CreateService"),
+        response: Some("ServiceView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/services/{id}/env",
+        method: HttpMethod::Put,
+        tag: "catalog",
+        summary: "Set an environment variable",
+        request: Some("PutEnvVar"),
+        response: None,
+        status: 204,
     },
 ];
 

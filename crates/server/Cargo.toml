@@ -39,6 +39,10 @@ mime_guess = "2.0.5"
 axum-extra = { version = "0.12.6", features = ["cookie"] }
 utoipa = { version = "6.0.0", features = ["chrono", "uuid", "axum_extras"] }
 utoipa-swagger-ui = { version = "10.0.1", features = ["axum"] }
+bollard = "0.21.1"
+async-trait = "0.1.92"
+bytes = "1.12.1"
+futures-util = "0.3.34"
 
 [dev-dependencies]
 http-body-util = "0.1.5"
