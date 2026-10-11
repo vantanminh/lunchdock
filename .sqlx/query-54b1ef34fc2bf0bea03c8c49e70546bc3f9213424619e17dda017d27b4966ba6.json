@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT status, deployment_id, cancel_requested\n        FROM build_queue\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "deployment_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "cancel_requested",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "54b1ef34fc2bf0bea03c8c49e70546bc3f9213424619e17dda017d27b4966ba6"
+}

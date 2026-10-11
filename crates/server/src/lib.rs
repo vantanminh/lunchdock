@@ -5,12 +5,14 @@
 
 mod audit;
 mod auth;
+mod build_queue;
 mod config;
 mod db;
 mod deploy;
 mod driver;
 mod embed;
 mod error;
+mod gitkey;
 mod openapi;
 mod publish;
 mod routes;
@@ -21,6 +23,7 @@ use anyhow::Context;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 
+pub use build_queue::build_once;
 pub use config::{Config, ConfigError, LogFormat};
 pub use db::ensure_partitions;
 pub use error::ApiError;
@@ -53,6 +56,19 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     let addr = config.bind;
     let state = AppState::new(pool, config);
     let watch_state = state.clone();
+    let build_state = state.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            match build_queue::build_once(&build_state).await {
+                Ok(true) => tracing::debug!("build queue claimed a job"),
+                Ok(false) => {}
+                Err(error) => {
+                    tracing::warn!(message = %error.public_message(), "build queue failed")
+                }
+            }
+        }
+    });
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(300)).await;
@@ -86,6 +102,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::account::router())
         .merge(routes::catalog::router())
         .merge(routes::edge::router())
+        .merge(routes::git::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),

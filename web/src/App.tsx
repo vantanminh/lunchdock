@@ -8,6 +8,7 @@ import { AccountPage } from "./pages/AccountPage";
 import { AuditPage } from "./pages/AuditPage";
 import { DashboardPage } from "./pages/Dashboard";
 import { CertificatesPage } from "./pages/CertificatesPage";
+import { GitProvidersPage } from "./pages/GitProvidersPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { RegistriesPage } from "./pages/RegistriesPage";
 import { ServersPage } from "./pages/ServersPage";
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="services/:id" element={<ServicePage />} />
         <Route path="certificates" element={<CertificatesPage />} />
         <Route path="registries" element={<RegistriesPage />} />
+        <Route path="git" element={<GitProvidersPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="audit" element={<AuditPage />} />

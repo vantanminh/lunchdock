@@ -49,6 +49,8 @@ pub struct RolloutPlan {
     pub labels: Vec<(String, String)>,
     pub auth: Option<RegistryAuth>,
     pub health: HealthSpec,
+    /// Locally built images already exist on the node and must not be pulled.
+    pub skip_pull: bool,
 }
 
 pub struct StartedContainer {
@@ -70,7 +72,9 @@ pub async fn start_replacement(
 ) -> Result<StartedContainer, Error> {
     crate::validate_name(&plan.container_name)?;
     crate::validate_image_ref(&plan.image)?;
-    driver.pull_image(&plan.image, plan.auth.clone()).await?;
+    if !plan.skip_pull {
+        driver.pull_image(&plan.image, plan.auth.clone()).await?;
+    }
     let spec = ContainerSpec {
         name: plan.container_name.clone(),
         image: plan.image.clone(),
@@ -306,7 +310,25 @@ mod tests {
                 path: "/health".into(),
                 port: 8080,
             },
+            skip_pull: false,
         }
+    }
+
+    #[tokio::test]
+    async fn skip_pull_starts_the_local_image() {
+        let driver = Fake {
+            events: Mutex::new(Vec::new()),
+            running: true,
+            http: true,
+        };
+        let mut plan = plan(HealthKind::None);
+        plan.skip_pull = true;
+        rollout(&driver, &plan, None, |_| async { Ok(()) })
+            .await
+            .unwrap();
+        let events = driver.events.lock().expect("events").clone();
+        assert!(!events.iter().any(|event| event == "pull"));
+        assert!(events.iter().any(|event| event == "create"));
     }
 
     #[tokio::test]

@@ -19,6 +19,9 @@ use crate::routes::edge::{
     CertificateView, CreateDomain, CreateRegistry, DeployBody, DomainView, PanelView,
     PreviewDomain, RegistryView, RollbackBody, UpdateDomain, UpdatePanel, UploadCertificate,
 };
+use crate::routes::git::{
+    BuildAccepted, BuildQueueView, CreateGitProvider, GitProviderView, SourceView, UpdateSource,
+};
 use crate::routes::health::HealthResponse;
 
 #[derive(OpenApiDerive)]
@@ -69,14 +72,21 @@ use crate::routes::health::HealthResponse;
         RollbackBody,
         DeploymentView,
         PanelView,
-        UpdatePanel
+        UpdatePanel,
+        GitProviderView,
+        CreateGitProvider,
+        SourceView,
+        UpdateSource,
+        BuildAccepted,
+        BuildQueueView
     )),
     modifiers(&SecurityAddon),
     tags(
         (name = "system", description = "Process health"),
         (name = "auth", description = "Setup, sessions, users, tokens, and audit"),
         (name = "catalog", description = "Servers, projects, environments, and services"),
-        (name = "edge", description = "Domains, certificates, registries, and image deploys")
+        (name = "edge", description = "Domains, certificates, registries, and image deploys"),
+        (name = "source", description = "Git providers, webhooks, and builds")
     )
 )]
 struct ApiDoc;
@@ -392,6 +402,42 @@ const ROUTES: &[Route] = &[
         request: Some("UpdatePanel"),
         response: Some("PanelView"),
         status: 200,
+    },
+    Route {
+        path: "/api/v1/git-providers",
+        method: HttpMethod::Post,
+        tag: "source",
+        summary: "Save a git provider",
+        request: Some("CreateGitProvider"),
+        response: Some("GitProviderView"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/services/{id}/source",
+        method: HttpMethod::Put,
+        tag: "source",
+        summary: "Set the git source",
+        request: Some("UpdateSource"),
+        response: Some("SourceView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/build",
+        method: HttpMethod::Post,
+        tag: "source",
+        summary: "Queue a git build",
+        request: None,
+        response: Some("BuildAccepted"),
+        status: 202,
+    },
+    Route {
+        path: "/api/v1/services/{id}/webhook",
+        method: HttpMethod::Post,
+        tag: "source",
+        summary: "Accept a git push webhook",
+        request: None,
+        response: None,
+        status: 202,
     },
 ];
 

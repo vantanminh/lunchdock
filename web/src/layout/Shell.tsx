@@ -10,6 +10,7 @@ const links = [
   ["/projects", "Projects"],
   ["/certificates", "Certificates"],
   ["/registries", "Registries"],
+  ["/git", "Git providers"],
   ["/users", "Users"],
   ["/tokens", "API tokens"],
   ["/audit", "Audit log"],

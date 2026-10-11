@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO deployments (service_id, status, trigger, git_sha, logs)\n        VALUES ($1, 'queued', $2, $3, '')\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6efa6d6d14e1fcd81ce712abe8265d07d62d179fa65c7172e2f26c135d97f739"
+}

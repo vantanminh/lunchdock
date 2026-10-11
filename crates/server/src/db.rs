@@ -72,7 +72,7 @@ pub async fn recover_interrupted(pool: &PgPool) -> Result<(), sqlx::Error> {
         SET status = 'failed',
             error = 'interrupted by process restart',
             finished_at = COALESCE(finished_at, now())
-        WHERE status IN ('running', 'queued')
+        WHERE status = 'running'
         "#
     )
     .execute(pool)
@@ -81,7 +81,16 @@ pub async fn recover_interrupted(pool: &PgPool) -> Result<(), sqlx::Error> {
         r#"
         UPDATE services
         SET status = 'failed', updated_at = now()
-        WHERE status = 'deploying'
+        WHERE status IN ('deploying', 'building')
+        "#
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query!(
+        r#"
+        UPDATE build_queue
+        SET status = 'failed'
+        WHERE status = 'running'
         "#
     )
     .execute(pool)

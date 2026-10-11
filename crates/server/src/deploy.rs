@@ -105,7 +105,7 @@ pub async fn deploy_service(
     let Some(service) = service else {
         return Err(not_found("service not found"));
     };
-    if service.status == "deploying" {
+    if service.status == "deploying" || service.status == "building" {
         return Err(conflict(
             "deploy_in_progress",
             "a deployment is already running for this service",
@@ -226,6 +226,7 @@ pub async fn deploy_service(
         ],
         auth,
         health: params.health.clone(),
+        skip_pull: false,
     };
     let previous_id = service.current_container_id.clone();
     let previous_image = service.current_image.clone();
@@ -324,6 +325,215 @@ pub async fn deploy_service(
         Err(error) => {
             let message = error.to_string();
             mark_failed(state, service.id, Some(deployment_id), &message).await;
+            Err(core_error(error))
+        }
+    }
+}
+
+pub(crate) struct BuiltRollout {
+    pub service_id: Uuid,
+    pub deployment_id: Uuid,
+    pub image: String,
+    pub actor: Option<Uuid>,
+    pub log_prefix: String,
+}
+
+/// Roll a locally built image onto an existing deployment row.
+pub(crate) async fn roll_built_image(state: &AppState, roll: BuiltRollout) -> Result<(), ApiError> {
+    let service = sqlx::query_as!(
+        ServiceDeployRow,
+        r#"
+        SELECT id, name, kind, server_id, spec, status, current_container_id, current_image
+        FROM services
+        WHERE id = $1
+        "#,
+        roll.service_id
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?
+    .ok_or_else(|| not_found("service not found"))?;
+    if service.kind != "application" {
+        return Err(bad(
+            "invalid_kind",
+            "git deploy is available for application services",
+        ));
+    }
+    sqlx::query!(
+        r#"UPDATE services SET status = 'deploying', updated_at = now() WHERE id = $1"#,
+        service.id
+    )
+    .execute(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    if let Err(error) = validate_image_ref(&roll.image) {
+        mark_failed(
+            state,
+            service.id,
+            Some(roll.deployment_id),
+            &error.to_string(),
+        )
+        .await;
+        return Err(core_error(error));
+    }
+    let generation = match next_generation(state, service.id).await {
+        Ok(generation) => generation,
+        Err(error) => {
+            mark_failed(
+                state,
+                service.id,
+                Some(roll.deployment_id),
+                "could not allocate a container name",
+            )
+            .await;
+            return Err(error);
+        }
+    };
+    let name = match container_name(&service.name, generation) {
+        Ok(name) => name,
+        Err(error) => {
+            mark_failed(
+                state,
+                service.id,
+                Some(roll.deployment_id),
+                &error.to_string(),
+            )
+            .await;
+            return Err(core_error(error));
+        }
+    };
+    let env = match runtime_env(state, service.id).await {
+        Ok(env) => env,
+        Err(error) => {
+            mark_failed(
+                state,
+                service.id,
+                Some(roll.deployment_id),
+                &error.public_message(),
+            )
+            .await;
+            return Err(error);
+        }
+    };
+    let resources = match resources_from_spec(&service.spec) {
+        Ok(resources) => resources,
+        Err(error) => {
+            mark_failed(
+                state,
+                service.id,
+                Some(roll.deployment_id),
+                &error.public_message(),
+            )
+            .await;
+            return Err(error);
+        }
+    };
+    let plan = RolloutPlan {
+        container_name: name.clone(),
+        image: roll.image.clone(),
+        env,
+        command: resources.command,
+        ports: resources.ports,
+        volumes: resources.volumes,
+        memory_bytes: resources.memory_bytes,
+        nano_cpus: resources.nano_cpus,
+        restart: resources.restart,
+        network: Some(PROXY_NETWORK.into()),
+        labels: vec![
+            ("rudder.managed".into(), "true".into()),
+            ("rudder.service".into(), service.id.to_string()),
+        ],
+        auth: None,
+        health: service_health(state, service.id)
+            .await
+            .unwrap_or_else(|_| HealthSpec::none(30)),
+        skip_pull: true,
+    };
+    let previous_id = service.current_container_id.clone();
+    let previous_image = service.current_image.clone();
+    let previous_status = service.status.clone();
+    let switch_saved = SavedContainer {
+        container_id: String::new(),
+        container_name: name.clone(),
+        image: roll.image.clone(),
+        generation,
+        deployment_id: roll.deployment_id,
+        watch_tag: None,
+    };
+    let switch_state = state.clone();
+    let outcome = rollout(
+        state.local_driver.as_ref(),
+        &plan,
+        previous_id.as_deref(),
+        |started| {
+            let container_id = started.id.clone();
+            let state = switch_state.clone();
+            let mut saved = switch_saved.clone();
+            let previous_id = previous_id.clone();
+            let previous_image = previous_image.clone();
+            let previous_status = previous_status.clone();
+            let server_id = service.server_id;
+            let service_id = service.id;
+            async move {
+                saved.container_id = container_id.clone();
+                record_running(&state, service_id, &saved)
+                    .await
+                    .map_err(|error| rudder_core::Error::Node(error.public_message()))?;
+                if let Err(error) = publish_server(&state, server_id).await {
+                    restore_previous(
+                        &state,
+                        service_id,
+                        previous_id.as_deref(),
+                        previous_image.as_deref(),
+                        &previous_status,
+                        &container_id,
+                    )
+                    .await;
+                    return Err(rudder_core::Error::Node(error.public_message()));
+                }
+                Ok(())
+            }
+        },
+    )
+    .await;
+    match outcome {
+        Ok(output) => {
+            let mut logs = roll.log_prefix;
+            let _ = std::fmt::Write::write_fmt(
+                &mut logs,
+                format_args!("started {}\nrouting updated\n", output.container_name),
+            );
+            if let Some(error) = &output.retire_error {
+                let _ = std::fmt::Write::write_fmt(
+                    &mut logs,
+                    format_args!("previous container was left running: {error}\n"),
+                );
+            }
+            finish_deployment(state, roll.deployment_id, "succeeded", None, &logs).await?;
+            let _ = sqlx::query!(
+                r#"UPDATE services SET status = 'running', updated_at = now() WHERE id = $1"#,
+                service.id
+            )
+            .execute(&state.pool)
+            .await;
+            audit::record(
+                &state.pool,
+                roll.actor,
+                "service.build",
+                "service",
+                Some(&service.id.to_string()),
+                json!({ "image": roll.image, "deployment_id": roll.deployment_id }),
+                None,
+            )
+            .await;
+            Ok(())
+        }
+        Err(error) => {
+            let message = error.to_string();
+            let logs = format!("{}{message}\n", roll.log_prefix);
+            let _ =
+                finish_deployment(state, roll.deployment_id, "failed", Some(&message), &logs).await;
+            mark_failed(state, service.id, None, &message).await;
             Err(core_error(error))
         }
     }
@@ -923,7 +1133,7 @@ async fn mark_failed(
         r#"
         UPDATE services
         SET status = 'failed', updated_at = now()
-        WHERE id = $1 AND status = 'deploying'
+        WHERE id = $1 AND status IN ('deploying', 'building')
         "#,
         service_id
     )

@@ -5,12 +5,19 @@ import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { Button, Card, Field, TextInput } from "../components/ui";
 
+interface GitSource {
+  repo?: string;
+  branch?: string;
+  strategy?: string;
+  provider_id?: string;
+}
+
 interface Service {
   id: string;
   name: string;
   kind: string;
   status: string;
-  spec: { image?: string };
+  spec: { image?: string; git?: GitSource };
 }
 
 interface Domain {
@@ -29,7 +36,19 @@ interface Deployment {
   trigger: string;
   image_ref: string | null;
   error: string | null;
+  logs: string;
   created_at: string;
+}
+
+interface GitProvider {
+  id: string;
+  name: string;
+  kind: string;
+}
+
+interface SavedSource {
+  webhook_secret?: string | null;
+  public_key?: string | null;
 }
 
 interface Registry {
@@ -59,10 +78,15 @@ export function ServicePage() {
     queryKey: ["deployments", id],
     queryFn: () => api<Deployment[]>(`/api/v1/services/${id}/deployments`),
     enabled: Boolean(id),
+    refetchInterval: 4000,
   });
   const registries = useQuery({
     queryKey: ["registries"],
     queryFn: () => api<Registry[]>("/api/v1/registries"),
+  });
+  const providers = useQuery({
+    queryKey: ["git-providers"],
+    queryFn: () => api<GitProvider[]>("/api/v1/git-providers"),
   });
   const [image, setImage] = useState("");
   const [registryId, setRegistryId] = useState("");
@@ -70,6 +94,41 @@ export function ServicePage() {
   const [port, setPort] = useState("80");
   const [sslMode, setSslMode] = useState("letsencrypt");
   const [matchName, setMatchName] = useState<string | null>(null);
+  const [providerId, setProviderId] = useState("");
+  const [repo, setRepo] = useState("");
+  const [branch, setBranch] = useState("main");
+  const [strategy, setStrategy] = useState("dockerfile");
+  const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+
+  const saveSource = useMutation({
+    mutationFn: () =>
+      api<SavedSource>(`/api/v1/services/${id}/source`, {
+        method: "PUT",
+        body: JSON.stringify({
+          provider_id: providerId,
+          repo,
+          branch,
+          strategy,
+        }),
+      }),
+    onSuccess: async (saved) => {
+      setWebhookSecret(saved.webhook_secret ?? null);
+      setPublicKey(saved.public_key ?? null);
+      toast.success("Source saved. Copy the webhook secret now.");
+      await queryClient.invalidateQueries({ queryKey: ["service", id] });
+    },
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not save source"),
+  });
+
+  const build = useMutation({
+    mutationFn: () => api(`/api/v1/services/${id}/build`, { method: "POST" }),
+    onSuccess: async () => {
+      toast.success("Build queued");
+      await queryClient.invalidateQueries({ queryKey: ["deployments", id] });
+    },
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not queue build"),
+  });
 
   const deploy = useMutation({
     mutationFn: () =>
@@ -164,6 +223,68 @@ export function ServicePage() {
         {current?.kind} · {current?.status}
         {current?.spec?.image ? ` · ${current.spec.image}` : ""}
       </p>
+      <Card title="Git source">
+        <form
+          className="grid gap-3 md:grid-cols-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveSource.mutate();
+          }}
+        >
+          <Field label="Provider">
+            <select
+              className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
+              value={providerId}
+              onChange={(event) => setProviderId(event.target.value)}
+              required
+            >
+              <option value="">Choose</option>
+              {(providers.data ?? []).map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.name} ({provider.kind})
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Repository">
+            <TextInput
+              required
+              value={repo}
+              placeholder="https://github.com/org/app.git"
+              onChange={(event) => setRepo(event.target.value)}
+            />
+          </Field>
+          <Field label="Branch">
+            <TextInput required value={branch} onChange={(event) => setBranch(event.target.value)} />
+          </Field>
+          <Field label="Build">
+            <select
+              className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
+              value={strategy}
+              onChange={(event) => setStrategy(event.target.value)}
+            >
+              <option value="dockerfile">Dockerfile</option>
+              <option value="nixpacks">Nixpacks</option>
+              <option value="static">Static site</option>
+            </select>
+          </Field>
+          <div className="flex items-end gap-2">
+            <Button type="submit">Save source</Button>
+            <Button quiet type="button" onClick={() => build.mutate()}>
+              Build
+            </Button>
+          </div>
+        </form>
+        {current?.spec?.git?.repo ? (
+          <p className="mt-3 text-sm text-muted">
+            Current: {current.spec.git.repo} · {current.spec.git.branch} · {current.spec.git.strategy}
+          </p>
+        ) : null}
+        {webhookSecret ? (
+          <p className="mt-2 text-sm">Webhook secret: {webhookSecret}</p>
+        ) : null}
+        {publicKey ? <p className="mt-2 break-all font-mono text-xs">{publicKey}</p> : null}
+      </Card>
       <Card title="Deploy image">
         <form className="grid gap-3 md:grid-cols-2" onSubmit={onDeploy}>
           <Field label="Image">
@@ -247,6 +368,11 @@ export function ServicePage() {
                 {deployment.status} · {deployment.trigger} · {deployment.image_ref ?? "no image"}
               </p>
               {deployment.error ? <p className="text-muted">{deployment.error}</p> : null}
+              {deployment.logs ? (
+                <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-xs text-muted">
+                  {deployment.logs}
+                </pre>
+              ) : null}
               {deployment.status === "succeeded" ? (
                 <Button quiet className="mt-2" onClick={() => rollback.mutate(deployment.id)}>
                   Roll back

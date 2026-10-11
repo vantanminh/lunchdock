@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE build_queue\n        SET status = 'cancelled', cancel_requested = TRUE, finished_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b96e17ea7f84bf5aaf86887880d134c129c05cc4ddfbc4df29efebbd381dac93"
+}
