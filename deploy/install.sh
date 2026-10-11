@@ -104,8 +104,10 @@ fi
 [ -z "$restore" ] || [ -z "$backup" ] || die "--restore and --backup cannot be combined"
 [ "$(id -u)" -eq 0 ] || die "run as root (sudo)"
 
-PANEL_IMAGE="${RUDDER_PANEL_IMAGE:-$REGISTRY/rudder:$version}"
-CACHE_IMAGE="${RUDDER_CACHE_IMAGE:-$REGISTRY/rudder-cache:$version}"
+# Release images are tagged without the leading "v" (v0.2.0 -> :0.2.0).
+tag="${version#v}"
+PANEL_IMAGE="${RUDDER_PANEL_IMAGE:-$REGISTRY/rudder:$tag}"
+CACHE_IMAGE="${RUDDER_CACHE_IMAGE:-$REGISTRY/rudder-cache:$tag}"
 
 read_secret() {
 	# read_secret CURRENT_VALUE ENV_NAME PROMPT -> prints the value
