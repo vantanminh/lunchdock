@@ -33,3 +33,27 @@ export function formatTime(value: string | null | undefined): string {
 export function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
+
+const relative = new Intl.RelativeTimeFormat(undefined, { numeric: "auto", style: "short" });
+
+export function formatRelative(value: string | null | undefined, now = Date.now()): string {
+  if (!value) {
+    return "—";
+  }
+  const seconds = Math.round((new Date(value).getTime() - now) / 1000);
+  const steps: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["second", 60],
+    ["minute", 60],
+    ["hour", 24],
+    ["day", 30],
+    ["month", 12],
+  ];
+  let amount = seconds;
+  for (const [unit, size] of steps) {
+    if (Math.abs(amount) < size) {
+      return unit === "second" && Math.abs(amount) < 30 ? "just now" : relative.format(amount, unit);
+    }
+    amount = Math.round(amount / size);
+  }
+  return relative.format(amount, "year");
+}

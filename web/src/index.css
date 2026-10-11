@@ -1,54 +1,211 @@
 @import "tailwindcss";
-@import "@fontsource/ibm-plex-sans/400.css";
-@import "@fontsource/ibm-plex-sans/500.css";
-@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/be-vietnam-pro/400.css";
+@import "@fontsource/be-vietnam-pro/500.css";
+@import "@fontsource/be-vietnam-pro/600.css";
+@import "@fontsource/be-vietnam-pro/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Knotree design system: warm paper neutrals, one deep-pine accent. */
 :root {
   color-scheme: light;
-  --paper: #f4efe6;
-  --ink: #1c1915;
-  --muted: #6d645b;
-  --line: #e3d7c6;
-  --panel: #fffaf3;
-  --accent: #8d4318;
-  --accent-ink: #fff8f2;
-  --danger: #9f2d2d;
+  --paper: #f6f5f2;
+  --surface: #fffdfa;
+  --sunken: #efede8;
+  --ink: #1c1917;
+  --ink-soft: #3a3632;
+  --muted: #6b6560;
+  --faint: #9a948d;
+  --line: #e4e0d8;
+  --line-strong: #d3cec4;
+  --pine: #1f3d32;
+  --pine-hover: #183228;
+  --pine-soft: #e6ede9;
+  --pine-line: #c3d3cb;
+  --pine-ink: #ffffff;
+  --danger: #8f2d2d;
+  --danger-hover: #7a2525;
+  --danger-soft: #f7ecea;
+  --danger-line: #e8c9c4;
+  --amber: #8a5a12;
+  --amber-soft: #f8f0df;
+  --amber-line: #ead7ae;
+  --shadow-color: 28 25 23;
 }
 
+/* Dark theme derived from the same ledger: warm charcoal, pine lifted for contrast. */
 .dark {
   color-scheme: dark;
-  --paper: #10151c;
-  --ink: #f3ecdf;
-  --muted: #b3aa9e;
-  --line: #2a313b;
-  --panel: #171d26;
-  --accent: #e0a15a;
-  --accent-ink: #1a120b;
-  --danger: #f0a0a0;
+  --paper: #121110;
+  --surface: #1a1917;
+  --sunken: #23211e;
+  --ink: #f3efe8;
+  --ink-soft: #d8d2c8;
+  --muted: #a69f95;
+  --faint: #766f67;
+  --line: #2c2a26;
+  --line-strong: #3b3833;
+  --pine: #8cc4a9;
+  --pine-hover: #a3d1ba;
+  --pine-soft: #1a2a23;
+  --pine-line: #2d473b;
+  --pine-ink: #0d1813;
+  --danger: #f0a39b;
+  --danger-hover: #f5bab3;
+  --danger-soft: #2c1917;
+  --danger-line: #52302b;
+  --amber: #e5bd72;
+  --amber-soft: #2a2213;
+  --amber-line: #4d3c1c;
+  --shadow-color: 0 0 0;
 }
 
 @theme inline {
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
   --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
   --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-line: var(--line);
-  --color-panel: var(--panel);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
+  --color-line-strong: var(--line-strong);
+  --color-pine: var(--pine);
+  --color-pine-hover: var(--pine-hover);
+  --color-pine-soft: var(--pine-soft);
+  --color-pine-line: var(--pine-line);
+  --color-pine-ink: var(--pine-ink);
   --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-line: var(--danger-line);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-line: var(--amber-line);
+
+  /* Older names kept so existing pages pick up the new palette. */
+  --color-panel: var(--surface);
+  --color-accent: var(--pine);
+  --color-accent-ink: var(--pine-ink);
+
+  --radius-sm: 4px;
+  --radius-control: 6px;
+  --radius-alert: 8px;
+  --radius-card: 10px;
+  --radius-dialog: 12px;
+  --radius-auth: 14px;
+
+  --shadow-card: 0 1px 0 rgb(var(--shadow-color) / 0.03), 0 1px 2px rgb(var(--shadow-color) / 0.04);
+  --shadow-raised: 0 1px 2px rgb(var(--shadow-color) / 0.05),
+    0 8px 24px -8px rgb(var(--shadow-color) / 0.12);
+  --shadow-overlay: 0 2px 6px rgb(var(--shadow-color) / 0.06),
+    0 24px 48px -12px rgb(var(--shadow-color) / 0.24);
+
+  --animate-fade-up: fade-up 220ms ease-out both;
+  --animate-live: live 1.6s ease-in-out infinite;
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-sans);
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-#root {
-  min-height: 100vh;
+@keyframes live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss02";
+    line-height: 1.5;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: var(--pine-soft);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--pine);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.015em;
+  }
+
+  /* Plain links inside pages read as links without each page styling them. */
+  main a:not([class]) {
+    color: var(--pine);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: var(--pine-line);
+    text-underline-offset: 3px;
+  }
+
+  main a:not([class]):hover {
+    text-decoration-color: currentColor;
+  }
+
+  main table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  main thead {
+    font-size: 12.5px;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--pine);
+  }
+
+  pre,
+  code,
+  kbd {
+    font-family: var(--font-mono);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

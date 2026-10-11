@@ -101,7 +101,7 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
           </Button>
         </div>
         {view.missing_variables.length > 0 ? (
-          <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">
+          <p className="mt-4 text-sm text-amber">
             Not set under Environment: {view.missing_variables.join(", ")}
           </p>
         ) : null}
