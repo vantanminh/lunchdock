@@ -24,8 +24,25 @@ env:
   SQLX_OFFLINE: "true"
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Signing configuration is present
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          RUDDER_UPDATE_PUBKEY: ${{ vars.RUDDER_UPDATE_PUBKEY }}
+        run: |
+          missing=""
+          [ -n "$MINISIGN_SECRET_KEY" ] || missing="$missing secret:MINISIGN_SECRET_KEY"
+          [ -n "$RUDDER_UPDATE_PUBKEY" ] || missing="$missing variable:RUDDER_UPDATE_PUBKEY"
+          if [ -n "$missing" ]; then
+            echo "::error::set these repository settings before tagging a release:$missing"
+            exit 1
+          fi
+
   binaries:
     name: binaries (${{ matrix.target }})
+    needs: preflight
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -63,8 +80,8 @@ jobs:
 
       - name: Install cargo-zigbuild
         run: |
-          pip install ziglang==0.13.0
-          cargo install cargo-zigbuild --locked --version 0.19.8
+          pip install ziglang==0.15.2
+          cargo install cargo-zigbuild --locked --version 0.23.4
 
       - name: Build
         env:
