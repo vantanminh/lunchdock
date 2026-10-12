@@ -34,6 +34,10 @@ pub struct CreateStack {
     pub git: Option<StackGit>,
     /// Compose service new domains point at by default.
     pub main_service: Option<String>,
+    /// Compose project name, which prefixes the containers, networks and named volumes. Give the
+    /// name of a project that already runs on the server to take its volumes over. Defaults to
+    /// the stack name plus six random characters.
+    pub project: Option<String>,
     /// Run `docker compose up` right away. Defaults to false.
     pub start: Option<bool>,
     /// Deploy also builds images that have a `build:` section. Defaults to false.
@@ -48,6 +52,8 @@ pub struct UpdateStack {
     pub compose_yaml: Option<String>,
     pub git: Option<StackGit>,
     pub main_service: Option<String>,
+    /// New compose project name. Only accepted before the first deploy; unchanged when omitted.
+    pub project: Option<String>,
     /// Deploy also builds images that have a `build:` section. Unchanged when omitted.
     pub build_on_deploy: Option<bool>,
     /// A push to the Git branch deploys the stack. Unchanged when omitted.
@@ -264,6 +270,15 @@ async fn create_stack(
         body.main_service,
         None,
     )?;
+    if let Some(project) = body
+        .project
+        .as_deref()
+        .filter(|name| !name.trim().is_empty())
+    {
+        spec.project = stacks::claim_project(&state, body.server_id, None, project).await?;
+        let routed: Vec<String> = spec.main_service.iter().cloned().collect();
+        stacks::replan(&mut spec, &routed)?;
+    }
     spec.build_on_deploy = body.build_on_deploy.unwrap_or(false);
     spec.deploy_on_push = body.deploy_on_push.unwrap_or(false);
     let mut tx = state.pool.begin().await.map_err(ApiError::database)?;
@@ -365,6 +380,18 @@ async fn update_stack(
     if stack.spec.project.is_empty() {
         let name = load_service_view(&state, id).await?.name;
         stack.spec.project = stacks::project_name(&name);
+    }
+    if let Some(project) = body.project.as_deref().map(str::trim) {
+        if !project.is_empty() && project != stack.spec.project {
+            if !stack.spec.compose_path.is_empty() {
+                return Err(conflict(
+                    "project_locked",
+                    "the project name can only change before the first deploy; its containers and volumes already carry the current one",
+                ));
+            }
+            stack.spec.project =
+                stacks::claim_project(&state, stack.server_id, Some(id), project).await?;
+        }
     }
     let switching = stack.spec.source != body.source;
     stack.spec.source = body.source;

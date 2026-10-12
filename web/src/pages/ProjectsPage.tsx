@@ -765,6 +765,7 @@ function NewServiceDialog({
     compose_file: "docker-compose.yml",
   });
   const [mainService, setMainService] = useState("");
+  const [stackProject, setStackProject] = useState("");
   const providers = useQuery({
     queryKey: ["git-providers"],
     queryFn: () => api<Schemas["GitProviderView"][]>("/api/v1/git-providers"),
@@ -800,6 +801,7 @@ function NewServiceDialog({
                 compose_yaml: stackSource === "inline" ? stackYaml : undefined,
                 git: stackSource === "git" ? stackGit : undefined,
                 main_service: mainService || undefined,
+                project: stackProject.trim() || undefined,
               }),
             })
           : api(`/api/v1/environments/${environment.id}/services`, {
@@ -904,6 +906,19 @@ function NewServiceDialog({
                 value={mainService}
                 placeholder="web"
                 onChange={(event) => setMainService(event.target.value)}
+              />
+            </Field>
+            <Field
+              label={t("Compose project name")}
+              hint={t(
+                "Optional. Use the name of a project already running on the server to take over its containers and volumes; otherwise one is generated.",
+              )}
+            >
+              <TextInput
+                value={stackProject}
+                placeholder="my-app"
+                pattern="[a-z0-9][a-z0-9\-]*"
+                onChange={(event) => setStackProject(event.target.value)}
               />
             </Field>
             <CreateStackFields

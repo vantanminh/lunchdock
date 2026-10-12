@@ -1230,4 +1230,8 @@ export const vi: Record<string, string> = {
   "The GitHub App cannot read this repository.": "GitHub App không đọc được kho mã này.",
   "Another path…": "Đường dẫn khác…",
   "No compose file was found on this branch; type its path.": "Không tìm thấy file compose trên nhánh này; hãy nhập đường dẫn.",
+  "Compose project name": "Tên project compose",
+  "Optional. Use the name of a project already running on the server to take over its containers and volumes; otherwise one is generated.": "Không bắt buộc. Dùng tên của project đang chạy trên máy chủ để nhận lại container và volume của nó; nếu để trống, hệ thống tự đặt tên.",
+  "Fixed after the first deploy: the containers and volumes already carry this name.": "Không đổi được sau lần triển khai đầu tiên: container và volume đã mang tên này.",
+  "Use the name of a project already running on the server to take over its containers and volumes.": "Dùng tên của project đang chạy trên máy chủ để nhận lại container và volume của nó.",
 };

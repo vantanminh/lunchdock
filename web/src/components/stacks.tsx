@@ -402,6 +402,8 @@ function SourceForm({
     },
   );
   const [mainService, setMainService] = useState(initial.main_service ?? "");
+  const [project, setProject] = useState(initial.project);
+  const deployed = Boolean(initial.compose_path);
   const [buildOnDeploy, setBuildOnDeploy] = useState(initial.build_on_deploy);
   const [deployOnPush, setDeployOnPush] = useState(initial.deploy_on_push);
   const hasBuilds = initial.services.some((service) => service.build);
@@ -414,6 +416,7 @@ function SourceForm({
           compose_yaml: source === "inline" ? yaml : undefined,
           git: source === "git" ? git : undefined,
           main_service: mainService || undefined,
+          project: !deployed && project.trim() !== initial.project ? project.trim() : undefined,
           build_on_deploy: buildOnDeploy,
           deploy_on_push: source === "git" ? deployOnPush : false,
         }),
@@ -467,6 +470,25 @@ function SourceForm({
             />
           </Field>
         </div>
+        <Field
+          label={t("Compose project name")}
+          hint={
+            deployed
+              ? t(
+                  "Fixed after the first deploy: the containers and volumes already carry this name.",
+                )
+              : t(
+                  "Use the name of a project already running on the server to take over its containers and volumes.",
+                )
+          }
+        >
+          <TextInput
+            value={project}
+            disabled={deployed}
+            pattern="[a-z0-9][a-z0-9\-]*"
+            onChange={(event) => setProject(event.target.value)}
+          />
+        </Field>
         {source === "inline" ? (
           <Field label="docker-compose.yml" presets={<YamlStarters yaml={yaml} onPick={setYaml} />}>
             <TextArea

@@ -25,6 +25,34 @@ Traefik routes are written by the panel's file provider (see decision 0011), not
 
 A Git stack's compose file is read from the repository at deploy time, so until then the panel does not know which variables it needs. **Refresh from Git** on the stack page (`POST /api/v1/services/{id}/stack/refresh`) fetches the repository on the panel host, reads the compose file and plans it again, without writing anything to the server or starting a container. Afterwards the General tab shows the services, the generated file and the warnings, and the Environment tab lists the variables the file reads that have no value yet (marked *optional* when the file gives a fallback, *required* for `${NAME:?error}`); picking one fills in its key. Saving or deleting a variable updates that list. The same refresh runs again on every deploy. It is refused while an action is running and for stacks with a pasted-YAML source.
 
+### Project name, and taking over an existing project
+
+Compose prefixes the containers, networks and named volumes of a stack with its **project name** (`<project>-web-1`, `<project>_pgdata`). By default Rudder generates one: the stack name plus six random characters, so two environments can hold stacks with the same name. Set **Compose project name** when creating the stack (`"project"` in `POST /api/v1/environments/{id}/stacks`) or on the stack's source form to choose it yourself: lowercase letters, digits and hyphens, unique among the stacks of that server (`409 project_taken` otherwise). It can be changed only until the first deploy (`409 project_locked` afterwards), because the containers and volumes then carry the name.
+
+To take over something that already runs under another compose project on the same server, find its name and use it:
+
+```bash
+docker compose ls                                   # project names
+docker volume ls --filter label=com.docker.compose.project=<project>
+```
+
+The first deploy then finds the volumes called `<project>_<volume>` and keeps their data. Containers are recreated from the file Rudder generates (compose replaces a container whose configuration changed), and Rudder adds its labels and the proxy network. Keep the same service and volume names as in the old file; a volume that was created by hand or by an old compose version is used as it is, with a warning in the deploy log that compose did not create it.
+
+### Moving a database between projects or servers
+
+When the project name cannot be reused, copy the data instead, with the database stopped or through its own dump tool:
+
+```bash
+# logical dump from the old project and restore into the new one (PostgreSQL)
+docker compose -p <old-project> exec -T db pg_dump -U <user> -Fc <database> > app.dump
+docker compose -p <new-project> exec -T db pg_restore -U <user> -d <database> --clean --if-exists < app.dump
+
+# or copy a whole volume while nothing writes to it
+docker run --rm -v <old-project>_pgdata:/from -v <new-project>_pgdata:/to alpine sh -c 'cp -a /from/. /to/'
+```
+
+For a database created from the Databases page use its backups (see [backups](backups.md)) and restore into the new service.
+
 ## Environment
 
 Reference values as `${NAME}` (or `${NAME:-default}`) in the compose file and set them on the Environment tab. They are stored encrypted and written to a mode 0600 `.env` next to the generated file each time the stack is deployed; values are quoted so compose does not expand `$` inside them. The stack page lists referenced variables that have no value yet; a variable with a fallback (`${NAME:-x}`) is not reported. Use `$$` for a literal dollar sign in the compose file. Container and compose output is masked with these values before it is stored or shown.

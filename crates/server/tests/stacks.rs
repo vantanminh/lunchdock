@@ -213,6 +213,19 @@ services:
       TOKEN: ${TOKEN}
 "#;
 
+async fn rename_project(client: &Client, id: &str, project: &str) -> Reply {
+    client
+        .call(
+            "PUT",
+            &format!("/api/v1/services/{id}/stack"),
+            Some(json!({
+                "source": "inline", "main_service": "web",
+                "compose_yaml": COMPOSE, "project": project
+            })),
+        )
+        .await
+}
+
 #[sqlx::test(migrations = "./migrations")]
 async fn api_without_docker(pool: PgPool) {
     let data_dir = temp_dir("stacks");
@@ -455,6 +468,62 @@ async fn api_without_docker(pool: PgPool) {
         .as_str()
         .unwrap()
         .contains("busybox:1.37"));
+
+    // A chosen project name takes over the containers and volumes already named that way.
+    let adopted = client
+        .expect(
+            StatusCode::CREATED,
+            "POST",
+            &stacks_path,
+            Some(json!({
+                "name": "adopted", "server_id": server_id, "source": "inline",
+                "compose_yaml": COMPOSE, "main_service": "web", "project": "lele-center"
+            })),
+        )
+        .await;
+    assert_eq!(adopted["project"], "lele-center");
+    assert!(adopted["generated_yaml"]
+        .as_str()
+        .unwrap()
+        .contains("name: lele-center"));
+    let adopted_id = adopted["service"]["id"].as_str().unwrap().to_owned();
+    for (name, project, want, code) in [
+        ("twin", "lele-center", StatusCode::CONFLICT, "project_taken"),
+        ("loud", "Not_Valid", StatusCode::BAD_REQUEST, "invalid_name"),
+    ] {
+        let refused = client
+            .expect(
+                want,
+                "POST",
+                &stacks_path,
+                Some(json!({
+                    "name": name, "server_id": server_id, "source": "inline",
+                    "compose_yaml": COMPOSE, "project": project
+                })),
+            )
+            .await;
+        assert_eq!(refused["error"]["code"], code, "{project}");
+    }
+    let renamed = rename_project(&client, &adopted_id, "lele-center-2").await;
+    assert_eq!(renamed.status, StatusCode::OK, "{}", renamed.body);
+    assert_eq!(renamed.body["project"], "lele-center-2");
+    assert!(renamed.body["generated_yaml"]
+        .as_str()
+        .unwrap()
+        .contains("name: lele-center-2"));
+    let clash = rename_project(&client, &adopted_id, &project).await;
+    assert_eq!(clash.status, StatusCode::CONFLICT);
+    assert_eq!(clash.body["error"]["code"], "project_taken");
+    sqlx::query(
+        r#"UPDATE services SET spec = spec || '{"compose_path":"stacks/x/rudder-compose.yml"}' WHERE id = $1::uuid"#,
+    )
+    .bind(&adopted_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let locked = rename_project(&client, &adopted_id, "lele-center-3").await;
+    assert_eq!(locked.status, StatusCode::CONFLICT);
+    assert_eq!(locked.body["error"]["code"], "project_locked");
 
     let app_service = client
         .ok(

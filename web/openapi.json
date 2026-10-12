@@ -4739,6 +4739,13 @@
           "name": {
             "type": "string"
           },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Compose project name, which prefixes the containers, networks and named volumes. Give the\nname of a project that already runs on the server to take its volumes over. Defaults to\nthe stack name plus six random characters."
+          },
           "server_id": {
             "type": "string",
             "format": "uuid"
@@ -8182,6 +8189,13 @@
               "string",
               "null"
             ]
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New compose project name. Only accepted before the first deploy; unchanged when omitted."
           },
           "source": {
             "type": "string"

@@ -15,8 +15,8 @@ use std::time::Duration;
 use axum::http::StatusCode;
 use rudder_core::{
     redact, render_env_file, transform_compose, validate_branch, validate_compose_service,
-    validate_git_url, validate_rel_path, ComposeAction, ComposeOptions, LogSink, NodeDriver,
-    RegistryAuth, MAX_COMPOSE_BYTES,
+    validate_git_url, validate_name, validate_rel_path, ComposeAction, ComposeOptions, LogSink,
+    NodeDriver, RegistryAuth, MAX_COMPOSE_BYTES,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -1085,6 +1085,43 @@ pub async fn destroy(state: &AppState, id: Uuid, volumes: bool) -> Result<(), Ap
     Ok(())
 }
 
+/// A compose project name chosen by the user. It is the prefix of the stack's containers,
+/// networks and named volumes, so using the name of a project that already runs on the server
+/// (or whose volumes are still there) takes those volumes over. Names are unique per server.
+pub async fn claim_project(
+    state: &AppState,
+    server_id: Uuid,
+    except: Option<Uuid>,
+    name: &str,
+) -> Result<String, ApiError> {
+    let name = name.trim();
+    validate_name(name).map_err(core_error)?;
+    let taken = sqlx::query_scalar!(
+        r#"
+        SELECT id
+        FROM services
+        WHERE kind = 'compose'
+          AND server_id = $1
+          AND spec ->> 'project' = $2
+          AND ($3::uuid IS NULL OR id <> $3)
+        LIMIT 1
+        "#,
+        server_id,
+        name,
+        except
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    if taken.is_some() {
+        return Err(conflict(
+            "project_taken",
+            "another stack on this server already uses that project name",
+        ));
+    }
+    Ok(name.to_owned())
+}
+
 /// Fields a new stack row starts with.
 pub fn initial_spec(
     name: &str,
@@ -1139,7 +1176,7 @@ mod tests {
         let long = "a".repeat(63);
         let first = project_name(&long);
         assert_eq!(first.len(), 47);
-        rudder_core::validate_name(&first).unwrap();
+        validate_name(&first).unwrap();
         assert_ne!(first, project_name(&long));
         assert!(project_name("web-").starts_with("web-"));
     }

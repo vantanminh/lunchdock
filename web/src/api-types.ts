@@ -2418,6 +2418,12 @@ export interface components {
             /** @description Compose service new domains point at by default. */
             main_service?: string | null;
             name: string;
+            /**
+             * @description Compose project name, which prefixes the containers, networks and named volumes. Give the
+             *     name of a project that already runs on the server to take its volumes over. Defaults to
+             *     the stack name plus six random characters.
+             */
+            project?: string | null;
             /** Format: uuid */
             server_id: string;
             /** @description `inline` (paste YAML) or `git`. */
@@ -3437,6 +3443,8 @@ export interface components {
             deploy_on_push?: boolean | null;
             git?: components["schemas"]["StackGit"] | null;
             main_service?: string | null;
+            /** @description New compose project name. Only accepted before the first deploy; unchanged when omitted. */
+            project?: string | null;
             source: string;
         };
         UpdateStarted: {
