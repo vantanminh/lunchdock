@@ -12,6 +12,7 @@ mod crypto;
 mod database;
 mod driver;
 mod envelope;
+mod envfile;
 mod error;
 mod github_app;
 mod image_ref;
@@ -60,6 +61,9 @@ pub use driver::{
     TerminalInput, TerminalInputStream, VolumeMount,
 };
 pub use envelope::{Decryptor, Encryptor, MAGIC as ENVELOPE_MAGIC};
+pub use envfile::{
+    parse_env_text, EnvEntry, EnvParse, EnvParseError, MAX_ENV_VALUE_BYTES, MAX_IMPORT_ENTRIES,
+};
 pub use error::Error;
 pub use github_app::{
     github_app_jwt, github_app_manifest, github_repo_full_name, is_private_host, validate_app_name,

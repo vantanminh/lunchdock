@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT key, is_build_secret, value_enc, updated_at\n        FROM env_vars\n        WHERE service_id = $1\n        ORDER BY key\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "is_build_secret",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "value_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "db7412d7fb6145e15f75add8d79d65eaa18fad9cbf332bb28b4dab3d5142435c"
+}

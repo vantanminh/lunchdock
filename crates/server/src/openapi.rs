@@ -25,8 +25,9 @@ use crate::routes::cache::{
 };
 use crate::routes::catalog::{
     CreateEnvironment, CreateProject, CreateServer, CreateService, CreatedServer, EnvVarView,
-    EnvironmentView, ProjectView, PutEnvVar, ServerView, ServiceSummary, ServiceView, UpdateServer,
-    UpdateService,
+    EnvironmentView, ImportEnv, ImportEnvEntry, ImportEnvError, ImportEnvResult, ProjectView,
+    PutEnvVar, ServerView, ServiceSummary, ServiceView, UpdateServer, UpdateService,
+    VerifyEnvResult, VerifyEnvVar,
 };
 use crate::routes::databases::{
     ConnectionView, CreateDatabase, DatabaseEngineView, LifecycleView, LogsView, UpdateDatabase,
@@ -102,6 +103,12 @@ use rudder_core::{
         UpdateService,
         EnvVarView,
         PutEnvVar,
+        ImportEnv,
+        ImportEnvEntry,
+        ImportEnvError,
+        ImportEnvResult,
+        VerifyEnvVar,
+        VerifyEnvResult,
         CertificateView,
         UploadCertificate,
         DomainView,
@@ -987,6 +994,24 @@ const ROUTES: &[Route] = &[
         request: None,
         response: Some("DeploymentView"),
         status: 202,
+    },
+    Route {
+        path: "/api/v1/services/{id}/env/import",
+        method: HttpMethod::Post,
+        tag: "catalog",
+        summary: "Preview or save many variables from the text of a .env file",
+        request: Some("ImportEnv"),
+        response: Some("ImportEnvResult"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/env/{key}/verify",
+        method: HttpMethod::Post,
+        tag: "catalog",
+        summary: "Check a typed value against the saved one without revealing it",
+        request: Some("VerifyEnvVar"),
+        response: Some("VerifyEnvResult"),
+        status: 200,
     },
     Route {
         path: "/api/v1/services/{id}/deployments/{deployment}/logs",

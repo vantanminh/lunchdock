@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT value_enc\n        FROM env_vars\n        WHERE service_id = $1 AND key = $2 AND is_build_secret = $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value_enc",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4e1f3103db842a900196862cf3fd956596f04b5fa14d9bfe9eebadfdca34a0c6"
+}

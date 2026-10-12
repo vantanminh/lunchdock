@@ -2,12 +2,13 @@
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Json;
 use chrono::{DateTime, Duration, Utc};
 use rudder_core::{validate_env_key, validate_name, Error as CoreError};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use subtle::ConstantTimeEq;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -138,6 +139,56 @@ pub struct UpdateService {
 pub struct EnvVarView {
     pub key: String,
     pub is_build_secret: bool,
+    /// When the value was last written.
+    pub updated_at: DateTime<Utc>,
+    /// Characters in the saved value, so a typo or a truncated paste shows without revealing it.
+    pub length: i32,
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct ImportEnv {
+    /// The text of a `.env` file: `KEY=value` lines, `#` comments, quotes.
+    pub text: String,
+    #[serde(default)]
+    pub is_build_secret: bool,
+    /// Only report what would change; save nothing.
+    #[serde(default)]
+    pub dry_run: bool,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ImportEnvEntry {
+    pub key: String,
+    /// `new`, `changed`, or `unchanged` compared with what is saved.
+    pub status: String,
+    pub length: i32,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ImportEnvError {
+    pub line: i32,
+    pub message: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ImportEnvResult {
+    pub entries: Vec<ImportEnvEntry>,
+    pub errors: Vec<ImportEnvError>,
+    /// The values were saved. False for a dry run or when the text has errors.
+    pub applied: bool,
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct VerifyEnvVar {
+    pub value: String,
+    #[serde(default)]
+    pub is_build_secret: bool,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct VerifyEnvResult {
+    /// The value typed matches the saved one exactly.
+    pub matches: bool,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -185,6 +236,8 @@ pub fn router() -> axum::Router<AppState> {
                 .delete(delete_service),
         )
         .route("/api/v1/services/{id}/env", get(list_env).put(put_env))
+        .route("/api/v1/services/{id}/env/import", post(import_env))
+        .route("/api/v1/services/{id}/env/{key}/verify", post(verify_env))
         .route(
             "/api/v1/services/{id}/env/{key}",
             axum::routing::delete(delete_env),
@@ -929,7 +982,7 @@ async fn list_env(
 ) -> Result<Json<Vec<EnvVarView>>, ApiError> {
     let rows = sqlx::query!(
         r#"
-        SELECT key, is_build_secret
+        SELECT key, is_build_secret, value_enc, updated_at
         FROM env_vars
         WHERE service_id = $1
         ORDER BY key
@@ -944,9 +997,174 @@ async fn list_env(
             .map(|row| EnvVarView {
                 key: row.key,
                 is_build_secret: row.is_build_secret,
+                updated_at: row.updated_at,
+                length: saved_length(&state, &row.value_enc),
             })
             .collect(),
     ))
+}
+
+/// Characters in a stored value; zero when it cannot be read.
+fn saved_length(state: &AppState, encrypted: &[u8]) -> i32 {
+    state
+        .cipher
+        .decrypt(encrypted)
+        .ok()
+        .and_then(|bytes| String::from_utf8(bytes).ok())
+        .map_or(0, |value| {
+            i32::try_from(value.chars().count()).unwrap_or(i32::MAX)
+        })
+}
+
+/// Preview or save many variables from the text of a `.env` file.
+async fn import_env(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(body): Json<ImportEnv>,
+) -> Result<Json<ImportEnvResult>, ApiError> {
+    auth.require_write()?;
+    let exists = sqlx::query_scalar!(r#"SELECT id FROM services WHERE id = $1"#, id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(ApiError::database)?;
+    if exists.is_none() {
+        return Err(not_found("service not found"));
+    }
+    let parse = rudder_core::parse_env_text(&body.text);
+    let saved = sqlx::query!(
+        r#"
+        SELECT key, value_enc
+        FROM env_vars
+        WHERE service_id = $1 AND is_build_secret = $2
+        "#,
+        id,
+        body.is_build_secret
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    let mut current: std::collections::HashMap<String, Vec<u8>> = std::collections::HashMap::new();
+    for row in saved {
+        if let Ok(bytes) = state.cipher.decrypt(&row.value_enc) {
+            current.insert(row.key, bytes);
+        }
+    }
+    let entries: Vec<ImportEnvEntry> = parse
+        .entries
+        .iter()
+        .map(|entry| ImportEnvEntry {
+            key: entry.key.clone(),
+            status: match current.get(&entry.key) {
+                None => "new",
+                Some(old) if old.as_slice() == entry.value.as_bytes() => "unchanged",
+                Some(_) => "changed",
+            }
+            .to_owned(),
+            length: i32::try_from(entry.value.chars().count()).unwrap_or(i32::MAX),
+        })
+        .collect();
+    let errors: Vec<ImportEnvError> = parse
+        .errors
+        .iter()
+        .map(|error| ImportEnvError {
+            line: i32::try_from(error.line).unwrap_or(i32::MAX),
+            message: error.message.clone(),
+        })
+        .collect();
+    if body.dry_run || !errors.is_empty() {
+        if !body.dry_run {
+            let first = &errors[0];
+            return Err(bad(
+                "invalid_env",
+                format!("line {}: {}; nothing was saved", first.line, first.message),
+            ));
+        }
+        return Ok(Json(ImportEnvResult {
+            entries,
+            errors,
+            applied: false,
+        }));
+    }
+    let mut tx = state.pool.begin().await.map_err(ApiError::database)?;
+    for (entry, view) in parse.entries.iter().zip(&entries) {
+        if view.status == "unchanged" {
+            continue;
+        }
+        let encrypted = state.cipher.encrypt(entry.value.as_bytes()).map_err(|_| {
+            ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "crypto_error",
+                "could not store environment value",
+            )
+        })?;
+        sqlx::query!(
+            r#"
+            INSERT INTO env_vars (service_id, key, value_enc, is_build_secret)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (service_id, key, is_build_secret)
+            DO UPDATE SET value_enc = EXCLUDED.value_enc, updated_at = now()
+            "#,
+            id,
+            entry.key,
+            encrypted.as_slice(),
+            body.is_build_secret,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::database)?;
+    }
+    tx.commit().await.map_err(ApiError::database)?;
+    let changed: Vec<&str> = entries
+        .iter()
+        .filter(|entry| entry.status != "unchanged")
+        .map(|entry| entry.key.as_str())
+        .collect();
+    audit::record(
+        &state.pool,
+        Some(auth.id),
+        "service.env_import",
+        "service",
+        Some(&id.to_string()),
+        json!({ "keys": changed, "build_secret": body.is_build_secret }),
+        None,
+    )
+    .await;
+    Ok(Json(ImportEnvResult {
+        entries,
+        errors,
+        applied: true,
+    }))
+}
+
+/// Say whether a typed value equals the saved one, without ever returning the saved one.
+async fn verify_env(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, key)): Path<(Uuid, String)>,
+    Json(body): Json<VerifyEnvVar>,
+) -> Result<Json<VerifyEnvResult>, ApiError> {
+    auth.require_write()?;
+    let saved = sqlx::query_scalar!(
+        r#"
+        SELECT value_enc
+        FROM env_vars
+        WHERE service_id = $1 AND key = $2 AND is_build_secret = $3
+        "#,
+        id,
+        key,
+        body.is_build_secret
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?
+    .ok_or_else(|| not_found("that variable is not saved"))?;
+    let matches = state
+        .cipher
+        .decrypt(&saved)
+        .map(|bytes| bool::from(bytes.as_slice().ct_eq(body.value.as_bytes())))
+        .unwrap_or(false);
+    Ok(Json(VerifyEnvResult { matches }))
 }
 
 async fn put_env(
@@ -975,7 +1193,7 @@ async fn put_env(
         INSERT INTO env_vars (service_id, key, value_enc, is_build_secret)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (service_id, key, is_build_secret)
-        DO UPDATE SET value_enc = EXCLUDED.value_enc
+        DO UPDATE SET value_enc = EXCLUDED.value_enc, updated_at = now()
         "#,
         id,
         body.key,

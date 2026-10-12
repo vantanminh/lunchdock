@@ -2565,6 +2565,36 @@
         }
       }
     },
+    "/api/v1/services/{id}/env/import": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Preview or save many variables from the text of a .env file",
+        "operationId": "post_v1_services__id__env_import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportEnv"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview or save many variables from the text of a .env file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportEnvResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/env/{key}": {
       "delete": {
         "tags": [
@@ -2575,6 +2605,36 @@
         "responses": {
           "204": {
             "description": "Delete an environment variable"
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/env/{key}/verify": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Check a typed value against the saved one without revealing it",
+        "operationId": "post_v1_services__id__env__key__verify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEnvVar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Check a typed value against the saved one without revealing it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEnvResult"
+                }
+              }
+            }
           }
         }
       }
@@ -5108,7 +5168,9 @@
         "type": "object",
         "required": [
           "key",
-          "is_build_secret"
+          "is_build_secret",
+          "updated_at",
+          "length"
         ],
         "properties": {
           "is_build_secret": {
@@ -5116,6 +5178,16 @@
           },
           "key": {
             "type": "string"
+          },
+          "length": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Characters in the saved value, so a typo or a truncated paste shows without revealing it."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the value was last written."
           }
         }
       },
@@ -5331,6 +5403,88 @@
           },
           "version": {
             "type": "string"
+          }
+        }
+      },
+      "ImportEnv": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "dry_run": {
+            "type": "boolean",
+            "description": "Only report what would change; save nothing."
+          },
+          "is_build_secret": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string",
+            "description": "The text of a `.env` file: `KEY=value` lines, `#` comments, quotes."
+          }
+        }
+      },
+      "ImportEnvEntry": {
+        "type": "object",
+        "required": [
+          "key",
+          "status",
+          "length"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "length": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "description": "`new`, `changed`, or `unchanged` compared with what is saved."
+          }
+        }
+      },
+      "ImportEnvError": {
+        "type": "object",
+        "required": [
+          "line",
+          "message"
+        ],
+        "properties": {
+          "line": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportEnvResult": {
+        "type": "object",
+        "required": [
+          "entries",
+          "errors",
+          "applied"
+        ],
+        "properties": {
+          "applied": {
+            "type": "boolean",
+            "description": "The values were saved. False for a dry run or when the text has errors."
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportEnvEntry"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportEnvError"
+            }
           }
         }
       },
@@ -7962,6 +8116,32 @@
           },
           "totp_enabled": {
             "type": "boolean"
+          }
+        }
+      },
+      "VerifyEnvResult": {
+        "type": "object",
+        "required": [
+          "matches"
+        ],
+        "properties": {
+          "matches": {
+            "type": "boolean",
+            "description": "The value typed matches the saved one exactly."
+          }
+        }
+      },
+      "VerifyEnvVar": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "is_build_secret": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": "string"
           }
         }
       }
