@@ -32,6 +32,10 @@ export function formatTime(value: string | null | undefined): string {
   return value ? new Date(value).toLocaleString(currentLocale()) : "—";
 }
 
+export function formatDate(value: string | null | undefined): string {
+  return value ? new Date(value).toLocaleDateString(currentLocale(), { dateStyle: "medium" }) : "—";
+}
+
 export function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }

@@ -145,6 +145,66 @@ const paths = {
       <circle cx="12.5" cy="7.5" r="1.5" />
     </>
   ),
+  globe: (
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M3 10h14M10 3c2 2 3 4.5 3 7s-1 5-3 7c-2-2-3-4.5-3-7s1-5 3-7Z" />
+    </>
+  ),
+  terminal: (
+    <>
+      <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
+      <path d="m6 8 3 2.5L6 13M11 13h3.5" />
+    </>
+  ),
+  database: (
+    <>
+      <ellipse cx="10" cy="5" rx="6" ry="2.5" />
+      <path d="M4 5v10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V5M4 10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="7" y="7" width="9" height="9" rx="1.5" />
+      <path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" />
+    </>
+  ),
+  external: (
+    <>
+      <path d="M11 4h5v5M16 4l-7 7" />
+      <path d="M8 5H5.5A1.5 1.5 0 0 0 4 6.5v8A1.5 1.5 0 0 0 5.5 16h8a1.5 1.5 0 0 0 1.5-1.5V12" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 6h12M8 6V4.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V6" />
+      <path d="m5.5 6 .7 9a1.5 1.5 0 0 0 1.5 1.4h4.6a1.5 1.5 0 0 0 1.5-1.4l.7-9M8.5 9v4M11.5 9v4" />
+    </>
+  ),
+  refresh: <path d="M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2" />,
+  play: <path d="M6.5 4.5v11l9-5.5Z" />,
+  stop: <rect x="5" y="5" width="10" height="10" rx="2" />,
+  lock: (
+    <>
+      <rect x="4.5" y="9" width="11" height="7.5" rx="1.5" />
+      <path d="M7 9V6.5a3 3 0 0 1 6 0V9" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 6v4l2.5 1.5" />
+    </>
+  ),
+  download: <path d="M10 3.5v9M6.5 9.5 10 13l3.5-3.5M4 16.5h12" />,
+  chevronDown: <path d="m5 8 5 5 5-5" />,
+  sliders: (
+    <>
+      <path d="M3.5 6h8M14.5 6h2M3.5 14h2M8.5 14h8" />
+      <circle cx="13" cy="6" r="1.75" />
+      <circle cx="7" cy="14" r="1.75" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof paths;
