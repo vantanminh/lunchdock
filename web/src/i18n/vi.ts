@@ -1234,4 +1234,5 @@ export const vi: Record<string, string> = {
   "Optional. Use the name of a project already running on the server to take over its containers and volumes; otherwise one is generated.": "Không bắt buộc. Dùng tên của project đang chạy trên máy chủ để nhận lại container và volume của nó; nếu để trống, hệ thống tự đặt tên.",
   "Fixed after the first deploy: the containers and volumes already carry this name.": "Không đổi được sau lần triển khai đầu tiên: container và volume đã mang tên này.",
   "Use the name of a project already running on the server to take over its containers and volumes.": "Dùng tên của project đang chạy trên máy chủ để nhận lại container và volume của nó.",
+  "These logins are used for single-image services and for compose stacks, whose images are pulled with them too. Images that a Dockerfile pulls with FROM are not covered.": "Các thông tin đăng nhập này được dùng cho service một image và cả stack compose, image của stack cũng được tải bằng chúng. Image mà Dockerfile tải bằng FROM thì không được áp dụng.",
 };
