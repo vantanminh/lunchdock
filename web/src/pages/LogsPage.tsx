@@ -4,19 +4,24 @@ import { toast } from "sonner";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { LOG_SOURCES, LogViewer } from "../components/logs";
-import { Button, Card, Field, TextInput } from "../components/ui";
+import { Button, Card, Field, QuickPick, TextInput } from "../components/ui";
 import { errorMessage } from "../format";
+import { useT } from "../i18n";
+import { LOG_DAYS } from "../presets";
 import type { Schemas } from "../types";
 
 type Retention = Schemas["RetentionSettings"];
 
 export function LogsPage() {
+  const t = useT();
   const { user } = useAuth();
   return (
     <>
-      <h1 className="text-2xl font-semibold">Logs</h1>
+      <h1 className="text-2xl font-semibold">{t("Logs")}</h1>
       <p className="text-sm text-muted">
-        Application, proxy, cache, and panel logs from every server, with live tail and export.
+        {t(
+          "Application, proxy, cache, and panel logs from every server, with live tail and export.",
+        )}
       </p>
       <Card>
         <LogViewer />
@@ -27,6 +32,7 @@ export function LogsPage() {
 }
 
 function RetentionCard() {
+  const t = useT();
   const queryClient = useQueryClient();
   const retention = useQuery({
     queryKey: ["retention"],
@@ -53,17 +59,18 @@ function RetentionCard() {
         }),
       }),
     onSuccess: async () => {
-      toast.success("Retention saved");
+      toast.success(t("Retention saved"));
       await queryClient.invalidateQueries({ queryKey: ["retention"] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save retention")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save retention"))),
   });
 
   return (
-    <Card title="Retention">
+    <Card title={t("Retention")}>
       <p className="mb-3 text-sm text-muted">
-        Days to keep per source (1–365). Expired lines are removed hourly; whole daily partitions
-        are dropped once every source has expired them.
+        {t(
+          "Days to keep per source (1–365). Expired lines are removed hourly; whole daily partitions are dropped once every source has expired them.",
+        )}
       </p>
       <form
         className="grid gap-3 md:grid-cols-6"
@@ -72,6 +79,26 @@ function RetentionCard() {
           save.mutate();
         }}
       >
+        <div className="space-y-1.5 md:col-span-6">
+          <span className="text-[13px] font-medium text-ink-soft">
+            {t("Apply to every source")}
+          </span>
+          <QuickPick
+            label={t("Log retention presets")}
+            options={LOG_DAYS}
+            value={
+              new Set(LOG_SOURCES.map((source) => days[source])).size === 1
+                ? days[LOG_SOURCES[0]]
+                : null
+            }
+            onPick={(value) =>
+              setDays({
+                ...days,
+                ...Object.fromEntries(LOG_SOURCES.map((source) => [source, value])),
+              })
+            }
+          />
+        </div>
         {LOG_SOURCES.map((source) => (
           <Field key={source} label={source}>
             <TextInput
@@ -85,7 +112,7 @@ function RetentionCard() {
         ))}
         <div className="md:col-span-6">
           <Button type="submit" disabled={save.isPending || !retention.data}>
-            Save retention
+            {t("Save retention")}
           </Button>
         </div>
       </form>

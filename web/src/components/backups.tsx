@@ -1,11 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../api";
 import { errorMessage, formatBytes, formatDuration, formatTime } from "../format";
+import { useT } from "../i18n";
+import {
+  allTimezones,
+  BANDWIDTH,
+  compressionLevels,
+  EXCLUDE_GLOBS,
+  pickDurations,
+  plain,
+  RETENTION,
+  retentionKey,
+  RETRIES,
+  SCHEDULES,
+  timezoneOptions,
+} from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Empty, Field, Select, TextArea, TextInput } from "./ui";
+import { Badge, Button, Empty, Field, QuickPick, Select, TextArea, TextInput } from "./ui";
 
 type Job = Schemas["BackupJobView"];
 type Run = Schemas["BackupRunView"];
@@ -39,7 +53,15 @@ function useDestinations() {
   });
 }
 
+function nameSuggestions(kind: string, isDatabase: boolean): string[] {
+  if (kind === "panel_db") return ["panel-nightly", "panel-weekly"];
+  if (kind === "panel_settings") return ["settings-export"];
+  if (kind === "database" || isDatabase) return ["db-nightly", "db-hourly", "db-weekly"];
+  return ["nightly", "hourly", "weekly", "monthly"];
+}
+
 export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSaved?: () => void }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const destinations = useDestinations();
   const presets = useQuery({
@@ -151,30 +173,39 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
       });
     },
     onSuccess: async () => {
-      toast.success("Backup job saved");
+      toast.success(t("Backup job saved"));
       setForm({ ...form, name: "", passphrase: "" });
       await queryClient.invalidateQueries({ queryKey: ["backup-jobs"] });
       onSaved?.();
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save the backup job")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save the backup job"))),
   });
 
   const set = (key: keyof typeof form) => (event: { target: { value: string } }) =>
     setForm({ ...form, [key]: event.target.value });
+  const assign = (values: Partial<typeof form>) => setForm({ ...form, ...values });
+  const appendLine = (key: "include_globs" | "exclude_globs", line: string) => {
+    const lines = form[key].split("\n").filter(Boolean);
+    if (!lines.includes(line)) assign({ [key]: [...lines, line].join("\n") });
+  };
   const check = (key: keyof typeof form) => (event: { target: { checked: boolean } }) =>
     setForm({ ...form, [key]: event.target.checked });
   const isPanel = form.target_kind.startsWith("panel_");
   const isArchive = form.target_kind !== "database" && !isPanel;
   const presetNames = (presets.data?.schedules ?? []).map((preset) => preset.name);
+  const detectedTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+  const timezones = useMemo(allTimezones, []);
 
   if (destinations.data?.length === 0) {
     return (
       <Empty>
-        Add an{" "}
-        <Link className="text-accent" to="/s3-destinations">
-          S3 destination
-        </Link>{" "}
-        before creating backup jobs.
+        {t("Add an {link} before creating backup jobs.", {
+          link: (
+            <Link className="text-accent" to="/s3-destinations">
+              {t("S3 destination")}
+            </Link>
+          ),
+        })}
       </Empty>
     );
   }
@@ -185,37 +216,47 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
       onSubmit={(event) => {
         event.preventDefault();
         if (chosen.length === 0) {
-          toast.error("Choose at least one destination");
+          toast.error(t("Choose at least one destination"));
           return;
         }
         save.mutate();
       }}
     >
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Job name">
+        <Field
+          label={t("Job name")}
+          presets={
+            <QuickPick
+              label={t("Name suggestions")}
+              options={plain(nameSuggestions(form.target_kind, Boolean(target.isDatabase)))}
+              value={form.name}
+              onPick={(name) => assign({ name })}
+            />
+          }
+        >
           <TextInput required value={form.name} placeholder="nightly" onChange={set("name")} />
         </Field>
-        <Field label="What to back up">
+        <Field label={t("What to back up")}>
           <Select value={form.target_kind} onChange={set("target_kind")}>
             {target.panel ? (
               <>
-                <option value="panel_db">Panel database and master key</option>
-                <option value="panel_settings">Settings export (JSON, no secrets)</option>
+                <option value="panel_db">{t("Panel database and master key")}</option>
+                <option value="panel_settings">{t("Settings export (JSON, no secrets)")}</option>
               </>
             ) : (
               <>
-                {target.isDatabase ? <option value="database">Database dump</option> : null}
-                <option value="volume">Docker volume</option>
-                <option value="bind">Bind mount</option>
-                <option value="path">Host path</option>
+                {target.isDatabase ? <option value="database">{t("Database dump")}</option> : null}
+                <option value="volume">{t("Docker volume")}</option>
+                <option value="bind">{t("Bind mount")}</option>
+                <option value="path">{t("Host path")}</option>
               </>
             )}
           </Select>
         </Field>
         {!target.serverId && !target.serviceId && !target.panel ? (
-          <Field label="Server">
+          <Field label={t("Server")}>
             <Select required value={form.server_id} onChange={set("server_id")}>
-              <option value="">Choose</option>
+              <option value="">{t("Choose")}</option>
               {(servers.data ?? []).map((server) => (
                 <option key={server.id} value={server.id}>
                   {server.name}
@@ -228,10 +269,10 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
           <Field
             label={
               form.target_kind === "volume"
-                ? "Volume name"
+                ? t("Volume name")
                 : form.target_kind === "bind"
-                  ? "Bind source on the host"
-                  : "Absolute host path"
+                  ? t("Bind source on the host")
+                  : t("Absolute host path")
             }
           >
             <TextInput
@@ -242,10 +283,21 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
             />
           </Field>
         ) : null}
-        <Field label="Schedule (cron or preset, empty = manual only)">
+        <Field
+          label={t("Schedule (cron or preset, empty = manual only)")}
+          presets={
+            <QuickPick
+              label={t("Schedule presets")}
+              options={SCHEDULES}
+              value={form.schedule_cron}
+              onPick={(schedule_cron) => assign({ schedule_cron })}
+            />
+          }
+        >
           <TextInput
             list="backup-presets"
             value={form.schedule_cron}
+            placeholder={t("Manual only")}
             onChange={set("schedule_cron")}
           />
           <datalist id="backup-presets">
@@ -254,18 +306,57 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
             ))}
           </datalist>
         </Field>
-        <Field label="Timezone">
-          <TextInput required value={form.timezone} onChange={set("timezone")} />
+        <Field
+          label={t("Timezone")}
+          hint={t("Schedule times follow this timezone.")}
+          presets={
+            <QuickPick
+              label={t("Timezone presets")}
+              options={timezoneOptions(detectedTimezone)}
+              value={form.timezone}
+              onPick={(timezone) => assign({ timezone })}
+            />
+          }
+        >
+          <TextInput
+            required
+            list="backup-timezones"
+            value={form.timezone}
+            onChange={set("timezone")}
+          />
+          <datalist id="backup-timezones">
+            {timezones.map((zone) => (
+              <option key={zone} value={zone} />
+            ))}
+          </datalist>
         </Field>
-        <Field label="Compression">
+        <Field
+          label={t("Compression")}
+          presets={
+            <QuickPick
+              label={t("Compression level presets")}
+              options={compressionLevels(form.compression)}
+              value={form.compression_level}
+              onPick={(compression_level) => assign({ compression_level })}
+            />
+          }
+        >
           <div className="flex gap-2">
-            <Select value={form.compression} onChange={set("compression")}>
+            <Select
+              value={form.compression}
+              onChange={(event) =>
+                assign({
+                  compression: event.target.value,
+                  compression_level: compressionLevels(event.target.value)[1]?.value ?? "",
+                })
+              }
+            >
               <option value="zstd">zstd</option>
               <option value="gzip">gzip</option>
-              <option value="none">none</option>
+              <option value="none">{t("none")}</option>
             </Select>
             <TextInput
-              aria-label="Compression level"
+              aria-label={t("Compression level")}
               className="w-20"
               value={form.compression_level}
               disabled={form.compression === "none"}
@@ -276,8 +367,8 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
         <Field
           label={
             form.target_kind === "panel_db"
-              ? "Encryption passphrase (required, 12+ characters)"
-              : "Encryption passphrase (optional)"
+              ? t("Encryption passphrase (required, 12+ characters)")
+              : t("Encryption passphrase (optional)")
           }
         >
           <TextInput
@@ -296,12 +387,12 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
               checked={form.include_history}
               onChange={check("include_history")}
             />
-            Include log lines, metric samples, and sessions
+            {t("Include log lines, metric samples, and sessions")}
           </label>
         ) : null}
       </div>
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Destinations</legend>
+        <legend className="text-sm font-medium">{t("Destinations")}</legend>
         <div className="flex flex-wrap gap-3">
           {(destinations.data ?? []).map((destination) => (
             <label key={destination.id} className="flex items-center gap-2 text-sm">
@@ -321,40 +412,86 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
           ))}
         </div>
       </fieldset>
-      <div className="grid gap-3 md:grid-cols-5">
-        <Field label="Keep last">
-          <TextInput value={form.keep_last} onChange={set("keep_last")} />
-        </Field>
-        <Field label="Keep days">
-          <TextInput value={form.keep_days} onChange={set("keep_days")} />
-        </Field>
-        <Field label="Daily">
-          <TextInput value={form.daily} onChange={set("daily")} />
-        </Field>
-        <Field label="Weekly">
-          <TextInput value={form.weekly} onChange={set("weekly")} />
-        </Field>
-        <Field label="Monthly">
-          <TextInput value={form.monthly} onChange={set("monthly")} />
-        </Field>
-      </div>
-      <button type="button" className="text-sm text-accent" onClick={() => setAdvanced(!advanced)}>
-        {advanced ? "Hide advanced options" : "Show advanced options"}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">{t("Retention")}</legend>
+        <p className="text-[13px] text-muted">
+          {t("Old backups are deleted once no rule below wants them. Empty fields are not used.")}
+        </p>
+        <QuickPick
+          label={t("Retention presets")}
+          options={RETENTION.map((preset) => ({
+            label: preset.label,
+            value: retentionKey(preset.values),
+            hint: preset.hint,
+          }))}
+          value={retentionKey(form)}
+          onPick={(_, option) => {
+            const preset = RETENTION.find((item) => item.label === option.label);
+            if (preset) assign(preset.values);
+          }}
+        />
+        <div className="grid gap-3 md:grid-cols-5">
+          <Field label={t("Keep last")}>
+            <TextInput value={form.keep_last} onChange={set("keep_last")} />
+          </Field>
+          <Field label={t("Keep days")}>
+            <TextInput value={form.keep_days} onChange={set("keep_days")} />
+          </Field>
+          <Field label={t("Daily")}>
+            <TextInput value={form.daily} onChange={set("daily")} />
+          </Field>
+          <Field label={t("Weekly")}>
+            <TextInput value={form.weekly} onChange={set("weekly")} />
+          </Field>
+          <Field label={t("Monthly")}>
+            <TextInput value={form.monthly} onChange={set("monthly")} />
+          </Field>
+        </div>
+      </fieldset>
+      <button
+        type="button"
+        className="block text-sm text-accent"
+        onClick={() => setAdvanced(!advanced)}
+      >
+        {advanced ? t("Hide advanced options") : t("Show advanced options")}
       </button>
       {advanced ? (
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Path prefix">
+          <Field label={t("Path prefix")}>
             <TextInput value={form.path_prefix} onChange={set("path_prefix")} />
           </Field>
-          <Field label={`Filename template (${(presets.data?.filename_tokens ?? []).join(" ")})`}>
+          <Field
+            label={t("Filename template ({tokens})", {
+              tokens: (presets.data?.filename_tokens ?? []).join(" "),
+            })}
+            presets={
+              <QuickPick
+                label={t("Filename tokens")}
+                options={(presets.data?.filename_tokens ?? []).map((token) => ({
+                  label: `+ ${token}`,
+                  value: token,
+                }))}
+                onPick={(token) => assign({ filename_template: form.filename_template + token })}
+              />
+            }
+          >
             <TextInput value={form.filename_template} onChange={set("filename_template")} />
           </Field>
           {isPanel ? null : isArchive ? (
             <>
-              <Field label="Include globs (one per line)">
+              <Field label={t("Include globs (one per line)")}>
                 <TextArea value={form.include_globs} onChange={set("include_globs")} />
               </Field>
-              <Field label="Exclude globs (one per line)">
+              <Field
+                label={t("Exclude globs (one per line)")}
+                presets={
+                  <QuickPick
+                    label={t("Common exclusions")}
+                    options={EXCLUDE_GLOBS}
+                    onPick={(glob) => appendLine("exclude_globs", glob)}
+                  />
+                }
+              >
                 <TextArea value={form.exclude_globs} onChange={set("exclude_globs")} />
               </Field>
               <label className="flex items-center gap-2 text-sm">
@@ -363,53 +500,83 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
                   checked={form.stop_service}
                   onChange={check("stop_service")}
                 />
-                Stop the service during the backup
+                {t("Stop the service during the backup")}
               </label>
             </>
           ) : (
             <>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={form.dump_all} onChange={check("dump_all")} />
-                Postgres: pg_dumpall (all databases and roles)
+                {t("Postgres: pg_dumpall (all databases and roles)")}
               </label>
-              <Field label="Extra dump arguments">
+              <Field label={t("Extra dump arguments")}>
                 <TextInput value={form.extra_args} onChange={set("extra_args")} />
               </Field>
-              <Field label="Include databases">
+              <Field label={t("Include databases")}>
                 <TextInput value={form.include_databases} onChange={set("include_databases")} />
               </Field>
-              <Field label="Exclude databases">
+              <Field label={t("Exclude databases")}>
                 <TextInput value={form.exclude_databases} onChange={set("exclude_databases")} />
               </Field>
-              <Field label="Include tables">
+              <Field label={t("Include tables")}>
                 <TextInput value={form.include_tables} onChange={set("include_tables")} />
               </Field>
-              <Field label="Exclude tables">
+              <Field label={t("Exclude tables")}>
                 <TextInput value={form.exclude_tables} onChange={set("exclude_tables")} />
               </Field>
             </>
           )}
           {isPanel ? null : (
             <>
-              <Field label="Pre-hook command (runs in the container)">
+              <Field label={t("Pre-hook command (runs in the container)")}>
                 <TextInput
                   value={form.pre_hook}
                   placeholder="sh -c 'echo start'"
                   onChange={set("pre_hook")}
                 />
               </Field>
-              <Field label="Post-hook command">
+              <Field label={t("Post-hook command")}>
                 <TextInput value={form.post_hook} onChange={set("post_hook")} />
               </Field>
             </>
           )}
-          <Field label="Timeout (seconds)">
+          <Field
+            label={t("Timeout (seconds)")}
+            presets={
+              <QuickPick
+                label={t("Timeout presets")}
+                options={pickDurations("900", "1800", "3600", "21600", "86400")}
+                value={form.timeout_secs}
+                onPick={(timeout_secs) => assign({ timeout_secs })}
+              />
+            }
+          >
             <TextInput value={form.timeout_secs} onChange={set("timeout_secs")} />
           </Field>
-          <Field label="Retries">
+          <Field
+            label={t("Retries")}
+            presets={
+              <QuickPick
+                label={t("Retry presets")}
+                options={RETRIES}
+                value={form.retries}
+                onPick={(retries) => assign({ retries })}
+              />
+            }
+          >
             <TextInput value={form.retries} onChange={set("retries")} />
           </Field>
-          <Field label="Bandwidth limit (Mbit/s, empty = unlimited)">
+          <Field
+            label={t("Bandwidth limit (Mbit/s, empty = unlimited)")}
+            presets={
+              <QuickPick
+                label={t("Bandwidth presets")}
+                options={BANDWIDTH}
+                value={form.bandwidth_mbps}
+                onPick={(bandwidth_mbps) => assign({ bandwidth_mbps })}
+              />
+            }
+          >
             <TextInput value={form.bandwidth_mbps} onChange={set("bandwidth_mbps")} />
           </Field>
           <div className="space-y-2 text-sm">
@@ -419,7 +586,7 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
                 checked={form.verify_after_upload}
                 onChange={check("verify_after_upload")}
               />
-              Verify checksum after upload
+              {t("Verify checksum after upload")}
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -427,19 +594,20 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
                 checked={form.notify_on_success}
                 onChange={check("notify_on_success")}
               />
-              Notify on success too
+              {t("Notify on success too")}
             </label>
           </div>
         </div>
       ) : null}
       <Button type="submit" disabled={save.isPending}>
-        Save backup job
+        {t("Save backup job")}
       </Button>
     </form>
   );
 }
 
 export function BackupJobs({ serviceId }: { serviceId?: string }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const jobs = useQuery({
     queryKey: ["backup-jobs", serviceId ?? "all"],
@@ -453,11 +621,11 @@ export function BackupJobs({ serviceId }: { serviceId?: string }) {
     mutationFn: (id: string) =>
       api<Schemas["RunAccepted"]>(`/api/v1/backup-jobs/${id}/run`, { method: "POST" }),
     onSuccess: async (_, id) => {
-      toast.success("Backup started");
+      toast.success(t("Backup started"));
       setOpen(id);
       await queryClient.invalidateQueries({ queryKey: ["backup-runs", id] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not start the backup")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not start the backup"))),
   });
   const toggle = useMutation({
     mutationFn: (job: Job) =>
@@ -466,19 +634,19 @@ export function BackupJobs({ serviceId }: { serviceId?: string }) {
         body: JSON.stringify({ enabled: !job.enabled }),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["backup-jobs"] }),
-    onError: (error) => toast.error(errorMessage(error, "Could not update the job")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not update the job"))),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api(`/api/v1/backup-jobs/${id}`, { method: "DELETE" }),
     onSuccess: async () => {
-      toast.success("Backup job deleted");
+      toast.success(t("Backup job deleted"));
       await queryClient.invalidateQueries({ queryKey: ["backup-jobs"] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not delete the job")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not delete the job"))),
   });
 
   if (jobs.data?.length === 0) {
-    return <Empty>No backup jobs yet.</Empty>;
+    return <Empty>{t("No backup jobs yet.")}</Empty>;
   }
   return (
     <ul className="space-y-3">
@@ -488,32 +656,39 @@ export function BackupJobs({ serviceId }: { serviceId?: string }) {
             <div className="min-w-0 flex-1">
               <p className="font-medium">
                 {job.name} {job.last_status ? <Badge value={job.last_status} /> : null}
-                {job.enabled ? null : <span className="ml-2 text-xs text-muted">paused</span>}
+                {job.enabled ? null : (
+                  <span className="ml-2 text-xs text-muted">{t("paused")}</span>
+                )}
               </p>
               <p className="text-sm text-muted">
-                {job.target_kind} · {job.schedule_cron || "manual"} ({job.timezone}) · next{" "}
-                {formatTime(job.next_run_at)} · {job.compression}
-                {job.encrypted ? " · encrypted" : ""} · {job.destination_ids.length} destination(s)
+                {job.target_kind} · {job.schedule_cron || t("manual")} ({job.timezone}) ·{" "}
+                {t("next {time}", { time: formatTime(job.next_run_at) })} · {job.compression}
+                {job.encrypted ? ` · ${t("encrypted")}` : ""} ·{" "}
+                {t("{count} destination(s)", { count: job.destination_ids.length })}
               </p>
             </div>
             <Button onClick={() => run.mutate(job.id)} disabled={run.isPending}>
-              Back up now
+              {t("Back up now")}
             </Button>
             <Button quiet onClick={() => setOpen(open === job.id ? null : job.id)}>
-              {open === job.id ? "Hide runs" : "Runs"}
+              {open === job.id ? t("Hide runs") : t("Runs")}
             </Button>
             <Button quiet onClick={() => toggle.mutate(job)}>
-              {job.enabled ? "Pause" : "Resume"}
+              {job.enabled ? t("Pause") : t("Resume")}
             </Button>
             <Button
               quiet
               onClick={() => {
-                if (window.confirm(`Delete backup job ${job.name}? Stored objects are kept.`)) {
+                if (
+                  window.confirm(
+                    t("Delete backup job {name}? Stored objects are kept.", { name: job.name }),
+                  )
+                ) {
                   remove.mutate(job.id);
                 }
               }}
             >
-              Delete
+              {t("Delete")}
             </Button>
           </div>
           {open === job.id ? <RunHistory job={job} /> : null}
@@ -524,6 +699,7 @@ export function BackupJobs({ serviceId }: { serviceId?: string }) {
 }
 
 function RunHistory({ job }: { job: Job }) {
+  const t = useT();
   const runs = useQuery({
     queryKey: ["backup-runs", job.id],
     queryFn: () => api<Run[]>(`/api/v1/backup-jobs/${job.id}/runs`),
@@ -540,11 +716,11 @@ function RunHistory({ job }: { job: Job }) {
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead className="text-xs text-muted uppercase">
           <tr>
-            <th className="py-1">Started</th>
-            <th>Kind</th>
-            <th>Status</th>
-            <th>Duration</th>
-            <th>Size</th>
+            <th className="py-1">{t("Started")}</th>
+            <th>{t("Kind")}</th>
+            <th>{t("Status")}</th>
+            <th>{t("Duration")}</th>
+            <th>{t("Size")}</th>
             <th />
           </tr>
         </thead>
@@ -562,7 +738,7 @@ function RunHistory({ job }: { job: Job }) {
           ))}
         </tbody>
       </table>
-      {runs.data?.length === 0 ? <Empty>No runs yet.</Empty> : null}
+      {runs.data?.length === 0 ? <Empty>{t("No runs yet.")}</Empty> : null}
     </div>
   );
 }
@@ -582,6 +758,7 @@ function RunRow({
   onLogs: () => void;
   onRestore: () => void;
 }) {
+  const t = useT();
   const restorable =
     run.kind === "backup" && (run.status === "succeeded" || run.status === "partial");
   return (
@@ -598,15 +775,15 @@ function RunRow({
         <td>{formatBytes(run.size_bytes)}</td>
         <td className="space-x-2 text-right whitespace-nowrap">
           <button type="button" className="text-accent" onClick={onLogs}>
-            Logs
+            {t("Logs")}
           </button>
           {restorable ? (
             <>
               <a className="text-accent" href={`/api/v1/backup-runs/${run.id}/download`}>
-                Download
+                {t("Download")}
               </a>
               <button type="button" className="text-accent" onClick={onRestore}>
-                Restore
+                {t("Restore")}
               </button>
             </>
           ) : null}
@@ -625,7 +802,7 @@ function RunRow({
               </p>
             ))}
             <pre className="mt-1 max-h-64 overflow-auto rounded-md bg-paper p-2 text-xs whitespace-pre-wrap">
-              {run.logs || "No log output yet."}
+              {run.logs || t("No log output yet.")}
             </pre>
           </td>
         </tr>
@@ -646,11 +823,13 @@ function RunRow({
 }
 
 export function PanelRestoreHint() {
+  const t = useT();
   return (
     <div className="my-2 space-y-2 rounded-md border border-line p-3 text-sm">
       <p>
-        Panel backups are restored on a fresh host before the panel starts. Download the backup,
-        copy it to the new server, and run:
+        {t(
+          "Panel backups are restored on a fresh host before the panel starts. Download the backup, copy it to the new server, and run:",
+        )}
       </p>
       <pre className="overflow-auto rounded-md bg-paper p-2 font-mono text-xs">
         curl -fsSL https://github.com/vantanminh/lunchdock/releases/latest/download/install.sh -o
@@ -658,13 +837,16 @@ export function PanelRestoreHint() {
         {"\n"}sudo sh install.sh --restore rudder-panel-….tar.zst.enc
       </pre>
       <p className="text-muted">
-        The installer asks for the backup passphrase and writes the master key from the backup.
+        {t(
+          "The installer asks for the backup passphrase and writes the master key from the backup.",
+        )}
       </p>
     </div>
   );
 }
 
 function RestoreForm({ job, run }: { job: Job; run: Run }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [targetService, setTargetService] = useState(job.service_id ?? "");
   const [target, setTarget] = useState("");
@@ -683,23 +865,23 @@ function RestoreForm({ job, run }: { job: Job; run: Run }) {
         }),
       }),
     onSuccess: async () => {
-      toast.success("Restore started; it appears in the run list");
+      toast.success(t("Restore started; it appears in the run list"));
       await queryClient.invalidateQueries({ queryKey: ["backup-runs", job.id] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not start the restore")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not start the restore"))),
   });
   return (
     <form
       className="my-2 flex flex-wrap items-end gap-3 rounded-md border border-line p-3"
       onSubmit={(event) => {
         event.preventDefault();
-        if (window.confirm("Restoring overwrites the target data. Continue?")) {
+        if (window.confirm(t("Restoring overwrites the target data. Continue?"))) {
           restore.mutate();
         }
       }}
     >
       {job.target_kind === "database" ? (
-        <Field label="Target database service ID (default: same service)">
+        <Field label={t("Target database service ID (default: same service)")}>
           <TextInput
             value={targetService}
             onChange={(event) => setTargetService(event.target.value)}
@@ -709,15 +891,15 @@ function RestoreForm({ job, run }: { job: Job; run: Run }) {
         <Field
           label={
             job.target_kind === "volume"
-              ? "Target volume (empty = original)"
-              : "Target host path (empty = original)"
+              ? t("Target volume (empty = original)")
+              : t("Target host path (empty = original)")
           }
         >
           <TextInput value={target} onChange={(event) => setTarget(event.target.value)} />
         </Field>
       )}
       <Button type="submit" disabled={restore.isPending}>
-        Restore
+        {t("Restore")}
       </Button>
     </form>
   );

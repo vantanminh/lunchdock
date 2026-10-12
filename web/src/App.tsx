@@ -3,7 +3,9 @@ import { lazy, useState, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "./auth";
+import { LanguageProvider, useT } from "./i18n";
 import { Shell } from "./layout/Shell";
+import { useDarkTheme } from "./theme";
 import { DashboardPage } from "./pages/Dashboard";
 import { LoginPage, SetupPage } from "./pages/AuthPages";
 
@@ -58,8 +60,9 @@ const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default:
 
 function Guard({ children }: { children: ReactNode }) {
   const { user, loading, needsSetup } = useAuth();
+  const t = useT();
   if (loading) {
-    return <p className="p-6 text-sm text-muted">Loading Rudder…</p>;
+    return <p className="p-6 text-sm text-muted">{t("Loading Rudder…")}</p>;
   }
   if (needsSetup) {
     return <Navigate to="/setup" replace />;
@@ -107,16 +110,24 @@ function AppRoutes() {
   );
 }
 
+function ThemedToaster() {
+  const t = useT();
+  const dark = useDarkTheme();
+  return <Toaster theme={dark ? "dark" : "light"} containerAriaLabel={t("Notifications")} />;
+}
+
 export function App() {
   const [client] = useState(() => new QueryClient());
   return (
     <QueryClientProvider client={client}>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-        <Toaster theme={document.documentElement.classList.contains("dark") ? "dark" : "light"} />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+          <ThemedToaster />
+        </AuthProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

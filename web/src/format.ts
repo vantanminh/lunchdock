@@ -1,3 +1,5 @@
+import { currentLanguage, currentLocale, translate } from "./i18n";
+
 export function formatBytes(bytes: number | null | undefined): string {
   if (bytes == null) {
     return "—";
@@ -27,14 +29,24 @@ export function formatDuration(ms: number | null | undefined): string {
 }
 
 export function formatTime(value: string | null | undefined): string {
-  return value ? new Date(value).toLocaleString() : "—";
+  return value ? new Date(value).toLocaleString(currentLocale()) : "—";
 }
 
 export function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-const relative = new Intl.RelativeTimeFormat(undefined, { numeric: "auto", style: "short" });
+const relativeFormats = new Map<string, Intl.RelativeTimeFormat>();
+
+function relativeFormat(): Intl.RelativeTimeFormat {
+  const locale = currentLocale();
+  let format = relativeFormats.get(locale);
+  if (!format) {
+    format = new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "short" });
+    relativeFormats.set(locale, format);
+  }
+  return format;
+}
 
 export function formatRelative(value: string | null | undefined, now = Date.now()): string {
   if (!value) {
@@ -51,9 +63,11 @@ export function formatRelative(value: string | null | undefined, now = Date.now(
   let amount = seconds;
   for (const [unit, size] of steps) {
     if (Math.abs(amount) < size) {
-      return unit === "second" && Math.abs(amount) < 30 ? "just now" : relative.format(amount, unit);
+      return unit === "second" && Math.abs(amount) < 30
+        ? String(translate(currentLanguage(), "just now"))
+        : relativeFormat().format(amount, unit);
     }
     amount = Math.round(amount / size);
   }
-  return relative.format(amount, "year");
+  return relativeFormat().format(amount, "year");
 }

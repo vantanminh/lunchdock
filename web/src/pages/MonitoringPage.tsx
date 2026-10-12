@@ -5,20 +5,26 @@ import { toast } from "sonner";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { formatValue, MetricsGrid, SERVER_CHARTS } from "../components/metrics";
-import { Badge, Button, Card, Empty, Field, Select, TextInput } from "../components/ui";
+import { Badge, Button, Card, Empty, Field, QuickPick, Select, TextInput } from "../components/ui";
 import { errorMessage, formatTime } from "../format";
+import { msg, useT } from "../i18n";
+import { METRIC_RETENTION } from "../presets";
 import type { Schemas } from "../types";
 
 type MetricsRetention = Schemas["MetricsRetention"];
 
 const RETENTION_FIELDS: [keyof MetricsRetention, string, number][] = [
-  ["raw_hours", "10-second samples (hours)", 168],
-  ["m1_days", "1-minute rollups (days)", 365],
-  ["m5_days", "5-minute rollups (days)", 365],
-  ["h1_days", "Hourly rollups (days)", 365],
+  ["raw_hours", msg("10-second samples (hours)"), 168],
+  ["m1_days", msg("1-minute rollups (days)"), 365],
+  ["m5_days", msg("5-minute rollups (days)"), 365],
+  ["h1_days", msg("Hourly rollups (days)"), 365],
 ];
 
+const retentionKey = (values: Record<string, string>) =>
+  RETENTION_FIELDS.map(([key]) => values[key] ?? "").join("|");
+
 function MetricsRetentionCard() {
+  const t = useT();
   const queryClient = useQueryClient();
   const retention = useQuery({
     queryKey: ["retention"],
@@ -43,13 +49,13 @@ function MetricsRetentionCard() {
         }),
       }),
     onSuccess: async () => {
-      toast.success("Retention saved");
+      toast.success(t("Retention saved"));
       await queryClient.invalidateQueries({ queryKey: ["retention"] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save retention")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save retention"))),
   });
   return (
-    <Card title="Metric retention">
+    <Card title={t("Metric retention")}>
       <form
         className="grid gap-3 md:grid-cols-4"
         onSubmit={(event) => {
@@ -57,8 +63,24 @@ function MetricsRetentionCard() {
           save.mutate();
         }}
       >
+        <div className="space-y-1.5 md:col-span-4">
+          <span className="text-[13px] font-medium text-ink-soft">{t("Preset")}</span>
+          <QuickPick
+            label={t("Metric retention presets")}
+            options={METRIC_RETENTION.map((preset) => ({
+              label: preset.label,
+              value: retentionKey(preset.values),
+              hint: preset.hint,
+            }))}
+            value={retentionKey(values)}
+            onPick={(_, option) => {
+              const preset = METRIC_RETENTION.find((item) => item.label === option.label);
+              if (preset) setValues({ ...values, ...preset.values });
+            }}
+          />
+        </div>
         {RETENTION_FIELDS.map(([key, label, max]) => (
-          <Field key={key} label={label}>
+          <Field key={key} label={t(label)}>
             <TextInput
               type="number"
               min={1}
@@ -70,7 +92,7 @@ function MetricsRetentionCard() {
         ))}
         <div className="md:col-span-4">
           <Button type="submit" disabled={save.isPending || !retention.data}>
-            Save retention
+            {t("Save retention")}
           </Button>
         </div>
       </form>
@@ -79,6 +101,7 @@ function MetricsRetentionCard() {
 }
 
 export function MonitoringPage() {
+  const t = useT();
   const { user } = useAuth();
   const overview = useQuery({
     queryKey: ["metrics-overview"],
@@ -95,23 +118,25 @@ export function MonitoringPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Monitoring</h1>
+      <h1 className="text-2xl font-semibold">{t("Monitoring")}</h1>
       <p className="text-sm text-muted">
-        Sampled every 10 seconds, rolled up to 1-minute, 5-minute, and hourly averages. Configure
-        rules and channels under <Link to="/alerts">Alerts</Link>.
+        {t(
+          "Sampled every 10 seconds, rolled up to 1-minute, 5-minute, and hourly averages. Configure rules and channels under {link}.",
+          { link: <Link to="/alerts">{t("Alerts")}</Link> },
+        )}
       </p>
-      <Card title="Servers">
+      <Card title={t("Servers")}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-muted">
               <tr>
-                <th className="py-2 pr-3 font-medium">Server</th>
-                <th className="py-2 pr-3 font-medium">Status</th>
-                <th className="py-2 pr-3 font-medium">CPU</th>
-                <th className="py-2 pr-3 font-medium">Memory</th>
-                <th className="py-2 pr-3 font-medium">Disk</th>
-                <th className="py-2 pr-3 font-medium">Load</th>
-                <th className="py-2 font-medium">Sampled</th>
+                <th className="py-2 pr-3 font-medium">{t("Server")}</th>
+                <th className="py-2 pr-3 font-medium">{t("Status")}</th>
+                <th className="py-2 pr-3 font-medium">{t("CPU")}</th>
+                <th className="py-2 pr-3 font-medium">{t("Memory")}</th>
+                <th className="py-2 pr-3 font-medium">{t("Disk")}</th>
+                <th className="py-2 pr-3 font-medium">{t("Load")}</th>
+                <th className="py-2 font-medium">{t("Sampled")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -135,13 +160,13 @@ export function MonitoringPage() {
             </tbody>
           </table>
         </div>
-        {servers.length === 0 && !overview.isLoading ? <Empty>No servers yet.</Empty> : null}
+        {servers.length === 0 && !overview.isLoading ? <Empty>{t("No servers yet.")}</Empty> : null}
       </Card>
       {serverId ? (
-        <Card title={`Server ${serverName(serverId)}`}>
+        <Card title={t("Server {name}", { name: serverName(serverId) })}>
           {servers.length > 1 ? (
             <div className="mb-3 max-w-xs">
-              <Field label="Server">
+              <Field label={t("Server")}>
                 <Select value={serverId} onChange={(event) => setPicked(event.target.value)}>
                   {servers.map((server) => (
                     <option key={server.server_id} value={server.server_id}>
@@ -155,16 +180,16 @@ export function MonitoringPage() {
           <MetricsGrid charts={SERVER_CHARTS} target={{ server_id: serverId }} />
         </Card>
       ) : null}
-      <Card title="Services">
+      <Card title={t("Services")}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-muted">
               <tr>
-                <th className="py-2 pr-3 font-medium">Service</th>
-                <th className="py-2 pr-3 font-medium">Server</th>
-                <th className="py-2 pr-3 font-medium">CPU</th>
-                <th className="py-2 pr-3 font-medium">Memory</th>
-                <th className="py-2 font-medium">Containers up</th>
+                <th className="py-2 pr-3 font-medium">{t("Service")}</th>
+                <th className="py-2 pr-3 font-medium">{t("Server")}</th>
+                <th className="py-2 pr-3 font-medium">{t("CPU")}</th>
+                <th className="py-2 pr-3 font-medium">{t("Memory")}</th>
+                <th className="py-2 font-medium">{t("Containers up")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -183,7 +208,7 @@ export function MonitoringPage() {
           </table>
         </div>
         {services.length === 0 && !overview.isLoading ? (
-          <Empty>No running services have been sampled yet.</Empty>
+          <Empty>{t("No running services have been sampled yet.")}</Empty>
         ) : null}
       </Card>
       {user?.role === "admin" ? <MetricsRetentionCard /> : null}

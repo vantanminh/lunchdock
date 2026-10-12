@@ -4,45 +4,47 @@ import { api, setCsrf } from "../api";
 import { useAuth } from "../auth";
 import { Icon, KnotreeMark, type IconName } from "../components/icons";
 import { Avatar, Skeleton } from "../components/ui";
+import { msg, useT } from "../i18n";
+import { setDarkTheme, useDarkTheme } from "../theme";
 
 type NavItem = readonly [to: string, label: string, icon: IconName];
 
 const groups: readonly { label: string; items: readonly NavItem[] }[] = [
   {
-    label: "Deploy",
+    label: msg("Deploy"),
     items: [
-      ["/", "Overview", "overview"],
-      ["/projects", "Projects", "folder"],
-      ["/templates", "Templates", "layers"],
-      ["/servers", "Servers", "server"],
+      ["/", msg("Overview"), "overview"],
+      ["/projects", msg("Projects"), "folder"],
+      ["/templates", msg("Templates"), "layers"],
+      ["/servers", msg("Servers"), "server"],
     ],
   },
   {
-    label: "Operate",
+    label: msg("Operate"),
     items: [
-      ["/monitoring", "Monitoring", "activity"],
-      ["/alerts", "Alerts", "bell"],
-      ["/logs", "Logs", "logs"],
-      ["/backups", "Backups", "archive"],
-      ["/cache", "Cache", "zap"],
+      ["/monitoring", msg("Monitoring"), "activity"],
+      ["/alerts", msg("Alerts"), "bell"],
+      ["/logs", msg("Logs"), "logs"],
+      ["/backups", msg("Backups"), "archive"],
+      ["/cache", msg("Cache"), "zap"],
     ],
   },
   {
-    label: "Connections",
+    label: msg("Connections"),
     items: [
-      ["/s3-destinations", "S3 destinations", "bucket"],
-      ["/certificates", "Certificates", "shield"],
-      ["/registries", "Registries", "box"],
-      ["/git", "Git providers", "git"],
+      ["/s3-destinations", msg("S3 destinations"), "bucket"],
+      ["/certificates", msg("Certificates"), "shield"],
+      ["/registries", msg("Registries"), "box"],
+      ["/git", msg("Git providers"), "git"],
     ],
   },
   {
-    label: "Admin",
+    label: msg("Admin"),
     items: [
-      ["/users", "Users", "users"],
-      ["/tokens", "API tokens", "key"],
-      ["/audit", "Audit log", "history"],
-      ["/system", "System", "settings"],
+      ["/users", msg("Users"), "users"],
+      ["/tokens", msg("API tokens"), "key"],
+      ["/audit", msg("Audit log"), "history"],
+      ["/system", msg("System"), "settings"],
     ],
   },
 ];
@@ -51,10 +53,10 @@ const allItems = [...groups.flatMap((group) => group.items.map((item) => ({ grou
 
 function currentPage(pathname: string) {
   if (pathname.startsWith("/services/")) {
-    return { group: "Deploy", label: "Service" };
+    return { group: msg("Deploy"), label: msg("Service") };
   }
   if (pathname === "/account") {
-    return { group: "You", label: "Account" };
+    return { group: msg("You"), label: msg("Account") };
   }
   const match = allItems.find(({ item: [to] }) =>
     to === "/" ? pathname === "/" : pathname.startsWith(to),
@@ -63,6 +65,7 @@ function currentPage(pathname: string) {
 }
 
 export function Shell() {
+  const t = useT();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const page = currentPage(pathname);
@@ -72,8 +75,8 @@ export function Shell() {
   }, [pathname]);
 
   useEffect(() => {
-    document.title = page ? `${page.label} · Rudder` : "Rudder";
-  }, [page]);
+    document.title = page ? `${t(page.label)} · Rudder` : "Rudder";
+  }, [page, t]);
 
   useEffect(() => {
     if (!open) {
@@ -90,7 +93,7 @@ export function Shell() {
         href="#main"
         className="sr-only z-50 rounded-control bg-surface px-3 py-2 focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
       >
-        Skip to content
+        {t("Skip to content")}
       </a>
 
       <div className="hidden border-r border-line bg-surface lg:block">
@@ -103,7 +106,7 @@ export function Shell() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t("Close menu")}
             className="absolute inset-0 bg-ink/30 backdrop-blur-[1px]"
             onClick={() => setOpen(false)}
           />
@@ -118,21 +121,28 @@ export function Shell() {
           <button
             type="button"
             className="-ml-1 inline-flex size-9 items-center justify-center rounded-control text-ink-soft hover:bg-sunken lg:hidden"
-            aria-label="Open menu"
+            aria-label={t("Open menu")}
             aria-expanded={open}
             onClick={() => setOpen(true)}
           >
             <Icon name="menu" size={20} />
           </button>
-          <Link to="/" className="flex items-center gap-2 lg:hidden" aria-label="Rudder overview">
+          <Link
+            to="/"
+            className="flex items-center gap-2 lg:hidden"
+            aria-label={t("Rudder overview")}
+          >
             <KnotreeMark size={24} />
             <span className="text-[15px] font-semibold tracking-[-0.01em]">Rudder</span>
           </Link>
           {page ? (
-            <nav aria-label="Breadcrumb" className="hidden items-center gap-1.5 text-sm lg:flex">
-              <span className="text-muted">{page.group}</span>
+            <nav
+              aria-label={t("Breadcrumb")}
+              className="hidden items-center gap-1.5 text-sm lg:flex"
+            >
+              <span className="text-muted">{t(page.group)}</span>
               <Icon name="chevronRight" size={14} className="text-faint" />
-              <span className="font-medium text-ink">{page.label}</span>
+              <span className="font-medium text-ink">{t(page.label)}</span>
             </nav>
           ) : null}
           <div className="ml-auto flex items-center gap-1">
@@ -153,10 +163,11 @@ export function Shell() {
 }
 
 function Sidebar({ onClose }: { onClose?: () => void }) {
+  const t = useT();
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
-        <Link to="/" className="flex items-center gap-2.5" aria-label="Rudder overview">
+        <Link to="/" className="flex items-center gap-2.5" aria-label={t("Rudder overview")}>
           <KnotreeMark size={26} />
           <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Knotree</span>
           <span className="border-l border-line-strong pl-2.5 text-[15px] text-muted">Rudder</span>
@@ -164,7 +175,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         {onClose ? (
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t("Close menu")}
             className="inline-flex size-8 items-center justify-center rounded-control text-muted hover:bg-sunken hover:text-ink"
             onClick={onClose}
           >
@@ -172,10 +183,10 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
           </button>
         ) : null}
       </div>
-      <nav aria-label="Main" className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+      <nav aria-label={t("Main")} className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
         {groups.map((group) => (
           <div key={group.label}>
-            <p className="px-2.5 pb-1.5 text-xs font-medium text-faint">{group.label}</p>
+            <p className="px-2.5 pb-1.5 text-xs font-medium text-faint">{t(group.label)}</p>
             <ul className="space-y-0.5">
               {group.items.map(([to, label, icon]) => (
                 <li key={to}>
@@ -198,7 +209,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                             isActive ? "text-pine" : "text-faint group-hover:text-ink-soft"
                           }
                         />
-                        {label}
+                        {t(label)}
                       </>
                     )}
                   </NavLink>
@@ -214,6 +225,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 }
 
 function UserCard() {
+  const t = useT();
   const { user, refresh } = useAuth();
   const [pending, setPending] = useState(false);
 
@@ -240,13 +252,15 @@ function UserCard() {
         <Avatar name={name} size={32} />
         <span className="min-w-0 leading-tight">
           <span className="block truncate text-sm font-medium text-ink">{name}</span>
-          <span className="block truncate text-xs text-muted capitalize">{user?.role}</span>
+          <span className="block truncate text-xs text-muted first-letter:uppercase">
+            {user?.role ? t(user.role) : null}
+          </span>
         </span>
       </NavLink>
       <button
         type="button"
-        aria-label="Sign out"
-        title="Sign out"
+        aria-label={t("Sign out")}
+        title={t("Sign out")}
         disabled={pending}
         onClick={() => void logout()}
         className="inline-flex size-9 shrink-0 items-center justify-center rounded-control text-muted transition-colors hover:bg-sunken hover:text-ink disabled:opacity-55"
@@ -258,20 +272,16 @@ function UserCard() {
 }
 
 function ThemeToggle() {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
-  const label = dark ? "Use light theme" : "Use dark theme";
+  const t = useT();
+  const dark = useDarkTheme();
+  const label = dark ? t("Use light theme") : t("Use dark theme");
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
       className="inline-flex size-9 items-center justify-center rounded-control text-ink-soft transition-colors hover:bg-sunken hover:text-ink"
-      onClick={() => {
-        const next = !dark;
-        document.documentElement.classList.toggle("dark", next);
-        localStorage.setItem("rudder_theme", next ? "dark" : "light");
-        setDark(next);
-      }}
+      onClick={() => setDarkTheme(!dark)}
     >
       <Icon name={dark ? "sun" : "moon"} size={18} />
     </button>
@@ -279,8 +289,9 @@ function ThemeToggle() {
 }
 
 function PageSkeleton() {
+  const t = useT();
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading">
+    <div className="space-y-6" aria-busy="true" aria-label={t("Loading")}>
       <div className="space-y-2">
         <Skeleton className="h-7 w-48" />
         <Skeleton className="h-4 w-80 max-w-full" />

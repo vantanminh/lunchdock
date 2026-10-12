@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
-import { Badge, Button, Card, Field, TextInput } from "../components/ui";
+import { Badge, Button, Card, Field, PickField, QuickPick, TextInput } from "../components/ui";
 import { formatBytes, formatTime } from "../format";
+import { useT, type Translate } from "../i18n";
+import { SERVER_KINDS, SERVER_NAMES } from "../presets";
 import type { Schemas } from "../types";
 
 type Server = Schemas["ServerView"];
@@ -22,12 +24,16 @@ interface Join {
 }
 
 function JoinCommand({ join, onClose }: { join: Join; onClose: () => void }) {
+  const t = useT();
   return (
     <div className="mt-4 grid gap-2 rounded-md border border-line p-3">
       <p className="text-sm">
-        Run this on <span className="font-medium">{join.server}</span> as root. Docker and systemd
-        are required. The token works once
-        {join.expiresAt ? ` and expires ${formatTime(join.expiresAt)}` : " and expires in an hour"}.
+        {t("Run this on {server} as root. Docker and systemd are required.", {
+          server: <span className="font-medium">{join.server}</span>,
+        })}{" "}
+        {join.expiresAt
+          ? t("The token works once and expires {time}.", { time: formatTime(join.expiresAt) })
+          : t("The token works once and expires in an hour.")}
       </p>
       <p className="break-all rounded-md bg-paper p-3 font-mono text-sm">{join.command}</p>
       <div className="flex gap-2">
@@ -36,33 +42,38 @@ function JoinCommand({ join, onClose }: { join: Join; onClose: () => void }) {
           onClick={() =>
             navigator.clipboard
               .writeText(join.command)
-              .then(() => toast.success("Copied"))
-              .catch(() => toast.error("Copy failed; select the text instead"))
+              .then(() => toast.success(t("Copied")))
+              .catch(() => toast.error(t("Copy failed; select the text instead")))
           }
         >
-          Copy
+          {t("Copy")}
         </Button>
         <Button quiet onClick={onClose}>
-          Done
+          {t("Done")}
         </Button>
       </div>
     </div>
   );
 }
 
-function agentSummary(server: Server): string {
+function agentSummary(server: Server, t: Translate): string {
   const parts = [
-    server.agent_version ? `agent ${server.agent_version}` : null,
+    server.agent_version ? t("agent {version}", { version: server.agent_version }) : null,
     server.hostname,
     server.os_info,
-    server.docker_version ? `Docker ${server.docker_version}` : null,
-    server.last_heartbeat_at ? `seen ${formatTime(server.last_heartbeat_at)}` : null,
-    server.telemetry_dropped > 0 ? `${server.telemetry_dropped} telemetry items dropped` : null,
+    server.docker_version ? t("Docker {version}", { version: server.docker_version }) : null,
+    server.last_heartbeat_at
+      ? t("seen {time}", { time: formatTime(server.last_heartbeat_at) })
+      : null,
+    server.telemetry_dropped > 0
+      ? t("{count} telemetry items dropped", { count: server.telemetry_dropped })
+      : null,
   ];
   return parts.filter(Boolean).join(" · ");
 }
 
 export function ServersPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const servers = useQuery({
     queryKey: ["servers"],
@@ -86,11 +97,11 @@ export function ServersPage() {
     onSuccess: async (server) => {
       setJoin(server.join_command ? { server: server.name, command: server.join_command } : null);
       setName("");
-      toast.success("Server added");
+      toast.success(t("Server added"));
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not add server"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not add server")),
   });
 
   const remove = useMutation({
@@ -99,7 +110,7 @@ export function ServersPage() {
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not remove server"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not remove server")),
   });
 
   const rotate = useMutation({
@@ -110,26 +121,26 @@ export function ServersPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not issue a join token"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not issue a join token")),
   });
 
   const probe = useMutation({
     mutationFn: (id: string) => api(`/api/v1/servers/${id}/probe`, { method: "POST" }),
     onSuccess: async () => {
-      toast.success("Server responded");
+      toast.success(t("Server responded"));
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Probe failed"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Probe failed")),
   });
 
   const prune = useMutation({
     mutationFn: (id: string) =>
       api<Schemas["PruneResult"]>(`/api/v1/servers/${id}/prune`, { method: "POST" }),
     onSuccess: async (result) => {
-      toast.success(`Reclaimed ${formatBytes(result.reclaimed_bytes)}`);
+      toast.success(t("Reclaimed {size}", { size: formatBytes(result.reclaimed_bytes) }));
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Prune failed"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Prune failed")),
   });
 
   const autoPrune = useMutation({
@@ -142,7 +153,7 @@ export function ServersPage() {
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not update server"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not update server")),
   });
 
   function onSubmit(event: FormEvent) {
@@ -152,34 +163,35 @@ export function ServersPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Servers</h1>
-      <Card title="Add server">
+      <h1 className="text-2xl font-semibold">{t("Servers")}</h1>
+      <Card title={t("Add server")}>
         <form className="grid gap-3 md:grid-cols-4" onSubmit={onSubmit}>
-          <Field label="Name">
+          <Field
+            label={t("Name")}
+            presets={
+              <QuickPick
+                label={t("Name suggestions")}
+                options={SERVER_NAMES}
+                value={name}
+                onPick={setName}
+              />
+            }
+          >
             <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
-          <Field label="Kind">
-            <select
-              className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-              value={kind}
-              onChange={(event) => setKind(event.target.value)}
-            >
-              <option value="local">local</option>
-              <option value="remote">remote</option>
-            </select>
-          </Field>
-          <Field label="Public IP">
+          <PickField label={t("Kind")} options={SERVER_KINDS} value={kind} onPick={setKind} />
+          <Field label={t("Public IP")}>
             <TextInput value={publicIp} onChange={(event) => setPublicIp(event.target.value)} />
           </Field>
           <div className="flex items-end">
             <Button type="submit" disabled={create.isPending}>
-              Add
+              {t("Add")}
             </Button>
           </div>
         </form>
         {join ? <JoinCommand join={join} onClose={() => setJoin(null)} /> : null}
       </Card>
-      <Card title="Fleet">
+      <Card title={t("Fleet")}>
         <ul className="divide-y divide-line">
           {(servers.data ?? []).map((server) => (
             <li key={server.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -191,12 +203,14 @@ export function ServersPage() {
                 </p>
                 <p className="text-sm text-muted">
                   {server.kind === "remote"
-                    ? agentSummary(server) || "Waiting for the agent to enroll"
+                    ? agentSummary(server, t) || t("Waiting for the agent to enroll")
                     : server.docker_version
-                      ? `Docker ${server.docker_version}`
+                      ? t("Docker {version}", { version: server.docker_version })
                       : ""}
                   {server.public_ip ? ` · ${server.public_ip}` : ""}
-                  {server.last_pruned_at ? ` · pruned ${formatTime(server.last_pruned_at)}` : ""}
+                  {server.last_pruned_at
+                    ? ` · ${t("pruned {time}", { time: formatTime(server.last_pruned_at) })}`
+                    : ""}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -207,39 +221,43 @@ export function ServersPage() {
                     disabled={autoPrune.isPending}
                     onChange={() => autoPrune.mutate(server)}
                   />
-                  Daily prune
+                  {t("Daily prune")}
                 </label>
                 <Button
                   quiet
                   disabled={prune.isPending}
-                  title="Remove dangling images and build cache"
+                  title={t("Remove dangling images and build cache")}
                   onClick={() => prune.mutate(server.id)}
                 >
-                  Prune
+                  {t("Prune")}
                 </Button>
                 {server.kind === "local" ? (
                   <Button quiet onClick={() => probe.mutate(server.id)}>
-                    Probe
+                    {t("Probe")}
                   </Button>
                 ) : (
                   <>
                     <Button
                       quiet
                       disabled={rotate.isPending}
-                      title="Issue a one-time command that installs or re-enrolls the agent"
+                      title={t("Issue a one-time command that installs or re-enrolls the agent")}
                       onClick={() => rotate.mutate(server)}
                     >
-                      Join command
+                      {t("Join command")}
                     </Button>
                     <Button
                       quiet
                       onClick={() => {
-                        if (window.confirm(`Remove ${server.name}? Its agent is disconnected.`)) {
+                        if (
+                          window.confirm(
+                            t("Remove {name}? Its agent is disconnected.", { name: server.name }),
+                          )
+                        ) {
                           remove.mutate(server.id);
                         }
                       }}
                     >
-                      Remove
+                      {t("Remove")}
                     </Button>
                   </>
                 )}

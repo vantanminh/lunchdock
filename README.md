@@ -144,3 +144,5 @@ Not verified yet:
 - notification delivery to real Telegram, Slack, Discord, or SMTP providers.
 
 The PR history lists the details.
+
+The panel is available in English and Vietnamese; each person picks one on the Account page. Interface text is written in English inside `t("…")` calls and translated by `web/src/i18n/vi.ts`, keyed by the English text. After adding or changing interface text, add the Vietnamese entry and run `pnpm --dir web check:i18n`, which fails on a missing entry or a placeholder that differs between the two.

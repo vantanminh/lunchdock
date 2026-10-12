@@ -2,14 +2,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
-import { Button, Card, Field, TextArea, TextInput } from "../components/ui";
+import { Button, Card, Field, PickField, TextArea, TextInput } from "../components/ui";
+import { SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
+import { formatTime } from "../format";
+import { useT } from "../i18n";
 
 type Certificate = Schemas["CertificateView"];
 
 type PanelSettings = Schemas["PanelView"];
 
 export function CertificatesPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const certificates = useQuery({
     queryKey: ["certificates"],
@@ -42,10 +46,10 @@ export function CertificatesPage() {
       setCertPem("");
       setKeyPem("");
       setChainPem("");
-      toast.success("Certificate stored");
+      toast.success(t("Certificate stored"));
       await queryClient.invalidateQueries({ queryKey: ["certificates"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Upload failed"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Upload failed")),
   });
 
   const savePanel = useMutation({
@@ -60,10 +64,11 @@ export function CertificatesPage() {
         }),
       }),
     onSuccess: async () => {
-      toast.success("Panel domain saved");
+      toast.success(t("Panel domain saved"));
       await queryClient.invalidateQueries({ queryKey: ["panel"] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Could not save"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : t("Could not save")),
   });
 
   function onUpload(event: FormEvent) {
@@ -73,48 +78,49 @@ export function CertificatesPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Certificates</h1>
-      <Card title="Upload">
+      <h1 className="text-2xl font-semibold">{t("Certificates")}</h1>
+      <Card title={t("Upload")}>
         <form className="space-y-3" onSubmit={onUpload}>
-          <Field label="Name">
+          <Field label={t("Name")}>
             <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
-          <Field label="Certificate PEM">
+          <Field label={t("Certificate PEM")}>
             <TextArea
               required
               value={certPem}
               onChange={(event) => setCertPem(event.target.value)}
             />
           </Field>
-          <Field label="Private key PEM">
+          <Field label={t("Private key PEM")}>
             <TextArea required value={keyPem} onChange={(event) => setKeyPem(event.target.value)} />
           </Field>
-          <Field label="Chain PEM">
+          <Field label={t("Chain PEM")}>
             <TextArea value={chainPem} onChange={(event) => setChainPem(event.target.value)} />
           </Field>
-          <Button type="submit">Store certificate</Button>
+          <Button type="submit">{t("Store certificate")}</Button>
         </form>
       </Card>
-      <Card title="Stored">
+      <Card title={t("Stored")}>
         <ul className="space-y-3 text-sm">
           {(certificates.data ?? []).map((certificate) => (
             <li key={certificate.id} className="rounded-md border border-line p-3">
               <p className="font-medium">{certificate.name}</p>
               <p className="text-muted">CN {certificate.common_name ?? "—"}</p>
               <p>SANs {certificate.sans.join(", ") || "—"}</p>
-              <p className="text-muted">Issuer {certificate.issuer ?? "—"}</p>
               <p className="text-muted">
-                Expires{" "}
-                {certificate.not_after ? new Date(certificate.not_after).toLocaleString() : "—"}
+                {t("Issuer")} {certificate.issuer ?? "—"}
+              </p>
+              <p className="text-muted">
+                {t("Expires")} {formatTime(certificate.not_after)}
               </p>
             </li>
           ))}
           {certificates.data?.length === 0 ? (
-            <p className="text-muted">No certificates yet.</p>
+            <p className="text-muted">{t("No certificates yet.")}</p>
           ) : null}
         </ul>
       </Card>
-      <Card title="Panel domain">
+      <Card title={t("Panel domain")}>
         <form
           className="grid gap-3 md:grid-cols-2"
           onSubmit={(event) => {
@@ -122,33 +128,25 @@ export function CertificatesPage() {
             savePanel.mutate();
           }}
         >
-          <Field label="Domain">
+          <Field label={t("Domain")}>
             <TextInput
               value={domain || panel.data?.panel_domain || ""}
               onChange={(event) => setDomain(event.target.value)}
               placeholder="panel.example.com"
             />
           </Field>
-          <Field label="SSL">
-            <select
-              className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-              value={sslMode}
-              onChange={(event) => setSslMode(event.target.value)}
-            >
-              <option value="letsencrypt">Let's Encrypt</option>
-              <option value="custom">Uploaded certificate</option>
-              <option value="none">None</option>
-            </select>
-          </Field>
-          <Field label="ACME email">
+          <PickField label={t("SSL")} options={SSL_MODES} value={sslMode} onPick={setSslMode} />
+          <Field label={t("ACME email")}>
             <TextInput value={email} onChange={(event) => setEmail(event.target.value)} />
           </Field>
           <div className="flex items-end">
-            <Button type="submit">Save</Button>
+            <Button type="submit">{t("Save")}</Button>
           </div>
         </form>
         <p className="mt-3 text-sm text-muted">
-          Matching certificate: {panel.data?.matched_certificate_name ?? "none yet"}
+          {t("Matching certificate: {name}", {
+            name: panel.data?.matched_certificate_name ?? t("none yet"),
+          })}
         </p>
       </Card>
     </>

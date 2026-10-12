@@ -4,8 +4,10 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../api";
 import { errorMessage, formatBytes } from "../format";
+import { useT } from "../i18n";
+import { PURGE_PATHS } from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Card, Empty, Field, Select, TextArea } from "./ui";
+import { Badge, Button, Card, Empty, Field, QuickPick, Select, TextArea } from "./ui";
 
 type ServiceCache = Schemas["ServiceCacheView"];
 type Policy = Schemas["CachePolicyView"];
@@ -39,6 +41,7 @@ export function ruleSummary(rule: Rule): string {
 }
 
 export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const cache = useQuery({
     queryKey: ["service-cache", serviceId],
@@ -56,10 +59,10 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
         body: JSON.stringify({ enabled: input.enabled, policy_id: input.policyId }),
       }),
     onSuccess: async () => {
-      toast.success("Cache settings published");
+      toast.success(t("Cache settings published"));
       await queryClient.invalidateQueries({ queryKey: ["service-cache", serviceId] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not update the domain")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not update the domain"))),
   });
 
   const purge = useMutation({
@@ -81,11 +84,15 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
       });
     },
     onSuccess: async (result) => {
-      toast.success(`Purged ${result.removed} object${result.removed === 1 ? "" : "s"}`);
+      toast.success(
+        result.removed === 1
+          ? t("Purged {count} object", { count: result.removed })
+          : t("Purged {count} objects", { count: result.removed }),
+      );
       setPaths("");
       await queryClient.invalidateQueries({ queryKey: ["service-cache", serviceId] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Purge failed")),
+    onError: (error) => toast.error(errorMessage(error, t("Purge failed"))),
   });
 
   const domains = cache.data?.domains ?? [];
@@ -93,16 +100,20 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
 
   return (
     <>
-      <Card title="Cached domains">
+      <Card title={t("Cached domains")}>
         <p className="mb-3 text-sm text-muted">
-          Cached domains go through the server&apos;s Rudder cache before reaching the container.
-          Policies decide what is stored and for how long;{" "}
-          <Link className="text-accent" to="/cache">
-            manage policies
-          </Link>
-          .
+          {t(
+            "Cached domains go through the server's Rudder cache before reaching the container. Policies decide what is stored and for how long; {link}.",
+            {
+              link: (
+                <Link className="text-accent" to="/cache">
+                  {t("manage policies")}
+                </Link>
+              ),
+            },
+          )}
         </p>
-        {domains.length === 0 ? <Empty>Add a domain first.</Empty> : null}
+        {domains.length === 0 ? <Empty>{t("Add a domain first.")}</Empty> : null}
         <ul className="divide-y divide-line text-sm">
           {domains.map((domain) => (
             <li key={domain.domain_id} className="flex flex-wrap items-center gap-3 py-3">
@@ -113,7 +124,7 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
               <Badge value={domain.enabled ? "running" : "stopped"} />
               <div className="ml-auto flex items-center gap-2">
                 <Select
-                  aria-label={`Policy for ${domain.host}`}
+                  aria-label={t("Policy for {host}", { host: domain.host })}
                   className="w-56"
                   value={domain.policy_id ?? ""}
                   onChange={(event) =>
@@ -124,7 +135,7 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
                     })
                   }
                 >
-                  <option value="">Honor origin headers (default)</option>
+                  <option value="">{t("Honor origin headers (default)")}</option>
                   {(policies.data ?? []).map((policy) => (
                     <option key={policy.id} value={policy.id}>
                       {policy.name}
@@ -141,7 +152,7 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
                     })
                   }
                 >
-                  {domain.enabled ? "Turn off" : "Turn on"}
+                  {domain.enabled ? t("Turn off") : t("Turn on")}
                 </Button>
               </div>
             </li>
@@ -150,24 +161,26 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
       </Card>
       {cached.length > 0 ? (
         <>
-          <Card title="Hit ratio">
+          <Card title={t("Hit ratio")}>
             {cache.data?.stats_error ? (
               <p className="text-sm text-muted">
-                Stats unavailable: {cache.data.stats_error}. Requests still pass through once the
-                cache server is up.
+                {t(
+                  "Stats unavailable: {error}. Requests still pass through once the cache server is up.",
+                  { error: cache.data.stats_error },
+                )}
               </p>
             ) : null}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="text-muted">
                   <tr>
-                    <th className="py-1 pr-4 font-medium">Host</th>
-                    <th className="py-1 pr-4 font-medium">Hit ratio</th>
-                    <th className="py-1 pr-4 font-medium">Hits</th>
-                    <th className="py-1 pr-4 font-medium">Misses</th>
-                    <th className="py-1 pr-4 font-medium">Bypass</th>
-                    <th className="py-1 pr-4 font-medium">Objects</th>
-                    <th className="py-1 pr-4 font-medium">Stored</th>
+                    <th className="py-1 pr-4 font-medium">{t("Host")}</th>
+                    <th className="py-1 pr-4 font-medium">{t("Hit ratio")}</th>
+                    <th className="py-1 pr-4 font-medium">{t("Hits")}</th>
+                    <th className="py-1 pr-4 font-medium">{t("Misses")}</th>
+                    <th className="py-1 pr-4 font-medium">{t("Bypass")}</th>
+                    <th className="py-1 pr-4 font-medium">{t("Objects")}</th>
+                    <th className="py-1 pr-4 font-medium">{t("Stored")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -186,7 +199,7 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
               </table>
             </div>
           </Card>
-          <Card title="Purge">
+          <Card title={t("Purge")}>
             <form
               className="grid gap-3"
               onSubmit={(event) => {
@@ -194,9 +207,9 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
                 purge.mutate(false);
               }}
             >
-              <Field label="Domain">
+              <Field label={t("Domain")}>
                 <Select value={scope} onChange={(event) => setScope(event.target.value)}>
-                  <option value="">All cached domains</option>
+                  <option value="">{t("All cached domains")}</option>
                   {cached.map((domain) => (
                     <option key={domain.domain_id} value={domain.domain_id}>
                       {domain.host}
@@ -205,7 +218,22 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
                   ))}
                 </Select>
               </Field>
-              <Field label="Paths (one per line, or a single /prefix*)">
+              <Field
+                label={t("Paths (one per line, or a single /prefix*)")}
+                presets={
+                  <QuickPick
+                    label={t("Common paths")}
+                    options={PURGE_PATHS}
+                    onPick={(path) =>
+                      setPaths(
+                        path.endsWith("*")
+                          ? path
+                          : [...new Set([...paths.split("\n").filter(Boolean), path])].join("\n"),
+                      )
+                    }
+                  />
+                }
+              >
                 <TextArea
                   value={paths}
                   placeholder={"/index.html\n/blog/?page=2"}
@@ -214,18 +242,18 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
               </Field>
               <div className="flex gap-2">
                 <Button type="submit" disabled={!paths.trim()}>
-                  Purge paths
+                  {t("Purge paths")}
                 </Button>
                 <Button
                   quiet
                   type="button"
                   onClick={() => {
-                    if (window.confirm("Remove every cached object for these domains?")) {
+                    if (window.confirm(t("Remove every cached object for these domains?"))) {
                       purge.mutate(true);
                     }
                   }}
                 >
-                  Purge everything
+                  {t("Purge everything")}
                 </Button>
               </div>
             </form>

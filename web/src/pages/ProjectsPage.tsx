@@ -4,7 +4,9 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { CreateStackFields } from "../components/stacks";
-import { Button, Card, Field, TextInput } from "../components/ui";
+import { Button, Card, Field, PickField, QuickPick, TextInput } from "../components/ui";
+import { useT } from "../i18n";
+import { ENVIRONMENT_NAMES, IMAGES, MAIN_SERVICES, SERVICE_KINDS } from "../presets";
 import type { Schemas } from "../types";
 
 type Project = Schemas["ProjectView"];
@@ -16,6 +18,7 @@ type Service = Schemas["ServiceView"];
 type Server = Schemas["ServerView"];
 
 export function ProjectsPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const projects = useQuery({
     queryKey: ["projects"],
@@ -79,7 +82,7 @@ export function ProjectsPage() {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not create project"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not create project")),
   });
 
   const createEnvironment = useMutation({
@@ -89,11 +92,11 @@ export function ProjectsPage() {
         body: JSON.stringify({ name: environmentName }),
       }),
     onSuccess: async () => {
-      toast.success("Environment created");
+      toast.success(t("Environment created"));
       await queryClient.invalidateQueries({ queryKey: ["environments", selected] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not create environment"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not create environment")),
   });
 
   const createService = useMutation({
@@ -133,15 +136,15 @@ export function ProjectsPage() {
       setServiceName("");
       toast.success(
         kind === "database"
-          ? "Database created with a generated password"
+          ? t("Database created with a generated password")
           : kind === "compose"
-            ? "Stack saved; deploy it from its page"
-            : "Service created",
+            ? t("Stack saved; deploy it from its page")
+            : t("Service created"),
       );
       await queryClient.invalidateQueries({ queryKey: ["services", environmentId] });
     },
     onError: async (error) => {
-      toast.error(error instanceof ApiError ? error.message : "Could not create service");
+      toast.error(error instanceof ApiError ? error.message : t("Could not create service"));
       await queryClient.invalidateQueries({ queryKey: ["services", environmentId] });
     },
   });
@@ -153,17 +156,17 @@ export function ProjectsPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Projects</h1>
-      <Card title="New project">
+      <h1 className="text-2xl font-semibold">{t("Projects")}</h1>
+      <Card title={t("New project")}>
         <form className="flex flex-wrap items-end gap-3" onSubmit={onProject}>
-          <Field label="Name">
+          <Field label={t("Name")}>
             <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
-          <Button type="submit">Create</Button>
+          <Button type="submit">{t("Create")}</Button>
         </form>
       </Card>
       <div className="grid gap-4 md:grid-cols-[220px_1fr]">
-        <Card title="All">
+        <Card title={t("All")}>
           <ul className="space-y-1">
             {(projects.data ?? []).map((project) => (
               <li key={project.id}>
@@ -180,7 +183,7 @@ export function ProjectsPage() {
         </Card>
         {selected ? (
           <div className="space-y-4">
-            <Card title="Environment">
+            <Card title={t("Environment")}>
               <form
                 className="flex flex-wrap items-end gap-3"
                 onSubmit={(event) => {
@@ -188,21 +191,31 @@ export function ProjectsPage() {
                   createEnvironment.mutate();
                 }}
               >
-                <Field label="Name">
+                <Field
+                  label={t("Name")}
+                  presets={
+                    <QuickPick
+                      label={t("Environment name presets")}
+                      options={ENVIRONMENT_NAMES}
+                      value={environmentName}
+                      onPick={setEnvironmentName}
+                    />
+                  }
+                >
                   <TextInput
                     required
                     value={environmentName}
                     onChange={(event) => setEnvironmentName(event.target.value)}
                   />
                 </Field>
-                <Button type="submit">Add environment</Button>
+                <Button type="submit">{t("Add environment")}</Button>
               </form>
               <p className="mt-3 text-sm text-muted">
                 {(environments.data ?? []).map((environment) => environment.name).join(", ") ||
-                  "None yet"}
+                  t("None yet")}
               </p>
             </Card>
-            <Card title="Service">
+            <Card title={t("Service")}>
               <form
                 className="grid gap-3 md:grid-cols-2"
                 onSubmit={(event) => {
@@ -210,31 +223,26 @@ export function ProjectsPage() {
                   createService.mutate();
                 }}
               >
-                <Field label="Name">
+                <Field label={t("Name")}>
                   <TextInput
                     required
                     value={serviceName}
                     onChange={(event) => setServiceName(event.target.value)}
                   />
                 </Field>
-                <Field label="Kind">
-                  <select
-                    className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                    value={kind}
-                    onChange={(event) => setKind(event.target.value)}
-                  >
-                    <option value="application">application</option>
-                    <option value="database">database</option>
-                    <option value="compose">compose stack</option>
-                  </select>
-                </Field>
-                <Field label="Server">
+                <PickField
+                  label={t("Kind")}
+                  options={SERVICE_KINDS}
+                  value={kind}
+                  onPick={setKind}
+                />
+                <Field label={t("Server")}>
                   <select
                     className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
                     value={serverId}
                     onChange={(event) => setServerId(event.target.value)}
                   >
-                    <option value="">Select</option>
+                    <option value="">{t("Select")}</option>
                     {(servers.data ?? []).map((server) => (
                       <option key={server.id} value={server.id}>
                         {server.name}
@@ -244,39 +252,38 @@ export function ProjectsPage() {
                 </Field>
                 {kind === "database" ? (
                   <>
-                    <Field label="Engine">
-                      <select
-                        className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                        value={engine}
-                        onChange={(event) => {
-                          setEngine(event.target.value);
-                          setVersion("");
-                        }}
-                      >
-                        {(engines.data ?? []).map((item) => (
-                          <option key={item.engine} value={item.engine}>
-                            {item.engine}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Version">
-                      <select
-                        className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                        value={version || engineVersions[0] || ""}
-                        onChange={(event) => setVersion(event.target.value)}
-                      >
-                        {engineVersions.map((item) => (
-                          <option key={item} value={item}>
-                            {item}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
+                    <PickField
+                      label={t("Engine")}
+                      options={(engines.data ?? []).map((item) => ({
+                        label: item.engine,
+                        value: item.engine,
+                      }))}
+                      value={engine}
+                      onPick={(next) => {
+                        setEngine(next);
+                        setVersion("");
+                      }}
+                    />
+                    <PickField
+                      label={t("Version")}
+                      options={engineVersions.map((item) => ({ label: item, value: item }))}
+                      value={version || engineVersions[0] || ""}
+                      onPick={setVersion}
+                    />
                   </>
                 ) : kind === "compose" ? (
                   <>
-                    <Field label="Main service (receives domains)">
+                    <Field
+                      label={t("Main service (receives domains)")}
+                      presets={
+                        <QuickPick
+                          label={t("Main service presets")}
+                          options={MAIN_SERVICES}
+                          value={mainService}
+                          onPick={setMainService}
+                        />
+                      }
+                    >
                       <TextInput
                         value={mainService}
                         placeholder="web"
@@ -294,19 +301,32 @@ export function ProjectsPage() {
                     />
                   </>
                 ) : (
-                  <Field label="Image">
+                  <Field
+                    label={t("Image")}
+                    presets={
+                      <QuickPick
+                        label={t("Image suggestions")}
+                        options={IMAGES}
+                        value={image}
+                        onPick={setImage}
+                      />
+                    }
+                  >
                     <TextInput value={image} onChange={(event) => setImage(event.target.value)} />
                   </Field>
                 )}
                 <Button type="submit" disabled={!environmentId}>
-                  Add service
+                  {t("Add service")}
                 </Button>
               </form>
               <p className="mt-3 text-sm text-muted">
-                Or start from a ready-made app in{" "}
-                <Link className="text-accent" to="/templates">
-                  Templates
-                </Link>
+                {t("Or start from a ready-made app in {link}.", {
+                  link: (
+                    <Link className="text-accent" to="/templates">
+                      {t("Templates")}
+                    </Link>
+                  ),
+                })}
                 .
               </p>
               <ul className="mt-4 divide-y divide-line text-sm">
@@ -322,7 +342,7 @@ export function ProjectsPage() {
             </Card>
           </div>
         ) : (
-          <p className="text-sm text-muted">Select a project.</p>
+          <p className="text-sm text-muted">{t("Select a project.")}</p>
         )}
       </div>
     </>

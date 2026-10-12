@@ -14,6 +14,7 @@ import { api } from "../api";
 import { formatBytes } from "../format";
 import type { Schemas } from "../types";
 import { Empty, Select } from "./ui";
+import { msg, useT } from "../i18n";
 
 export const RANGES = ["15m", "1h", "6h", "24h", "7d", "30d"] as const;
 export type Range = (typeof RANGES)[number];
@@ -28,6 +29,24 @@ export interface ChartSpec {
 }
 
 const COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2"];
+
+// Recharts paints its own white tooltip and grey ticks; route them through the theme tokens
+// so text stays readable in both light and dark mode.
+const TICK = { fontSize: 11, fill: "var(--muted)" };
+const AXIS_LINE = { stroke: "var(--line-strong)" };
+const TOOLTIP_STYLES = {
+  contentStyle: {
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--line-strong)",
+    borderRadius: 8,
+    boxShadow: "var(--shadow-raised)",
+    color: "var(--ink)",
+    fontSize: 12,
+  },
+  labelStyle: { color: "var(--ink-soft)", marginBottom: 4 },
+  itemStyle: { color: "var(--ink)" },
+  cursor: { stroke: "var(--faint)" },
+} as const;
 
 export function formatValue(value: number | null | undefined, unit: Unit): string {
   if (value == null || Number.isNaN(value)) {
@@ -55,9 +74,10 @@ function tickTime(value: number, range: Range): string {
 }
 
 export function RangePicker({ value, onChange }: { value: Range; onChange: (r: Range) => void }) {
+  const t = useT();
   return (
     <Select
-      aria-label="Time range"
+      aria-label={t("Time range")}
       className="w-28"
       value={value}
       onChange={(event) => onChange(event.target.value as Range)}
@@ -80,6 +100,7 @@ function MetricChart({
   range: Range;
   target: { server_id?: string; service_id?: string };
 }) {
+  const t = useT();
   const params = new URLSearchParams({ metrics: spec.metrics.join(","), range });
   if (target.server_id) params.set("server_id", target.server_id);
   if (target.service_id) params.set("service_id", target.service_id);
@@ -92,10 +113,10 @@ function MetricChart({
   const rows = new Map<number, { t: number } & Record<string, number>>();
   for (const series of data.data?.series ?? []) {
     for (const point of series.points) {
-      const t = new Date(point.t).getTime();
-      const row = rows.get(t) ?? ({ t } as { t: number } & Record<string, number>);
+      const time = new Date(point.t).getTime();
+      const row = rows.get(time) ?? ({ t: time } as { t: number } & Record<string, number>);
       row[series.metric] = point.avg;
-      rows.set(t, row);
+      rows.set(time, row);
     }
   }
   const points = [...rows.values()].sort((a, b) => a.t - b.t);
@@ -103,45 +124,52 @@ function MetricChart({
   return (
     <div className="rounded-lg border border-line p-3">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">{spec.title}</h3>
+        <h3 className="text-sm font-semibold">{t(spec.title)}</h3>
         {data.data ? (
-          <span className="text-xs text-muted">resolution {data.data.resolution}</span>
+          <span className="text-xs text-muted">
+            {t("resolution {value}", { value: data.data.resolution })}
+          </span>
         ) : null}
       </div>
       {points.length === 0 ? (
         <div className="flex h-44 items-center justify-center">
-          <Empty>{data.isLoading ? "Loading…" : "No samples in this range yet."}</Empty>
+          <Empty>{data.isLoading ? t("Loading…") : t("No samples in this range yet.")}</Empty>
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={176}>
           <AreaChart data={points} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.1} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
             <XAxis
               dataKey="t"
               type="number"
               scale="time"
               domain={["dataMin", "dataMax"]}
               tickFormatter={(value: number) => tickTime(value, range)}
-              tick={{ fontSize: 11 }}
+              tick={TICK}
+              axisLine={AXIS_LINE}
+              tickLine={AXIS_LINE}
               minTickGap={32}
             />
             <YAxis
               width={64}
-              tick={{ fontSize: 11 }}
+              tick={TICK}
+              axisLine={AXIS_LINE}
+              tickLine={AXIS_LINE}
               domain={spec.unit === "percent" ? [0, 100] : [0, "auto"]}
               tickFormatter={(value: number) => formatValue(value, spec.unit)}
             />
             <Tooltip
+              {...TOOLTIP_STYLES}
               labelFormatter={(value) => new Date(Number(value)).toLocaleString()}
               formatter={(value, name) => [
                 formatValue(Number(value), spec.unit),
-                spec.labels?.[String(name)] ?? String(name),
+                t(spec.labels?.[String(name)] ?? String(name)),
               ]}
             />
             {spec.metrics.length > 1 ? (
               <Legend
-                formatter={(value: string) => spec.labels?.[value] ?? value}
-                wrapperStyle={{ fontSize: 12 }}
+                formatter={(value: string) => t(spec.labels?.[value] ?? value)}
+                wrapperStyle={{ fontSize: 12, color: "var(--ink-soft)" }}
               />
             ) : null}
             {spec.metrics.map((metric, index) => (
@@ -171,11 +199,12 @@ export function MetricsGrid({
   charts: ChartSpec[];
   target: { server_id?: string; service_id?: string };
 }) {
+  const t = useT();
   const [range, setRange] = useState<Range>("1h");
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-end gap-2 text-sm text-muted">
-        Range <RangePicker value={range} onChange={setRange} />
+        {t("Range")} <RangePicker value={range} onChange={setRange} />
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {charts.map((spec) => (
@@ -187,31 +216,31 @@ export function MetricsGrid({
 }
 
 export const SERVER_CHARTS: ChartSpec[] = [
-  { title: "CPU", metrics: ["cpu_percent"], unit: "percent" },
-  { title: "Memory", metrics: ["memory_percent"], unit: "percent" },
-  { title: "Disk", metrics: ["disk_percent"], unit: "percent" },
+  { title: msg("CPU"), metrics: ["cpu_percent"], unit: "percent" },
+  { title: msg("Memory"), metrics: ["memory_percent"], unit: "percent" },
+  { title: msg("Disk"), metrics: ["disk_percent"], unit: "percent" },
   {
-    title: "Network",
+    title: msg("Network"),
     metrics: ["net_rx_bps", "net_tx_bps"],
-    labels: { net_rx_bps: "received", net_tx_bps: "sent" },
+    labels: { net_rx_bps: msg("received"), net_tx_bps: msg("sent") },
     unit: "bps",
   },
-  { title: "Load (1 min)", metrics: ["load1"], unit: "plain" },
+  { title: msg("Load (1 min)"), metrics: ["load1"], unit: "plain" },
 ];
 
 export const SERVICE_CHARTS: ChartSpec[] = [
-  { title: "CPU", metrics: ["cpu_percent"], unit: "percent" },
-  { title: "Memory", metrics: ["memory_bytes"], unit: "bytes" },
+  { title: msg("CPU"), metrics: ["cpu_percent"], unit: "percent" },
+  { title: msg("Memory"), metrics: ["memory_bytes"], unit: "bytes" },
   {
-    title: "Network",
+    title: msg("Network"),
     metrics: ["net_rx_bps", "net_tx_bps"],
-    labels: { net_rx_bps: "received", net_tx_bps: "sent" },
+    labels: { net_rx_bps: msg("received"), net_tx_bps: msg("sent") },
     unit: "bps",
   },
   {
-    title: "HTTP requests per minute",
+    title: msg("HTTP requests per minute"),
     metrics: ["requests", "http_5xx"],
-    labels: { requests: "requests", http_5xx: "5xx" },
+    labels: { requests: msg("requests"), http_5xx: "5xx" },
     unit: "count",
   },
 ];

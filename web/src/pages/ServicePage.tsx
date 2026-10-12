@@ -9,8 +9,20 @@ import { LogViewer } from "../components/logs";
 import { DatabasePanel, ServiceLogs } from "../components/DatabasePanel";
 import { StackLogs, StackOverview, StackSourceEditor, useStack } from "../components/stacks";
 import { MetricsGrid, SERVICE_CHARTS } from "../components/metrics";
-import { Badge, Button, Card, Empty, Field, Tabs, TextInput } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Empty,
+  Field,
+  PickField,
+  QuickPick,
+  Tabs,
+  TextInput,
+} from "../components/ui";
 import { errorMessage } from "../format";
+import { msg, useT } from "../i18n";
+import { BRANCHES, BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
 
 const TerminalPanel = lazy(() =>
@@ -18,16 +30,16 @@ const TerminalPanel = lazy(() =>
 );
 
 const TABS = [
-  ["general", "General"],
-  ["source", "Source"],
-  ["environment", "Environment"],
-  ["domains", "Domains & SSL"],
-  ["cache", "Cache"],
-  ["deployments", "Deployments"],
-  ["metrics", "Metrics"],
-  ["logs", "Logs"],
-  ["terminal", "Terminal"],
-  ["backups", "Backups"],
+  ["general", msg("General")],
+  ["source", msg("Source")],
+  ["environment", msg("Environment")],
+  ["domains", msg("Domains & SSL")],
+  ["cache", msg("Cache")],
+  ["deployments", msg("Deployments")],
+  ["metrics", msg("Metrics")],
+  ["logs", msg("Logs")],
+  ["terminal", msg("Terminal")],
+  ["backups", msg("Backups")],
 ] as const;
 
 type Tab = (typeof TABS)[number][0];
@@ -56,6 +68,7 @@ type Registry = Schemas["RegistryView"];
 type Match = Schemas["CertificateView"];
 
 export function ServicePage() {
+  const t = useT();
   const { id = "" } = useParams();
   const queryClient = useQueryClient();
   const service = useQuery({
@@ -114,21 +127,21 @@ export function ServicePage() {
     onSuccess: async (saved) => {
       setWebhookSecret(saved.webhook_secret ?? null);
       setPublicKey(saved.public_key ?? null);
-      toast.success("Source saved. Copy the webhook secret now.");
+      toast.success(t("Source saved. Copy the webhook secret now."));
       await queryClient.invalidateQueries({ queryKey: ["service", id] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not save source"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not save source")),
   });
 
   const build = useMutation({
     mutationFn: () => api(`/api/v1/services/${id}/build`, { method: "POST" }),
     onSuccess: async () => {
-      toast.success("Build queued");
+      toast.success(t("Build queued"));
       await queryClient.invalidateQueries({ queryKey: ["deployments", id] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not queue build"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not queue build")),
   });
 
   const deploy = useMutation({
@@ -143,11 +156,11 @@ export function ServicePage() {
         }),
       }),
     onSuccess: async () => {
-      toast.success("Deployment finished");
+      toast.success(t("Deployment finished"));
       await queryClient.invalidateQueries({ queryKey: ["deployments", id] });
       await queryClient.invalidateQueries({ queryKey: ["service", id] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Deploy failed"),
+    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Deploy failed")),
   });
 
   const addDomain = useMutation({
@@ -162,12 +175,12 @@ export function ServicePage() {
         }),
       }),
     onSuccess: async () => {
-      toast.success("Domain routed");
+      toast.success(t("Domain routed"));
       setHost("");
       await queryClient.invalidateQueries({ queryKey: ["domains", id] });
     },
     onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : "Could not add domain"),
+      toast.error(error instanceof ApiError ? error.message : t("Could not add domain")),
   });
 
   const preview = useMutation({
@@ -180,7 +193,8 @@ export function ServicePage() {
       toast.success(domain.host);
       await queryClient.invalidateQueries({ queryKey: ["domains", id] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Preview failed"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : t("Preview failed")),
   });
 
   const rollback = useMutation({
@@ -190,10 +204,11 @@ export function ServicePage() {
         body: JSON.stringify({ deployment_id: deploymentId }),
       }),
     onSuccess: async () => {
-      toast.success("Rollback finished");
+      toast.success(t("Rollback finished"));
       await queryClient.invalidateQueries({ queryKey: ["deployments", id] });
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : "Rollback failed"),
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : t("Rollback failed")),
   });
 
   async function lookUp(nextHost: string) {
@@ -222,7 +237,7 @@ export function ServicePage() {
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold">{current?.name ?? "Service"}</h1>
+        <h1 className="text-2xl font-semibold">{current?.name ?? t("Service")}</h1>
         {current ? <Badge value={current.status} /> : null}
       </div>
       <p className="text-sm text-muted">
@@ -237,22 +252,32 @@ export function ServicePage() {
           <StackOverview serviceId={id} />
         ) : (
           <>
-            <Card title="Deploy image">
+            <Card title={t("Deploy image")}>
               <form className="grid gap-3 md:grid-cols-2" onSubmit={onDeploy}>
-                <Field label="Image">
+                <Field
+                  label={t("Image")}
+                  presets={
+                    <QuickPick
+                      label={t("Image suggestions")}
+                      options={IMAGES}
+                      value={image}
+                      onPick={setImage}
+                    />
+                  }
+                >
                   <TextInput
                     value={image}
                     placeholder="ghcr.io/org/app:1"
                     onChange={(event) => setImage(event.target.value)}
                   />
                 </Field>
-                <Field label="Registry">
+                <Field label={t("Registry")}>
                   <select
                     className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
                     value={registryId}
                     onChange={(event) => setRegistryId(event.target.value)}
                   >
-                    <option value="">Match by host</option>
+                    <option value="">{t("Match by host")}</option>
                     {(registries.data ?? []).map((registry) => (
                       <option key={registry.id} value={registry.id}>
                         {registry.name} ({registry.url})
@@ -261,7 +286,7 @@ export function ServicePage() {
                   </select>
                 </Field>
                 <Button type="submit" disabled={current?.kind !== "application"}>
-                  Pull and deploy
+                  {t("Pull and deploy")}
                 </Button>
               </form>
             </Card>
@@ -271,7 +296,7 @@ export function ServicePage() {
       {tab === "source" && isStack ? <StackSourceEditor serviceId={id} /> : null}
       {tab === "source" && !isStack ? (
         <>
-          <Card title="Git source">
+          <Card title={t("Git source")}>
             <form
               className="grid gap-3 md:grid-cols-2"
               onSubmit={(event) => {
@@ -279,14 +304,14 @@ export function ServicePage() {
                 saveSource.mutate();
               }}
             >
-              <Field label="Provider">
+              <Field label={t("Provider")}>
                 <select
                   className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
                   value={providerId}
                   onChange={(event) => setProviderId(event.target.value)}
                   required
                 >
-                  <option value="">Choose</option>
+                  <option value="">{t("Choose")}</option>
                   {(providers.data ?? []).map((provider) => (
                     <option key={provider.id} value={provider.id}>
                       {provider.name} ({provider.kind})
@@ -294,7 +319,7 @@ export function ServicePage() {
                   ))}
                 </select>
               </Field>
-              <Field label="Repository">
+              <Field label={t("Repository")}>
                 <TextInput
                   required
                   value={repo}
@@ -302,38 +327,47 @@ export function ServicePage() {
                   onChange={(event) => setRepo(event.target.value)}
                 />
               </Field>
-              <Field label="Branch">
+              <Field
+                label={t("Branch")}
+                presets={
+                  <QuickPick
+                    label={t("Branch presets")}
+                    options={BRANCHES}
+                    value={branch}
+                    onPick={setBranch}
+                  />
+                }
+              >
                 <TextInput
                   required
                   value={branch}
                   onChange={(event) => setBranch(event.target.value)}
                 />
               </Field>
-              <Field label="Build">
-                <select
-                  className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                  value={strategy}
-                  onChange={(event) => setStrategy(event.target.value)}
-                >
-                  <option value="dockerfile">Dockerfile</option>
-                  <option value="nixpacks">Nixpacks</option>
-                  <option value="static">Static site</option>
-                </select>
-              </Field>
+              <PickField
+                label={t("Build")}
+                options={BUILD_STRATEGIES}
+                value={strategy}
+                onPick={setStrategy}
+              />
               <div className="flex items-end gap-2">
-                <Button type="submit">Save source</Button>
+                <Button type="submit">{t("Save source")}</Button>
                 <Button quiet type="button" onClick={() => build.mutate()}>
-                  Build
+                  {t("Build")}
                 </Button>
               </div>
             </form>
             {current?.spec?.git?.repo ? (
               <p className="mt-3 text-sm text-muted">
-                Current: {current.spec.git.repo} · {current.spec.git.branch} ·{" "}
+                {t("Current:")} {current.spec.git.repo} · {current.spec.git.branch} ·{" "}
                 {current.spec.git.strategy}
               </p>
             ) : null}
-            {webhookSecret ? <p className="mt-2 text-sm">Webhook secret: {webhookSecret}</p> : null}
+            {webhookSecret ? (
+              <p className="mt-2 text-sm">
+                {t("Webhook secret: {secret}", { secret: webhookSecret })}
+              </p>
+            ) : null}
             {publicKey ? <p className="mt-2 break-all font-mono text-xs">{publicKey}</p> : null}
           </Card>
         </>
@@ -341,7 +375,7 @@ export function ServicePage() {
       {tab === "environment" ? <EnvironmentEditor serviceId={id} /> : null}
       {tab === "domains" ? (
         <>
-          <Card title="Domains">
+          <Card title={t("Domains")}>
             <form
               className="grid gap-3 md:grid-cols-2"
               onSubmit={(event) => {
@@ -349,25 +383,38 @@ export function ServicePage() {
                 addDomain.mutate();
               }}
             >
-              <Field label="Host">
+              <Field label={t("Host")}>
                 <TextInput
                   required
                   value={host}
                   onChange={(event) => void lookUp(event.target.value)}
                 />
               </Field>
-              <Field label="Port">
+              <Field
+                label={t("Port")}
+                hint={t("The port your app listens on inside the container.")}
+                presets={
+                  <QuickPick
+                    label={t("Port presets")}
+                    options={PORTS}
+                    value={port}
+                    onPick={setPort}
+                  />
+                }
+              >
                 <TextInput value={port} onChange={(event) => setPort(event.target.value)} />
               </Field>
               {isStack ? (
-                <Field label="Compose service">
+                <Field label={t("Compose service")}>
                   <select
                     className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
                     value={composeService}
                     onChange={(event) => setComposeService(event.target.value)}
                   >
                     <option value="">
-                      Main service{stack.data?.main_service ? ` (${stack.data.main_service})` : ""}
+                      {stack.data?.main_service
+                        ? t("Main service ({name})", { name: stack.data.main_service })
+                        : t("Main service")}
                     </option>
                     {stackServices.map((name) => (
                       <option key={name} value={name}>
@@ -377,26 +424,18 @@ export function ServicePage() {
                   </select>
                 </Field>
               ) : null}
-              <Field label="SSL">
-                <select
-                  className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                  value={sslMode}
-                  onChange={(event) => setSslMode(event.target.value)}
-                >
-                  <option value="letsencrypt">Let's Encrypt</option>
-                  <option value="custom">Uploaded certificate</option>
-                  <option value="none">None</option>
-                </select>
-              </Field>
+              <PickField label={t("SSL")} options={SSL_MODES} value={sslMode} onPick={setSslMode} />
               <div className="flex items-end gap-2">
-                <Button type="submit">Add domain</Button>
+                <Button type="submit">{t("Add domain")}</Button>
                 <Button quiet type="button" onClick={() => preview.mutate()}>
-                  Preview domain
+                  {t("Preview domain")}
                 </Button>
               </div>
             </form>
             <p className="mt-3 text-sm text-muted">
-              Certificate match: {matchName ?? "none — Let's Encrypt can still issue one"}
+              {t("Certificate match: {name}", {
+                name: matchName ?? t("none — Let's Encrypt can still issue one"),
+              })}
             </p>
             <ul className="mt-4 space-y-2 text-sm">
               {(domains.data ?? []).map((domain) => (
@@ -405,10 +444,10 @@ export function ServicePage() {
                   {domain.path_prefix !== "/" ? domain.path_prefix : ""} · {domain.ssl_mode}
                   {domain.compose_service ? ` · → ${domain.compose_service}` : ""}
                   {domain.matched_certificate_name
-                    ? ` · cert ${domain.matched_certificate_name}`
+                    ? ` · ${t("cert {name}", { name: domain.matched_certificate_name })}`
                     : ""}
-                  {domain.is_preview ? " · preview" : ""}
-                  {domain.published ? "" : " · waiting for agent"}
+                  {domain.is_preview ? ` · ${t("preview")}` : ""}
+                  {domain.published ? "" : ` · ${t("waiting for agent")}`}
                 </li>
               ))}
             </ul>
@@ -418,13 +457,13 @@ export function ServicePage() {
       {tab === "cache" ? <ServiceCachePanel serviceId={id} /> : null}
       {tab === "deployments" ? (
         <>
-          <Card title="Deployments">
+          <Card title={t("Deployments")}>
             <ul className="space-y-3 text-sm">
               {(deployments.data ?? []).map((deployment) => (
                 <li key={deployment.id} className="rounded-md border border-line p-3">
                   <p>
                     {deployment.status} · {deployment.trigger} ·{" "}
-                    {deployment.image_ref ?? "no image"}
+                    {deployment.image_ref ?? t("no image")}
                   </p>
                   {deployment.error ? <p className="text-muted">{deployment.error}</p> : null}
                   {deployment.logs ? (
@@ -434,44 +473,44 @@ export function ServicePage() {
                   ) : null}
                   {deployment.status === "succeeded" && !isStack ? (
                     <Button quiet className="mt-2" onClick={() => rollback.mutate(deployment.id)}>
-                      Roll back
+                      {t("Roll back")}
                     </Button>
                   ) : null}
                 </li>
               ))}
               {deployments.data?.length === 0 ? (
-                <p className="text-muted">No deployments yet.</p>
+                <p className="text-muted">{t("No deployments yet.")}</p>
               ) : null}
             </ul>
           </Card>
         </>
       ) : null}
       {tab === "metrics" ? (
-        <Card title="Metrics">
+        <Card title={t("Metrics")}>
           <MetricsGrid charts={SERVICE_CHARTS} target={{ service_id: id }} />
         </Card>
       ) : null}
       {tab === "logs" ? (
         <>
-          <Card title="Stored logs">
+          <Card title={t("Stored logs")}>
             <LogViewer fixed={{ service_id: id }} sources={["app", "proxy"]} />
           </Card>
           {isStack ? <StackLogs serviceId={id} /> : <ServiceLogs serviceId={id} />}
         </>
       ) : null}
       {tab === "terminal" ? (
-        <Card title="Terminal">
-          <Suspense fallback={<Empty>Loading terminal…</Empty>}>
+        <Card title={t("Terminal")}>
+          <Suspense fallback={<Empty>{t("Loading terminal…")}</Empty>}>
             <TerminalPanel serviceId={id} containers={stackServices} />
           </Suspense>
         </Card>
       ) : null}
       {tab === "backups" && current ? (
         <>
-          <Card title="Backup jobs">
+          <Card title={t("Backup jobs")}>
             <BackupJobs serviceId={id} />
           </Card>
-          <Card title="New backup job">
+          <Card title={t("New backup job")}>
             <BackupJobForm
               target={{
                 serviceId: id,
@@ -487,6 +526,7 @@ export function ServicePage() {
 }
 
 function EnvironmentEditor({ serviceId }: { serviceId: string }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const vars = useQuery({
     queryKey: ["env", serviceId],
@@ -495,6 +535,7 @@ function EnvironmentEditor({ serviceId }: { serviceId: string }) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
   const [buildSecret, setBuildSecret] = useState(false);
+  const suggestedValues = ENV_KEYS.find((item) => item.key === key)?.values ?? [];
   const save = useMutation({
     mutationFn: () =>
       api(`/api/v1/services/${serviceId}/env`, {
@@ -502,24 +543,25 @@ function EnvironmentEditor({ serviceId }: { serviceId: string }) {
         body: JSON.stringify({ key, value, is_build_secret: buildSecret }),
       }),
     onSuccess: async () => {
-      toast.success(`${key} saved`);
+      toast.success(t("{key} saved", { key }));
       setKey("");
       setValue("");
       await queryClient.invalidateQueries({ queryKey: ["env", serviceId] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save the variable")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save the variable"))),
   });
   const remove = useMutation({
     mutationFn: (name: string) =>
       api(`/api/v1/services/${serviceId}/env/${encodeURIComponent(name)}`, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["env", serviceId] }),
-    onError: (error) => toast.error(errorMessage(error, "Could not delete the variable")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not delete the variable"))),
   });
   return (
-    <Card title="Environment variables">
+    <Card title={t("Environment variables")}>
       <p className="mb-3 text-sm text-muted">
-        Values are encrypted and write-only. Saving an existing key replaces its value; redeploy to
-        apply.
+        {t(
+          "Values are encrypted and write-only. Saving an existing key replaces its value; redeploy to apply.",
+        )}
       </p>
       <form
         className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]"
@@ -528,10 +570,32 @@ function EnvironmentEditor({ serviceId }: { serviceId: string }) {
           save.mutate();
         }}
       >
-        <Field label="Key">
+        <Field
+          label={t("Key")}
+          presets={
+            <QuickPick
+              label={t("Common variables")}
+              options={ENV_KEYS.map((item) => ({ label: item.key, value: item.key }))}
+              value={key}
+              onPick={setKey}
+            />
+          }
+        >
           <TextInput required value={key} onChange={(event) => setKey(event.target.value)} />
         </Field>
-        <Field label="Value">
+        <Field
+          label={t("Value")}
+          presets={
+            suggestedValues.length > 0 ? (
+              <QuickPick
+                label={t("Common values")}
+                options={suggestedValues.map((item) => ({ label: item, value: item }))}
+                value={value}
+                onPick={setValue}
+              />
+            ) : undefined
+          }
+        >
           <TextInput
             required
             type="password"
@@ -546,32 +610,34 @@ function EnvironmentEditor({ serviceId }: { serviceId: string }) {
             checked={buildSecret}
             onChange={(event) => setBuildSecret(event.target.checked)}
           />
-          Build secret
+          {t("Build secret")}
         </label>
         <div className="flex items-end">
-          <Button type="submit">Save</Button>
+          <Button type="submit">{t("Save")}</Button>
         </div>
       </form>
       <ul className="mt-4 divide-y divide-line text-sm">
         {(vars.data ?? []).map((item) => (
           <li key={item.key} className="flex items-center gap-2 py-2">
             <span className="font-mono">{item.key}</span>
-            {item.is_build_secret ? <span className="text-xs text-muted">build secret</span> : null}
+            {item.is_build_secret ? (
+              <span className="text-xs text-muted">{t("build secret")}</span>
+            ) : null}
             <button
               type="button"
               className="ml-auto text-accent"
               onClick={() => {
-                if (window.confirm(`Delete ${item.key}?`)) {
+                if (window.confirm(t("Delete {key}?", { key: item.key }))) {
                   remove.mutate(item.key);
                 }
               }}
             >
-              Delete
+              {t("Delete")}
             </button>
           </li>
         ))}
       </ul>
-      {vars.data?.length === 0 ? <Empty>No variables.</Empty> : null}
+      {vars.data?.length === 0 ? <Empty>{t("No variables.")}</Empty> : null}
     </Card>
   );
 }

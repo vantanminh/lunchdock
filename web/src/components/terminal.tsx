@@ -4,6 +4,7 @@ import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth";
 import { Button, Empty, Select } from "./ui";
+import { useT } from "../i18n";
 
 type Status = "idle" | "connecting" | "open" | "closed";
 
@@ -16,6 +17,7 @@ export function TerminalPanel({
   /** Compose service names; empty for single-container services. */
   containers: string[];
 }) {
+  const t = useT();
   const { user } = useAuth();
   const host = useRef<HTMLDivElement | null>(null);
   const [container, setContainer] = useState("");
@@ -77,7 +79,7 @@ export function TerminalPanel({
   }, [session, serviceId, container]);
 
   if (user?.role !== "admin") {
-    return <Empty>Only admins can open a terminal.</Empty>;
+    return <Empty>{t("Only admins can open a terminal.")}</Empty>;
   }
   const needsContainer = containers.length > 0 && !container;
 
@@ -88,14 +90,14 @@ export function TerminalPanel({
           <Select
             className="w-56"
             value={container}
-            aria-label="Compose service"
+            aria-label={t("Compose service")}
             onChange={(event) => {
               setContainer(event.target.value);
               setSession(0);
               setStatus("idle");
             }}
           >
-            <option value="">Choose a service</option>
+            <option value="">{t("Choose a service")}</option>
             {containers.map((name) => (
               <option key={name} value={name}>
                 {name}
@@ -104,22 +106,23 @@ export function TerminalPanel({
           </Select>
         ) : null}
         <Button disabled={needsContainer} onClick={() => setSession((value) => value + 1)}>
-          {status === "open" || status === "connecting" ? "Reconnect" : "Open shell"}
+          {status === "open" || status === "connecting" ? t("Reconnect") : t("Open shell")}
         </Button>
         {status === "open" ? (
           <Button quiet onClick={() => setSession(0)}>
-            Disconnect
+            {t("Disconnect")}
           </Button>
         ) : null}
         <span className="text-sm text-muted">
-          {status === "open" ? "Connected" : status === "connecting" ? "Connecting…" : ""}
-          {status === "closed" ? "Disconnected" : ""}
+          {status === "open" ? t("Connected") : status === "connecting" ? t("Connecting…") : ""}
+          {status === "closed" ? t("Disconnected") : ""}
         </span>
       </div>
       {note ? <p className="text-sm text-muted">{note}</p> : null}
       <p className="text-xs text-muted">
-        Sessions run the container's bash or sh as its default user and are recorded in the audit
-        log.
+        {t(
+          "Sessions run the container's bash or sh as its default user and are recorded in the audit log.",
+        )}
       </p>
       <div
         ref={host}

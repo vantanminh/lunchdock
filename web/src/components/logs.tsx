@@ -4,6 +4,7 @@ import { api } from "../api";
 import { errorMessage, formatTime } from "../format";
 import type { Schemas } from "../types";
 import { Button, Empty, Select, TextInput } from "./ui";
+import { msg, useT } from "../i18n";
 
 type LogView = Schemas["LogView"];
 type LogPage = Schemas["LogPage"];
@@ -11,11 +12,11 @@ type LogPage = Schemas["LogPage"];
 export const LOG_SOURCES = ["app", "panel", "proxy", "cache", "agent", "system"] as const;
 const LEVELS = ["error", "warn", "info", "debug", "trace"] as const;
 const RANGES = [
-  ["15m", "Last 15 minutes", 15 * 60],
-  ["1h", "Last hour", 60 * 60],
-  ["24h", "Last 24 hours", 24 * 60 * 60],
-  ["7d", "Last 7 days", 7 * 24 * 60 * 60],
-  ["30d", "Last 30 days", 30 * 24 * 60 * 60],
+  ["15m", msg("Last 15 minutes"), 15 * 60],
+  ["1h", msg("Last hour"), 60 * 60],
+  ["24h", msg("Last 24 hours"), 24 * 60 * 60],
+  ["7d", msg("Last 7 days"), 7 * 24 * 60 * 60],
+  ["30d", msg("Last 30 days"), 30 * 24 * 60 * 60],
 ] as const;
 const LIVE_LIMIT = 1000;
 
@@ -70,6 +71,7 @@ export function LogViewer({
   fixed?: Record<string, string>;
   sources?: readonly string[];
 }) {
+  const t = useT();
   const [filters, setFilters] = useState<LogFilters>({
     source: "",
     level: "",
@@ -79,7 +81,10 @@ export function LogViewer({
   });
   const [live, setLive] = useState(false);
   const [liveRows, setLiveRows] = useState<LogView[]>([]);
-  const [liveNote, setLiveNote] = useState<string | null>(null);
+  const [liveNote, setLiveNote] = useState<{
+    key: string;
+    values?: Record<string, number>;
+  } | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const debounced = useDebounced(filters, 300);
   const fixedKey = JSON.stringify(fixed);
@@ -107,19 +112,22 @@ export function LogViewer({
   useEffect(() => {
     if (!live) return;
     setLiveRows([]);
-    setLiveNote("Connecting…");
+    setLiveNote({ key: "Connecting…" });
     const ws = new WebSocket(tailUrl(logParams(debounced, fixed, false)));
     socket.current = ws;
-    ws.onopen = () => setLiveNote("Streaming new lines");
-    ws.onclose = () => setLiveNote("Live tail disconnected");
-    ws.onerror = () => setLiveNote("Live tail failed to connect");
+    ws.onopen = () => setLiveNote({ key: "Streaming new lines" });
+    ws.onclose = () => setLiveNote({ key: "Live tail disconnected" });
+    ws.onerror = () => setLiveNote({ key: "Live tail failed to connect" });
     ws.onmessage = (event) => {
       const message = JSON.parse(String(event.data)) as
         { type: "entry"; entry: LogView } | { type: "lagged"; skipped: number };
       if (message.type === "entry") {
         setLiveRows((rows) => [message.entry, ...rows].slice(0, LIVE_LIMIT));
       } else {
-        setLiveNote(`Fell behind; skipped ${message.skipped} lines`);
+        setLiveNote({
+          key: "Fell behind; skipped {count} lines",
+          values: { count: message.skipped },
+        });
       }
     };
     return () => ws.close();
@@ -140,17 +148,17 @@ export function LogViewer({
       <div className="grid gap-2 md:grid-cols-6">
         <TextInput
           className="md:col-span-2"
-          placeholder="Search messages"
+          placeholder={t("Search messages")}
           value={filters.q}
           onChange={(event) => set("q", event.target.value)}
-          aria-label="Search messages"
+          aria-label={t("Search messages")}
         />
         <Select
           value={filters.source}
           onChange={(event) => set("source", event.target.value)}
-          aria-label="Source"
+          aria-label={t("Source")}
         >
-          <option value="">All sources</option>
+          <option value="">{t("All sources")}</option>
           {sources.map((source) => (
             <option key={source} value={source}>
               {source}
@@ -160,11 +168,11 @@ export function LogViewer({
         <Select
           value={filters.level}
           onChange={(event) => set("level", event.target.value)}
-          aria-label="Level"
+          aria-label={t("Level")}
         >
-          <option value="">All levels</option>
+          <option value="">{t("All levels")}</option>
           <option value="error">error</option>
-          <option value="warn,error">warn and above</option>
+          <option value="warn,error">{t("warn and above")}</option>
           {LEVELS.slice(2).map((level) => (
             <option key={level} value={level}>
               {level}
@@ -174,9 +182,9 @@ export function LogViewer({
         <Select
           value={filters.status}
           onChange={(event) => set("status", event.target.value)}
-          aria-label="HTTP status"
+          aria-label={t("HTTP status")}
         >
-          <option value="">Any status</option>
+          <option value="">{t("Any status")}</option>
           {["2xx", "3xx", "4xx", "5xx"].map((status) => (
             <option key={status} value={status}>
               {status}
@@ -187,37 +195,41 @@ export function LogViewer({
           value={filters.range}
           disabled={live}
           onChange={(event) => set("range", event.target.value)}
-          aria-label="Time range"
+          aria-label={t("Time range")}
         >
           {RANGES.map(([key, label]) => (
             <option key={key} value={key}>
-              {label}
+              {t(label)}
             </option>
           ))}
         </Select>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button quiet={!live} onClick={() => setLive((value) => !value)}>
-          {live ? "Stop live tail" : "Live tail"}
+          {live ? t("Stop live tail") : t("Live tail")}
         </Button>
         <a
           className="inline-flex h-10 items-center rounded-md border border-line bg-panel px-3 text-sm hover:bg-paper"
           href={`/api/v1/logs/export?${exportBase.toString()}&format=ndjson`}
         >
-          Export NDJSON
+          {t("Export NDJSON")}
         </a>
         <a
           className="inline-flex h-10 items-center rounded-md border border-line bg-panel px-3 text-sm hover:bg-paper"
           href={`/api/v1/logs/export?${exportBase.toString()}&format=csv`}
         >
-          Export CSV
+          {t("Export CSV")}
         </a>
         <span className="text-sm text-muted">
-          {live ? liveNote : search.isFetching ? "Loading…" : `${rows.length} lines`}
+          {live
+            ? liveNote && t(liveNote.key, liveNote.values)
+            : search.isFetching
+              ? t("Loading…")
+              : t("{count} lines", { count: rows.length })}
         </span>
       </div>
       {search.error && !live ? (
-        <p className="text-sm text-danger">{errorMessage(search.error, "Search failed")}</p>
+        <p className="text-sm text-danger">{errorMessage(search.error, t("Search failed"))}</p>
       ) : null}
       <div className="overflow-x-auto rounded-lg border border-line bg-paper">
         <table className="w-full font-mono text-xs">
@@ -234,13 +246,15 @@ export function LogViewer({
         </table>
         {rows.length === 0 && !search.isFetching ? (
           <div className="p-4">
-            <Empty>{live ? "Waiting for new lines…" : "No log lines match these filters."}</Empty>
+            <Empty>
+              {live ? t("Waiting for new lines…") : t("No log lines match these filters.")}
+            </Empty>
           </div>
         ) : null}
       </div>
       {!live && search.hasNextPage ? (
         <Button quiet disabled={search.isFetchingNextPage} onClick={() => search.fetchNextPage()}>
-          {search.isFetchingNextPage ? "Loading…" : "Load older lines"}
+          {search.isFetchingNextPage ? t("Loading…") : t("Load older lines")}
         </Button>
       ) : null}
     </div>

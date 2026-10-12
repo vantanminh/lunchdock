@@ -5,8 +5,10 @@ import { BackupJobForm, BackupJobs } from "../components/backups";
 import { Badge, Card, Empty } from "../components/ui";
 import { formatTime } from "../format";
 import type { Schemas } from "../types";
+import { useT } from "../i18n";
 
 export function BackupsPage() {
+  const t = useT();
   const events = useQuery({
     queryKey: ["events"],
     queryFn: () => api<Schemas["EventView"][]>("/api/v1/events?limit=20"),
@@ -14,21 +16,26 @@ export function BackupsPage() {
   });
   return (
     <>
-      <h1 className="text-2xl font-semibold">Backups</h1>
+      <h1 className="text-2xl font-semibold">{t("Backups")}</h1>
       <p className="text-sm text-muted">
-        Database dumps and volume, bind, or host-path archives streamed to{" "}
-        <Link className="text-accent" to="/s3-destinations">
-          S3 destinations
-        </Link>
-        . Database backups are easiest to create from the database's Backups tab.
+        {t(
+          "Database dumps and volume, bind, or host-path archives streamed to {link}. Database backups are easiest to create from the database's Backups tab.",
+          {
+            link: (
+              <Link className="text-accent" to="/s3-destinations">
+                {t("S3 destinations")}
+              </Link>
+            ),
+          },
+        )}
       </p>
-      <Card title="Jobs">
+      <Card title={t("Jobs")}>
         <BackupJobs />
       </Card>
-      <Card title="New archive job">
+      <Card title={t("New archive job")}>
         <BackupJobForm target={{}} />
       </Card>
-      <Card title="Recent events">
+      <Card title={t("Recent events")}>
         <ul className="divide-y divide-line text-sm">
           {(events.data ?? []).map((event) => (
             <li key={event.id} className="flex flex-wrap items-center gap-2 py-2">
@@ -47,7 +54,7 @@ export function BackupsPage() {
             </li>
           ))}
         </ul>
-        {events.data?.length === 0 ? <Empty>No events yet.</Empty> : null}
+        {events.data?.length === 0 ? <Empty>{t("No events yet.")}</Empty> : null}
       </Card>
     </>
   );

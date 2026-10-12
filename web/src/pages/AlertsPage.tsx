@@ -3,8 +3,28 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { Badge, Button, Card, Empty, Field, Select, TextInput } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Empty,
+  Field,
+  PickField,
+  QuickPick,
+  Select,
+  TextInput,
+} from "../components/ui";
 import { errorMessage, formatTime } from "../format";
+import { msg, useT } from "../i18n";
+import {
+  ALERT_NAMES,
+  alertThresholds,
+  EVENT_SETS,
+  pickDurations,
+  SEVERITIES as SEVERITY_CHOICES,
+  SMTP_PORTS,
+  SMTP_PROVIDERS,
+} from "../presets";
 import type { Schemas } from "../types";
 
 type Alert = Schemas["AlertView"];
@@ -19,13 +39,13 @@ const CHANNEL_FIELDS: Record<
   { key: string; label: string; secret?: boolean; optional?: boolean; placeholder?: string }[]
 > = {
   telegram: [
-    { key: "bot_token", label: "Bot token", secret: true },
-    { key: "chat_id", label: "Chat ID", placeholder: "-1001234567890" },
+    { key: "bot_token", label: msg("Bot token"), secret: true },
+    { key: "chat_id", label: msg("Chat ID"), placeholder: "-1001234567890" },
   ],
   discord: [
     {
       key: "webhook_url",
-      label: "Webhook URL",
+      label: msg("Webhook URL"),
       secret: true,
       placeholder: "https://discord.com/api/webhooks/…",
     },
@@ -33,26 +53,24 @@ const CHANNEL_FIELDS: Record<
   slack: [
     {
       key: "webhook_url",
-      label: "Webhook URL",
+      label: msg("Webhook URL"),
       secret: true,
       placeholder: "https://hooks.slack.com/services/…",
     },
   ],
   webhook: [
-    { key: "url", label: "URL", placeholder: "https://example.com/rudder" },
-    { key: "secret", label: "Signing secret (HMAC-SHA256)", secret: true, optional: true },
+    { key: "url", label: msg("URL"), placeholder: "https://example.com/rudder" },
+    { key: "secret", label: msg("Signing secret (HMAC-SHA256)"), secret: true, optional: true },
   ],
   smtp: [
-    { key: "host", label: "SMTP host", placeholder: "smtp.example.com" },
-    { key: "port", label: "Port", optional: true, placeholder: "587" },
-    { key: "username", label: "Username", optional: true },
-    { key: "password", label: "Password", secret: true, optional: true },
-    { key: "from", label: "From", placeholder: "Rudder <alerts@example.com>" },
-    { key: "to", label: "To (comma separated)", placeholder: "ops@example.com" },
+    { key: "host", label: msg("SMTP host"), placeholder: "smtp.example.com" },
+    { key: "port", label: msg("Port"), optional: true, placeholder: "587" },
+    { key: "username", label: msg("Username"), optional: true },
+    { key: "password", label: msg("Password"), secret: true, optional: true },
+    { key: "from", label: msg("From"), placeholder: "Rudder <alerts@example.com>" },
+    { key: "to", label: msg("To (comma separated)"), placeholder: "ops@example.com" },
   ],
 };
-
-const SEVERITIES = ["info", "warning", "critical"] as const;
 
 const severityTone: Record<string, string> = {
   info: "ok",
@@ -81,7 +99,16 @@ function channelConfig(kind: ChannelKind, values: Record<string, string>, securi
   return config;
 }
 
+const CHANNEL_NAMES: Record<ChannelKind, string> = {
+  telegram: "Telegram",
+  discord: "Discord",
+  slack: "Slack",
+  webhook: "Webhook",
+  smtp: "Email",
+};
+
 function ChannelsCard({ channels }: { channels: Channel[] }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [kind, setKind] = useState<ChannelKind>("telegram");
@@ -104,31 +131,31 @@ function ChannelsCard({ channels }: { channels: Channel[] }) {
         : api<Channel>("/api/v1/notification-channels", { method: "POST", body });
     },
     onSuccess: async () => {
-      toast.success(editing ? "Channel updated" : "Channel added");
+      toast.success(editing ? t("Channel updated") : t("Channel added"));
       reset();
       await refresh();
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save channel")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save channel"))),
   });
   const test = useMutation({
     mutationFn: (id: string) =>
       api<Schemas["TestResult"]>(`/api/v1/notification-channels/${id}/test`, { method: "POST" }),
     onSuccess: (result) =>
       result.ok ? toast.success(result.message) : toast.error(result.message),
-    onError: (error) => toast.error(errorMessage(error, "Test failed")),
+    onError: (error) => toast.error(errorMessage(error, t("Test failed"))),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api(`/api/v1/notification-channels/${id}`, { method: "DELETE" }),
     onSuccess: async () => {
-      toast.success("Channel removed");
+      toast.success(t("Channel removed"));
       await refresh();
       await queryClient.invalidateQueries({ queryKey: ["alerts"] });
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not remove channel")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not remove channel"))),
   });
 
   return (
-    <Card title="Notification channels">
+    <Card title={t("Notification channels")}>
       <form
         className="grid gap-3 md:grid-cols-3"
         onSubmit={(event) => {
@@ -136,38 +163,77 @@ function ChannelsCard({ channels }: { channels: Channel[] }) {
           save.mutate();
         }}
       >
-        <Field label="Name">
+        <Field label={t("Name")}>
           <TextInput required value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
-        <Field label="Kind">
-          <Select
+        <div className="md:col-span-2">
+          <PickField
+            label={t("Kind")}
+            options={CHANNEL_KINDS.map((item) => ({ label: CHANNEL_NAMES[item], value: item }))}
             value={kind}
-            disabled={editing !== null}
-            onChange={(event) => {
-              setKind(event.target.value as ChannelKind);
+            onPick={(next) => {
+              if (editing !== null) return;
+              const previous = CHANNEL_NAMES[kind];
+              setKind(next as ChannelKind);
               setValues({});
+              if (!name || name === previous) setName(CHANNEL_NAMES[next as ChannelKind]);
             }}
-          >
-            {CHANNEL_KINDS.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </Select>
-        </Field>
+          />
+        </div>
         {kind === "smtp" ? (
-          <Field label="Security">
-            <Select value={security} onChange={(event) => setSecurity(event.target.value)}>
-              <option value="starttls">STARTTLS</option>
-              <option value="tls">Implicit TLS</option>
-              <option value="none">None (local relay only)</option>
-            </Select>
-          </Field>
+          <>
+            <div className="md:col-span-3">
+              <PickField
+                label={t("Mail provider")}
+                hint={t(
+                  "Fills in the host, port, and security. Add your own username and password.",
+                )}
+                options={SMTP_PROVIDERS.map((item) => ({ label: item.label, value: item.label }))}
+                value={SMTP_PROVIDERS.find((item) => item.host === values.host)?.label ?? ""}
+                onPick={(label) => {
+                  const provider = SMTP_PROVIDERS.find((item) => item.label === label);
+                  if (!provider) return;
+                  setValues({
+                    ...values,
+                    host: provider.host,
+                    port: provider.port,
+                    ...(provider.username && !values.username
+                      ? { username: provider.username }
+                      : {}),
+                  });
+                  setSecurity(provider.security);
+                }}
+              />
+            </div>
+            <PickField
+              label={t("Security")}
+              options={SMTP_SECURITY}
+              value={security}
+              onPick={setSecurity}
+            />
+          </>
         ) : null}
         {CHANNEL_FIELDS[kind].map((field) => (
           <Field
             key={field.key}
-            label={field.secret && editing ? `${field.label} (leave empty to keep)` : field.label}
+            label={
+              field.secret && editing
+                ? t("{label} (leave empty to keep)", { label: t(field.label) })
+                : t(field.label)
+            }
+            presets={
+              kind === "smtp" && field.key === "port" ? (
+                <QuickPick
+                  label={t("Port presets")}
+                  options={SMTP_PORTS}
+                  value={values.port}
+                  onPick={(port) => {
+                    setValues({ ...values, port });
+                    setSecurity(port === "465" ? "tls" : port === "25" ? "none" : "starttls");
+                  }}
+                />
+              ) : undefined
+            }
           >
             <TextInput
               required={!field.optional && !(field.secret && editing)}
@@ -181,11 +247,11 @@ function ChannelsCard({ channels }: { channels: Channel[] }) {
         ))}
         <div className="flex items-end gap-2">
           <Button type="submit" disabled={save.isPending}>
-            {editing ? "Save" : "Add channel"}
+            {editing ? t("Save") : t("Add channel")}
           </Button>
           {editing ? (
             <Button quiet type="button" onClick={reset}>
-              Cancel
+              {t("Cancel")}
             </Button>
           ) : null}
         </div>
@@ -200,7 +266,7 @@ function ChannelsCard({ channels }: { channels: Channel[] }) {
               <p className="truncate text-muted">{channel.summary}</p>
             </div>
             <Button quiet onClick={() => test.mutate(channel.id)} disabled={test.isPending}>
-              Send test
+              {t("Send test")}
             </Button>
             <Button
               quiet
@@ -211,18 +277,28 @@ function ChannelsCard({ channels }: { channels: Channel[] }) {
                 setValues({});
               }}
             >
-              Edit
+              {t("Edit")}
             </Button>
             <Button quiet onClick={() => remove.mutate(channel.id)}>
-              Remove
+              {t("Remove")}
             </Button>
           </li>
         ))}
       </ul>
-      {channels.length === 0 ? <Empty>No channels yet.</Empty> : null}
+      {channels.length === 0 ? <Empty>{t("No channels yet.")}</Empty> : null}
     </Card>
   );
 }
+
+const SMTP_SECURITY = [
+  { label: "STARTTLS", value: "starttls", hint: msg("Upgrade a plain connection; port 587") },
+  { label: msg("Implicit TLS"), value: "tls", hint: msg("Encrypted from the start; port 465") },
+  {
+    label: msg("None (local relay only)"),
+    value: "none",
+    hint: msg("Unencrypted; only for a relay on this network"),
+  },
+];
 
 const blankRule = {
   name: "",
@@ -243,6 +319,7 @@ function RulesCard({
   channels: Channel[];
   kinds: AlertKind[];
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const servers = useQuery({
     queryKey: ["servers"],
@@ -257,6 +334,7 @@ function RulesCard({
   const [editing, setEditing] = useState<string | null>(null);
   const kind = kinds.find((item) => item.kind === form.kind);
   const scope = kind?.target ?? "server";
+  const suggestedName = ALERT_NAMES[form.kind];
 
   const reset = () => {
     setForm(blankRule);
@@ -291,11 +369,11 @@ function RulesCard({
         : api<Alert>("/api/v1/alerts", { method: "POST", body });
     },
     onSuccess: async () => {
-      toast.success(editing ? "Rule updated" : "Rule added");
+      toast.success(editing ? t("Rule updated") : t("Rule added"));
       reset();
       await refresh();
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not save rule")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not save rule"))),
   });
   const toggle = useMutation({
     mutationFn: (alert: Alert) =>
@@ -312,15 +390,15 @@ function RulesCard({
         }),
       }),
     onSuccess: refresh,
-    onError: (error) => toast.error(errorMessage(error, "Could not update rule")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not update rule"))),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api(`/api/v1/alerts/${id}`, { method: "DELETE" }),
     onSuccess: async () => {
-      toast.success("Rule removed");
+      toast.success(t("Rule removed"));
       await refresh();
     },
-    onError: (error) => toast.error(errorMessage(error, "Could not remove rule")),
+    onError: (error) => toast.error(errorMessage(error, t("Could not remove rule"))),
   });
 
   function edit(alert: Alert) {
@@ -354,7 +432,7 @@ function RulesCard({
     setForm({ ...form, [key]: event.target.value });
 
   return (
-    <Card title="Alert rules">
+    <Card title={t("Alert rules")}>
       <form
         className="grid gap-3 md:grid-cols-3"
         onSubmit={(event) => {
@@ -362,25 +440,37 @@ function RulesCard({
           save.mutate();
         }}
       >
-        <Field label="Name">
+        <Field
+          label={t("Name")}
+          presets={
+            suggestedName ? (
+              <QuickPick
+                label={t("Name suggestions")}
+                options={[{ label: suggestedName, value: t(suggestedName) }]}
+                value={form.name}
+                onPick={(name) => setForm({ ...form, name })}
+              />
+            ) : undefined
+          }
+        >
           <TextInput required value={form.name} onChange={set("name")} />
         </Field>
-        <Field label="Condition">
+        <Field label={t("Condition")}>
           <Select
             value={form.kind}
             onChange={(event) => setForm({ ...form, kind: event.target.value, target: "" })}
           >
             {kinds.map((item) => (
               <option key={item.kind} value={item.kind}>
-                {item.description}
+                {t(item.description)}
               </option>
             ))}
           </Select>
         </Field>
         {scope === "server" ? (
-          <Field label="Server">
+          <Field label={t("Server")}>
             <Select required value={form.target} onChange={set("target")}>
-              <option value="">Choose a server</option>
+              <option value="">{t("Choose a server")}</option>
               {(servers.data ?? []).map((server) => (
                 <option key={server.id} value={server.id}>
                   {server.name}
@@ -390,9 +480,9 @@ function RulesCard({
           </Field>
         ) : null}
         {scope === "service" ? (
-          <Field label="Service">
+          <Field label={t("Service")}>
             <Select required value={form.target} onChange={set("target")}>
-              <option value="">Choose a service</option>
+              <option value="">{t("Choose a service")}</option>
               {(services.data ?? []).map((service) => (
                 <option key={service.id} value={service.id}>
                   {service.project_name}/{service.environment_name}/{service.name}
@@ -403,28 +493,44 @@ function RulesCard({
         ) : null}
         {scope === "events" ? (
           <>
-            <Field label="Event patterns">
+            <Field
+              label={t("Event patterns")}
+              hint={t("Comma separated. Use * as a wildcard, for example backup.*")}
+              presets={
+                <QuickPick
+                  label={t("Event sets")}
+                  options={EVENT_SETS}
+                  value={form.events}
+                  onPick={(events) => setForm({ ...form, events })}
+                />
+              }
+            >
               <TextInput required value={form.events} onChange={set("events")} />
             </Field>
-            <Field label="Minimum severity">
-              <Select value={form.minSeverity} onChange={set("minSeverity")}>
-                {SEVERITIES.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <PickField
+              label={t("Minimum severity")}
+              options={SEVERITY_CHOICES}
+              value={form.minSeverity}
+              onPick={(minSeverity) => setForm({ ...form, minSeverity })}
+            />
           </>
         ) : null}
         {kind?.needs_threshold ? (
           <Field
             label={
               form.kind === "service_memory"
-                ? "Threshold (MiB)"
+                ? t("Threshold (MiB)")
                 : form.kind === "http_errors"
-                  ? "Threshold (5xx responses)"
-                  : "Threshold (%)"
+                  ? t("Threshold (5xx responses)")
+                  : t("Threshold (%)")
+            }
+            presets={
+              <QuickPick
+                label={t("Threshold presets")}
+                options={alertThresholds(form.kind)}
+                value={form.threshold}
+                onPick={(threshold) => setForm({ ...form, threshold })}
+              />
             }
           >
             <TextInput
@@ -438,7 +544,17 @@ function RulesCard({
           </Field>
         ) : null}
         {scope !== "events" ? (
-          <Field label="For at least (seconds)">
+          <Field
+            label={t("For at least (seconds)")}
+            presets={
+              <QuickPick
+                label={t("Duration presets")}
+                options={pickDurations("60", "300", "900", "1800", "3600")}
+                value={form.duration}
+                onPick={(duration) => setForm({ ...form, duration })}
+              />
+            }
+          >
             <TextInput
               required
               type="number"
@@ -449,8 +565,8 @@ function RulesCard({
           </Field>
         ) : null}
         <fieldset className="space-y-1 text-sm md:col-span-3">
-          <legend className="font-medium">Notify</legend>
-          {channels.length === 0 ? <Empty>Add a channel below first.</Empty> : null}
+          <legend className="font-medium">{t("Notify")}</legend>
+          {channels.length === 0 ? <Empty>{t("Add a channel below first.")}</Empty> : null}
           <div className="flex flex-wrap gap-4">
             {channels.map((channel) => (
               <label key={channel.id} className="flex items-center gap-2">
@@ -472,11 +588,11 @@ function RulesCard({
         </fieldset>
         <div className="flex items-end gap-2">
           <Button type="submit" disabled={save.isPending}>
-            {editing ? "Save rule" : "Add rule"}
+            {editing ? t("Save rule") : t("Add rule")}
           </Button>
           {editing ? (
             <Button quiet type="button" onClick={reset}>
-              Cancel
+              {t("Cancel")}
             </Button>
           ) : null}
         </div>
@@ -494,36 +610,43 @@ function RulesCard({
               </p>
               <p className="truncate text-muted">
                 {alert.kind} · {describeTarget(alert)}
-                {alert.threshold != null ? ` · threshold ${alert.threshold}` : ""}
-                {alert.last_value != null ? ` · last ${alert.last_value.toFixed(1)}` : ""}
-                {alert.last_fired_at ? ` · fired ${formatTime(alert.last_fired_at)}` : ""}
+                {alert.threshold != null
+                  ? ` · ${t("threshold {value}", { value: alert.threshold })}`
+                  : ""}
+                {alert.last_value != null
+                  ? ` · ${t("last {value}", { value: alert.last_value.toFixed(1) })}`
+                  : ""}
+                {alert.last_fired_at
+                  ? ` · ${t("fired {time}", { time: formatTime(alert.last_fired_at) })}`
+                  : ""}
               </p>
             </div>
             <Button quiet onClick={() => toggle.mutate(alert)}>
-              {alert.enabled ? "Disable" : "Enable"}
+              {alert.enabled ? t("Disable") : t("Enable")}
             </Button>
             <Button quiet onClick={() => edit(alert)}>
-              Edit
+              {t("Edit")}
             </Button>
             <Button quiet onClick={() => remove.mutate(alert.id)}>
-              Remove
+              {t("Remove")}
             </Button>
           </li>
         ))}
       </ul>
-      {alerts.length === 0 ? <Empty>No rules yet.</Empty> : null}
+      {alerts.length === 0 ? <Empty>{t("No rules yet.")}</Empty> : null}
     </Card>
   );
 }
 
 function EventsCard() {
+  const t = useT();
   const events = useQuery({
     queryKey: ["events"],
     queryFn: () => api<Schemas["EventView"][]>("/api/v1/events?limit=50"),
     refetchInterval: 15_000,
   });
   return (
-    <Card title="Recent events">
+    <Card title={t("Recent events")}>
       <ul className="divide-y divide-line text-sm">
         {(events.data ?? []).map((event) => (
           <li key={event.id} className="flex flex-wrap items-start gap-3 py-2">
@@ -539,12 +662,13 @@ function EventsCard() {
           </li>
         ))}
       </ul>
-      {events.data?.length === 0 ? <Empty>No events yet.</Empty> : null}
+      {events.data?.length === 0 ? <Empty>{t("No events yet.")}</Empty> : null}
     </Card>
   );
 }
 
 export function AlertsPage() {
+  const t = useT();
   const { user } = useAuth();
   const alerts = useQuery({
     queryKey: ["alerts"],
@@ -563,10 +687,11 @@ export function AlertsPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Alerts</h1>
+      <h1 className="text-2xl font-semibold">{t("Alerts")}</h1>
       <p className="text-sm text-muted">
-        Rules are checked every 10 seconds. Notifications go to Telegram, Discord, Slack, a signed
-        webhook, or email, and are retried up to five times.
+        {t(
+          "Rules are checked every 10 seconds. Notifications go to Telegram, Discord, Slack, a signed webhook, or email, and are retried up to five times.",
+        )}
       </p>
       <RulesCard
         alerts={alerts.data ?? []}
