@@ -10,9 +10,10 @@
 // instead of breaking; this script keeps that from happening unnoticed.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
-const root = new URL("../src", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../src", import.meta.url));
 const showHardcoded = process.argv.includes("--hardcoded");
 const showUnused = process.argv.includes("--unused");
 
