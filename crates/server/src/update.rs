@@ -19,7 +19,7 @@ use std::time::Duration;
 use chrono::{DateTime, Timelike, Utc};
 use futures_util::StreamExt;
 use rudder_core::{
-    in_maintenance_window, parse_version, pick_release, verify_release, ByteStream, Error,
+    in_maintenance_window, newer_releases, parse_version, verify_release, ByteStream, Error,
     GithubRelease, NodeDriver, ReadyProbe, ReleaseManifest, ReplaceContainer, UpdateChannel,
     CACHE_CONTAINER, RELEASE_MANIFEST, RELEASE_SIGNATURE, RELEASE_SUMS,
 };
@@ -35,6 +35,9 @@ use crate::state::AppState;
 use crate::{panel, Config};
 
 const MAX_ASSET_BYTES: usize = 4 * 1024 * 1024;
+/// Release notes kept per release, and how many unreleased-here releases are listed.
+const MAX_NOTES_CHARS: usize = 8_000;
+const MAX_PENDING_RELEASES: usize = 10;
 const UPDATER_CONTAINER: &str = "rudder-updater";
 const KEEP_PRE_UPDATE_BACKUPS: usize = 3;
 const PANEL_READY_TIMEOUT: Duration = Duration::from_secs(180);
@@ -72,6 +75,10 @@ pub struct UpdateCheck {
     pub channel: String,
     /// Newest release above the current version, if any.
     pub latest: Option<ReleaseInfo>,
+    /// Every release between the installed version and `latest`, oldest first,
+    /// `latest` included: what an update installs, with each release's notes.
+    #[serde(default)]
+    pub pending: Vec<ReleaseInfo>,
     /// The latest release's signature and checksums were verified.
     pub verified: bool,
     pub error: Option<String>,
@@ -151,6 +158,7 @@ pub async fn check(state: &AppState) -> Result<UpdateCheck, Error> {
             current: rudder_core::VERSION.into(),
             channel: channel.as_str().into(),
             latest: None,
+            pending: Vec::new(),
             verified: false,
             error: Some(error.to_string()),
             manifest: None,
@@ -195,23 +203,33 @@ async fn discover(
         current: rudder_core::VERSION.into(),
         channel: channel.as_str().into(),
         latest: None,
+        pending: Vec::new(),
         verified: false,
         error: None,
         manifest: None,
     };
-    let Some((release, version)) = pick_release(&releases, &current, channel) else {
+    let newer = newer_releases(&releases, &current, channel);
+    let Some((release, version)) = newer.last() else {
         return Ok(check);
     };
-    check.latest = Some(ReleaseInfo {
+    let info = |release: &GithubRelease, version: &semver::Version| ReleaseInfo {
         version: version.to_string(),
         name: release.name.clone(),
         notes: release
             .body
             .as_ref()
-            .map(|body| body.chars().take(20_000).collect()),
+            .map(|body| body.chars().take(MAX_NOTES_CHARS).collect()),
         published_at: release.published_at.clone(),
         html_url: release.html_url.clone(),
-    });
+    };
+    check.latest = Some(info(release, version));
+    check.pending = newer
+        .iter()
+        .rev()
+        .take(MAX_PENDING_RELEASES)
+        .rev()
+        .map(|(release, version)| info(release, version))
+        .collect();
     let Some(key) = config.update_public_key.as_deref() else {
         check.error = Some(
             "this build has no release signing key (RUDDER_UPDATE_PUBKEY), so releases cannot be verified or applied"
@@ -219,7 +237,7 @@ async fn discover(
         );
         return Ok(check);
     };
-    match verify_assets(&client, release, key, &version).await {
+    match verify_assets(&client, release, key, version).await {
         Ok(manifest) => {
             check.verified = true;
             check.manifest = Some(manifest);

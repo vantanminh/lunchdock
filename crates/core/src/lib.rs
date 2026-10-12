@@ -79,8 +79,8 @@ pub use metrics::{
     ALERT_KINDS, SAMPLE_INTERVAL_SECS,
 };
 pub use release::{
-    in_maintenance_window, parse_maintenance_window, parse_sha256sums, parse_version, pick_release,
-    sha256_hex, validate_pinned_image, verify_minisign, verify_release, GithubAsset, GithubRelease,
+    in_maintenance_window, newer_releases, parse_maintenance_window, parse_sha256sums,
+    parse_version, pick_release, sha256_hex, validate_pinned_image, verify_minisign, verify_release, GithubAsset, GithubRelease,
     ReleaseImages, ReleaseManifest, UpdateChannel, AGENT_TARGETS, RELEASE_FORMAT, RELEASE_MANIFEST,
     RELEASE_SIGNATURE, RELEASE_SUMS,
 };

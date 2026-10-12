@@ -340,6 +340,8 @@ async fn release_checks_verify_signatures_and_follow_the_channel(pool: PgPool) {
     assert_eq!(check.status, StatusCode::OK, "{}", check.body);
     assert_eq!(check.body["latest"]["version"], "9.1.0");
     assert_eq!(check.body["latest"]["notes"], "Notes for v9.1.0");
+    assert_eq!(check.body["pending"].as_array().unwrap().len(), 1);
+    assert_eq!(check.body["pending"][0]["version"], "9.1.0");
     assert_eq!(check.body["verified"], true, "{}", check.body);
     assert_eq!(check.body["error"], Value::Null);
     assert!(check.body.get("manifest").is_none());

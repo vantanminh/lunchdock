@@ -6,6 +6,7 @@ import { errorMessage, formatTime } from "../format";
 import { useT } from "../i18n";
 import { MAINTENANCE_WINDOWS, UPDATE_CHANNELS } from "../presets";
 import type { Schemas } from "../types";
+import { ReleaseNotes } from "./release-notes";
 import { Badge, Button, Card, Empty, Field, PickField, QuickPick, TextInput } from "./ui";
 
 type Overview = Schemas["UpdateOverview"];
@@ -166,16 +167,7 @@ export function UpdatesCard() {
         {data.last_check?.error ? (
           <p className="mt-3 text-sm text-danger">{data.last_check.error}</p>
         ) : null}
-        {latest?.notes ? (
-          <details className="mt-3 text-sm">
-            <summary className="cursor-pointer text-muted">
-              {t("Release notes for {version}", { version: latest.version })}
-            </summary>
-            <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-sunken p-3 font-sans">
-              {latest.notes}
-            </pre>
-          </details>
-        ) : null}
+        {latest ? <PendingReleases data={data} /> : null}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button quiet onClick={() => check.mutate()} disabled={check.isPending}>
             {check.isPending ? t("Checking…") : t("Check now")}
@@ -294,6 +286,60 @@ export function UpdatesCard() {
         {data.history.length === 0 ? <Empty>{t("No updates yet.")}</Empty> : null}
       </Card>
     </>
+  );
+}
+
+/** What pressing Update installs: the notes of every release between here and the newest. */
+function PendingReleases({ data }: { data: Overview }) {
+  const t = useT();
+  const latest = data.last_check?.latest;
+  // `pending` is oldest first; show the newest on top.
+  const releases = [...(data.last_check?.pending ?? [])].reverse();
+  if (!latest) {
+    return null;
+  }
+  if (releases.length === 0) {
+    releases.push(latest);
+  }
+  return (
+    <section className="mt-4 rounded-md border border-line" aria-label={t("What this update installs")}>
+      <h3 className="border-b border-line px-4 py-2.5 text-sm font-semibold text-ink">
+        {releases.length > 1
+          ? t("What this update installs ({count} releases)", { count: releases.length })
+          : t("What this update installs")}
+      </h3>
+      <div className="max-h-96 divide-y divide-line overflow-y-auto">
+        {releases.map((release) => (
+          <article key={release.version} className="px-4 py-3">
+            <header className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="font-semibold text-ink">{release.version}</span>
+              {release.published_at ? (
+                <time className="text-xs text-muted" dateTime={release.published_at}>
+                  {formatTime(release.published_at)}
+                </time>
+              ) : null}
+              {release.html_url ? (
+                <a
+                  className="ml-auto text-xs underline"
+                  href={release.html_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {t("Open on GitHub")}
+                </a>
+              ) : null}
+            </header>
+            {release.notes?.trim() ? (
+              <ReleaseNotes notes={release.notes} />
+            ) : (
+              <p className="text-sm text-muted">
+                {t("No release notes were published for this version.")}
+              </p>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 

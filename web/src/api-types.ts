@@ -3100,6 +3100,9 @@ export interface components {
             current: string;
             error?: string | null;
             latest?: components["schemas"]["ReleaseInfo"] | null;
+            /** @description Every release between the installed version and `latest`, oldest first,
+             *     `latest` included: what an update installs, with each release's notes. */
+            pending?: components["schemas"]["ReleaseInfo"][];
             /** @description The latest release's signature and checksums were verified. */
             verified: boolean;
         };

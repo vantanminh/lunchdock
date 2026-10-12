@@ -95,7 +95,17 @@ pub fn pick_release<'a>(
     current: &semver::Version,
     channel: UpdateChannel,
 ) -> Option<(&'a GithubRelease, semver::Version)> {
-    releases
+    newer_releases(releases, current, channel).pop()
+}
+
+/// Every release of the channel above `current`, oldest first. The last one is
+/// what [`pick_release`] returns; the rest are what an update brings in as well.
+pub fn newer_releases<'a>(
+    releases: &'a [GithubRelease],
+    current: &semver::Version,
+    channel: UpdateChannel,
+) -> Vec<(&'a GithubRelease, semver::Version)> {
+    let mut found: Vec<_> = releases
         .iter()
         .filter(|release| !release.draft)
         .filter_map(|release| {
@@ -107,7 +117,9 @@ pub fn pick_release<'a>(
             channel == UpdateChannel::Prerelease || (!release.prerelease && version.pre.is_empty())
         })
         .filter(|(_, version)| version > current)
-        .max_by(|(_, a), (_, b)| a.cmp(b))
+        .collect();
+    found.sort_by(|(_, a), (_, b)| a.cmp(b));
+    found
 }
 
 /// Parse `sha256sum` output: `<64 hex>  <name>` or `<64 hex> *<name>` per line.
@@ -339,6 +351,27 @@ mod tests {
         assert_eq!(pre.tag_name, "v0.4.0");
         let newest = parse_version("v0.2.1").unwrap();
         assert!(pick_release(&releases, &newest, UpdateChannel::Stable).is_none());
+    }
+
+    #[test]
+    fn newer_releases_are_listed_oldest_first() {
+        let releases = vec![
+            release("v0.3.0", false),
+            release("v0.1.0", false),
+            release("v0.2.0", false),
+            release("v0.4.0-rc.1", true),
+        ];
+        let current = parse_version("0.1.0").unwrap();
+        let tags: Vec<_> = newer_releases(&releases, &current, UpdateChannel::Stable)
+            .iter()
+            .map(|(release, _)| release.tag_name.as_str())
+            .collect();
+        assert_eq!(tags, ["v0.2.0", "v0.3.0"]);
+        let tags: Vec<_> = newer_releases(&releases, &current, UpdateChannel::Prerelease)
+            .iter()
+            .map(|(release, _)| release.tag_name.as_str())
+            .collect();
+        assert_eq!(tags, ["v0.2.0", "v0.3.0", "v0.4.0-rc.1"]);
     }
 
     #[test]

@@ -32,7 +32,7 @@ sha256sum -c SHA256SUMS
 
 ## Updating from the panel
 
-Open **System → Updates**. **Check now** reads the releases of the repository set in panel settings (`vantanminh/lunchdock` by default). The panel shows the newest release, its notes, and whether it verified. An admin with write access can then click **Update to …**.
+Open **System → Updates**. **Check now** reads the releases of the repository set in panel settings (`vantanminh/lunchdock` by default). The panel shows the newest release and whether it verified, and under **What this update installs** the notes of every release between your version and the newest one, newest first, so you can see what is about to be installed before you press the button. An admin with write access can then click **Update to …**.
 
 The panel then does the following:
 
@@ -80,7 +80,7 @@ The panel checks every `RUDDER_UPDATE_CHECK_SECS` seconds (default `21600`; `0` 
 | Method and path | Role | Description |
 | --- | --- | --- |
 | `GET /api/v1/system/updates` | admin | Versions, last check, settings, components, history |
-| `POST /api/v1/system/updates/check` | admin, write | Check for a release now |
+| `POST /api/v1/system/updates/check` | admin, write | Check for a release now. `latest` is the newest release; `pending` lists every release above the installed version, oldest first, with its notes |
 | `PUT /api/v1/system/updates/settings` | admin, write | `{"channel":"stable","auto_update":false,"maintenance_window":"02:00-04:00"}` |
 | `POST /api/v1/system/updates/apply` | admin, write | Start a panel update (`202 {"history_id": …}`, `409 update_unavailable`) |
 | `POST /api/v1/system/updates/components` | admin, write | Update outdated agents and caches (`202 {"queued": n}`) |
@@ -99,13 +99,13 @@ Starting an update, updating components, and changing update settings are record
 
 ## Publishing a release
 
-`.github/workflows/release.yml` runs on `v*` tags:
+`.github/workflows/release.yml` runs on `v*` tags. A `preflight` job runs first and fails the run when `CHANGELOG.md` has no entries for the tag or the signing settings are missing. Then:
 
 1. It builds musl binaries for x86_64 and aarch64 with `cargo zigbuild`. `RUDDER_BUILD_VERSION` is set from the tag and `RUDDER_UPDATE_PUBKEY` from the repository variable of the same name.
 2. It pushes multi-arch `ghcr.io/<owner>/rudder` and `rudder-cache` images and records their digests.
 3. It runs `deploy/release/make-release.sh` to write `release.json` and `SHA256SUMS`.
 4. It signs `SHA256SUMS` with the `MINISIGN_SECRET_KEY` secret and checks the signature against the public key before publishing.
-5. It adds GitHub build-provenance attestations for every asset and creates the release. Tags with a `-` are published as prereleases.
+5. It adds GitHub build-provenance attestations for every asset and creates the release. The release notes are the `## [x.y.z]` section of `CHANGELOG.md` (`deploy/release/changelog.sh`), which is what the panel shows. Tags with a `-` are published as prereleases.
 
 To create the signing key once:
 

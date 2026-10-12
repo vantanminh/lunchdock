@@ -1152,4 +1152,8 @@ export const vi: Record<string, string> = {
   "Opening GitHub…": "Đang mở GitHub…",
   "Connect with GitHub": "Kết nối với GitHub",
   "Lowercase letters, digits and dashes.": "Chữ thường, chữ số và dấu gạch ngang.",
+  "What this update installs": "Bản cập nhật này sẽ cài gì",
+  "What this update installs ({count} releases)": "Bản cập nhật này sẽ cài gì ({count} bản phát hành)",
+  "Open on GitHub": "Mở trên GitHub",
+  "No release notes were published for this version.": "Phiên bản này không có ghi chú phát hành.",
 };
