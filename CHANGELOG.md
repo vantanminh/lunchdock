@@ -8,6 +8,8 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-12
+
 ### Added
 - **Watch a stack deploy while it happens.** The Deployments tab shows the output of `docker compose` (image pulls, build steps, container start-up) as it is produced, opens the running deployment's log by itself, follows the newest line, and shows the current step on the row. Before, the log appeared only when the action had finished, so a long build looked frozen.
 - **Cancel a running stack action.** A Cancel button stops a deploy, build or pull that is taking too long or went wrong; the deployment ends as *cancelled* and the stack accepts new actions again.
