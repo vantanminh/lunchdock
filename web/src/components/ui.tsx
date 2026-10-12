@@ -299,6 +299,7 @@ const statusTones: Record<string, Tone> = {
   pending: "live",
   partial: "warning",
   rolled_back: "warning",
+  cancelled: "warning",
   warning: "warning",
   outdated: "warning",
   failed: "danger",
@@ -962,13 +963,31 @@ export function LogPre({
   children,
   empty,
   className = "max-h-[32rem]",
+  follow = false,
 }: {
   children?: string | null;
   empty: string;
   className?: string;
+  /** Keep the newest line in view while output arrives, unless the reader scrolled up. */
+  follow?: boolean;
 }) {
+  const ref = useRef<HTMLPreElement>(null);
+  const atEnd = useRef(true);
+  useEffect(() => {
+    const element = ref.current;
+    if (follow && element && atEnd.current) {
+      element.scrollTop = element.scrollHeight;
+    }
+  }, [children, follow]);
   return (
     <pre
+      ref={ref}
+      onScroll={() => {
+        const element = ref.current;
+        if (element) {
+          atEnd.current = element.scrollHeight - element.scrollTop - element.clientHeight < 48;
+        }
+      }}
       className={`overflow-auto rounded-alert border border-[#2c2a26] bg-[#12110f] p-3.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-[#d8d2c8] ${className}`}
     >
       {children || <span className="text-[#766f67]">{empty}</span>}

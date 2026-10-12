@@ -17,7 +17,6 @@ import {
   DataTable,
   DefinitionList,
   Dialog,
-  Disclosure,
   Empty,
   Field,
   LogPre,
@@ -568,6 +567,65 @@ const statusIcons: Record<string, [IconName, string]> = {
   neutral: ["info", "border-line bg-sunken text-ink-soft"],
 };
 
+/** The last non-empty line of a log: what a running action is doing right now. */
+function currentStep(logs: string): string {
+  const lines = logs.trimEnd().split("\n");
+  return (lines[lines.length - 1] ?? "").trim().slice(0, 160);
+}
+
+/** A deployment's log. It opens by itself while the action runs and follows the newest line. */
+function DeploymentLog({
+  serviceId,
+  deployment,
+}: {
+  serviceId: string;
+  deployment: Deployment;
+}) {
+  const t = useT();
+  const running = deployment.status === "running";
+  const [open, setOpen] = useState(running);
+  return (
+    <details
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      className="group rounded-alert border border-line bg-surface [&_summary::-webkit-details-marker]:hidden"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-alert px-3.5 py-2.5 text-sm font-medium text-ink-soft select-none hover:bg-paper">
+        <Icon
+          name="chevronRight"
+          size={14}
+          className="text-faint transition-transform group-open:rotate-90"
+        />
+        {t("Logs")}
+        {running ? (
+          <span className="ml-1 inline-flex items-center gap-1.5 text-xs font-normal text-muted">
+            <span className="animate-live size-1.5 rounded-full bg-current" />
+            {t("live")}
+          </span>
+        ) : null}
+      </summary>
+      <div className="border-t border-line px-3.5 py-4">
+        {deployment.logs_truncated ? (
+          <p className="mb-2 text-xs text-muted">
+            {t("Showing the end of a long log.")}{" "}
+            <a
+              className="underline"
+              href={`/api/v1/services/${serviceId}/deployments/${deployment.id}/logs`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("Open the whole log")}
+            </a>
+          </p>
+        ) : null}
+        <LogPre className="max-h-96" empty={t("No log output yet.")} follow={running}>
+          {deployment.logs}
+        </LogPre>
+      </div>
+    </details>
+  );
+}
+
 /** Every build and release of the service, newest first. */
 export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; isStack: boolean }) {
   const t = useT();
@@ -575,7 +633,17 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
   const deployments = useQuery({
     queryKey: ["deployments", serviceId],
     queryFn: () => api<Deployment[]>(`/api/v1/services/${serviceId}/deployments`),
-    refetchInterval: 4000,
+    // Follow a running action closely; an idle service needs little polling.
+    refetchInterval: (query) =>
+      query.state.data?.some((deployment) => deployment.status === "running") ? 2000 : 4000,
+  });
+  const cancel = useMutation({
+    mutationFn: () => api(`/api/v1/services/${serviceId}/stack/cancel`, { method: "POST" }),
+    onSuccess: async () => {
+      toast.success(t("Stopping the running action…"));
+      await queryClient.invalidateQueries({ queryKey: ["deployments", serviceId] });
+    },
+    onError: (error) => toast.error(errorMessage(error, t("Could not cancel the action"))),
   });
   const rollback = useMutation({
     mutationFn: (deploymentId: string) =>
@@ -607,7 +675,9 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
       ) : (
         <ol className="divide-y divide-line border-t border-line">
           {list.map((deployment) => {
-            const [icon, cls] = statusIcons[toneOf(deployment.status)] ?? statusIcons.neutral!;
+            const live = deployment.status === "running";
+            const [icon, cls] =
+              statusIcons[live ? "live" : toneOf(deployment.status)] ?? statusIcons.neutral!;
             const duration =
               deployment.started_at && deployment.finished_at
                 ? formatDuration(
@@ -627,6 +697,26 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
                     <Badge value={deployment.status} />
                     <Badge value={deployment.trigger} tone="outline" />
                     {deployment.id === currentId ? <Badge value="current" tone="success" /> : null}
+                    {live && isStack ? (
+                      <Button
+                        className="ml-auto"
+                        variant="danger"
+                        size="sm"
+                        icon="close"
+                        disabled={cancel.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              t("Stop the running action? A build in progress is lost."),
+                            )
+                          ) {
+                            cancel.mutate();
+                          }
+                        }}
+                      >
+                        {t("Cancel")}
+                      </Button>
+                    ) : null}
                     {deployment.status === "succeeded" && !isStack && deployment.id !== currentId ? (
                       <Button
                         className="ml-auto"
@@ -641,7 +731,9 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
                     ) : null}
                   </div>
                   <p className="mt-1.5 truncate font-mono text-[13px] text-ink-soft">
-                    {deployment.image_ref ?? t("no image")}
+                    {live && deployment.logs
+                      ? currentStep(deployment.logs)
+                      : (deployment.image_ref ?? t("no image"))}
                   </p>
                   <p className="mt-0.5 text-xs text-muted">
                     <time dateTime={deployment.created_at} title={formatTime(deployment.created_at)}>
@@ -655,13 +747,9 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
                       {deployment.error}
                     </p>
                   ) : null}
-                  {deployment.logs ? (
+                  {deployment.logs || live ? (
                     <div className="mt-3">
-                      <Disclosure title={t("Logs")}>
-                        <LogPre className="max-h-64" empty={t("No log output yet.")}>
-                          {deployment.logs}
-                        </LogPre>
-                      </Disclosure>
+                      <DeploymentLog serviceId={serviceId} deployment={deployment} />
                     </div>
                   ) : null}
                 </div>

@@ -63,7 +63,7 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
   const navigate = useNavigate();
   const stack = useStack(serviceId);
   const action = useMutation({
-    mutationFn: (name: "up" | "down" | "restart" | "pull") =>
+    mutationFn: (name: "up" | "rebuild" | "update" | "down" | "restart" | "pull") =>
       api<Schemas["DeploymentView"]>(`/api/v1/services/${serviceId}/stack/${name}`, {
         method: "POST",
       }),
@@ -73,6 +73,16 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
       await queryClient.invalidateQueries({ queryKey: ["deployments", serviceId] });
     },
     onError: (error) => toast.error(errorMessage(error, t("Stack action failed"))),
+  });
+  const cancel = useMutation({
+    mutationFn: () =>
+      api(`/api/v1/services/${serviceId}/stack/cancel`, { method: "POST" }),
+    onSuccess: async () => {
+      toast.success(t("Stopping the running action…"));
+      await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
+      await queryClient.invalidateQueries({ queryKey: ["deployments", serviceId] });
+    },
+    onError: (error) => toast.error(errorMessage(error, t("Could not cancel the action"))),
   });
   const remove = useMutation({
     mutationFn: (volumes: boolean) =>
@@ -90,7 +100,10 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
   if (!view) {
     return <Empty>{t("Loading stack…")}</Empty>;
   }
-  const busy = view.service.status === "deploying" || action.isPending;
+  const running = view.service.status === "deploying";
+  const busy = running || action.isPending;
+  const builds = view.services.some((service) => service.build);
+  const pulls = view.services.some((service) => service.image);
   return (
     <>
       {view.missing_variables.length > 0 ? (
@@ -122,8 +135,30 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
         />
         <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
           <Button icon="play" disabled={busy} onClick={() => action.mutate("up")}>
-            {t("Deploy (up)")}
+            {view.build_on_deploy ? t("Build and deploy") : t("Deploy (up)")}
           </Button>
+          {builds && !view.build_on_deploy ? (
+            <Button
+              variant="secondary"
+              icon="zap"
+              disabled={busy}
+              title={t("Rebuild the images that have a build section, then deploy")}
+              onClick={() => action.mutate("rebuild")}
+            >
+              {t("Rebuild and deploy")}
+            </Button>
+          ) : null}
+          {pulls ? (
+            <Button
+              variant="secondary"
+              icon="download"
+              disabled={busy}
+              title={t("Fetch newer versions of every image, then deploy")}
+              onClick={() => action.mutate("update")}
+            >
+              {t("Pull and deploy")}
+            </Button>
+          ) : null}
           <Button
             variant="secondary"
             icon="refresh"
@@ -136,6 +171,7 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
             variant="secondary"
             icon="download"
             disabled={busy}
+            title={t("Download images without restarting anything")}
             onClick={() => action.mutate("pull")}
           >
             {t("Pull images")}
@@ -148,6 +184,20 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
           >
             {t("Stop (down)")}
           </Button>
+          {running ? (
+            <Button
+              variant="danger"
+              icon="close"
+              disabled={cancel.isPending}
+              onClick={() => {
+                if (window.confirm(t("Stop the running action? A build in progress is lost."))) {
+                  cancel.mutate();
+                }
+              }}
+            >
+              {t("Cancel")}
+            </Button>
+          ) : null}
           <Button
             variant="danger"
             icon="trash"
@@ -200,6 +250,11 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
                 </Td>
                 <Td className="font-mono text-[13px] text-ink-soft">
                   {service.image ?? t("build")}
+                  {service.build && service.image ? (
+                    <span className="ml-2 align-middle font-sans">
+                      <Badge value="builds from source" tone="outline" />
+                    </span>
+                  ) : null}
                 </Td>
                 <Td className="font-mono text-[13px] text-muted">{service.container}</Td>
                 <Td>
@@ -298,6 +353,9 @@ function SourceForm({
     },
   );
   const [mainService, setMainService] = useState(initial.main_service ?? "");
+  const [buildOnDeploy, setBuildOnDeploy] = useState(initial.build_on_deploy);
+  const [deployOnPush, setDeployOnPush] = useState(initial.deploy_on_push);
+  const hasBuilds = initial.services.some((service) => service.build);
   const save = useMutation({
     mutationFn: (deploy: boolean) =>
       api<StackView>(`/api/v1/services/${serviceId}/stack`, {
@@ -307,6 +365,8 @@ function SourceForm({
           compose_yaml: source === "inline" ? yaml : undefined,
           git: source === "git" ? git : undefined,
           main_service: mainService || undefined,
+          build_on_deploy: buildOnDeploy,
+          deploy_on_push: source === "git" ? deployOnPush : false,
         }),
       }).then(async (view) => {
         if (deploy) {
@@ -371,6 +431,47 @@ function SourceForm({
         ) : (
           <GitFields git={git} providers={providers} onChange={setGit} />
         )}
+        <fieldset className="grid gap-2.5 rounded-alert border border-line p-3.5">
+          <legend className="px-1.5 text-xs font-medium text-muted">{t("When deploying")}</legend>
+          <label className="flex items-start gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={buildOnDeploy}
+              onChange={(event) => setBuildOnDeploy(event.target.checked)}
+            />
+            <span>
+              <span className="font-medium text-ink">{t("Build images on every deploy")}</span>
+              <span className="block text-muted">
+                {hasBuilds
+                  ? t(
+                      "Services with a build section are rebuilt each time, so new code is picked up. Slower than reusing the images from the last build.",
+                    )
+                  : t(
+                      "Only matters for compose files with a build section. Without it, a deploy reuses images that were built earlier and never picks up new code.",
+                    )}
+              </span>
+            </span>
+          </label>
+          {source === "git" ? (
+            <label className="flex items-start gap-2.5 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={deployOnPush}
+                onChange={(event) => setDeployOnPush(event.target.checked)}
+              />
+              <span>
+                <span className="font-medium text-ink">{t("Deploy when I push to the branch")}</span>
+                <span className="block text-muted">
+                  {t(
+                    "Needs a Git provider connected with the GitHub button; pushes reach the panel through its webhook.",
+                  )}
+                </span>
+              </span>
+            </label>
+          ) : null}
+        </fieldset>
         <p className="text-sm text-muted">
           {t(
             "Use {variable} for values from the Environment tab; Rudder writes them to a mode 0600 {file} next to the generated file.",
