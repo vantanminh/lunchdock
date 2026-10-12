@@ -16,9 +16,9 @@ use bytes::Bytes;
 use futures_util::StreamExt;
 use rudder_core::{
     ArchiveSource, ByteStream, CachePurge, CachePurgeResult, CacheStats, ComposeAction,
-    ContainerInfo, ContainerSpec, ContainerStats, DockerInfo, Error, ExecOutput, ExecSpec,
-    HealthState, HostStats, LogLine, LogLineStream, NodeDriver, RegistryAuth, ReplaceContainer,
-    ReplaceReport, TerminalInput, TerminalInputStream,
+    ComposeOptions, ContainerInfo, ContainerSpec, ContainerStats, DockerInfo, Error, ExecOutput,
+    ExecSpec, HealthState, HostStats, LogLine, LogLineStream, LogSink, NodeDriver, RegistryAuth,
+    ReplaceContainer, ReplaceReport, TerminalInput, TerminalInputStream,
 };
 use rudder_node::ops::{self, Request};
 use rudder_proto::agent::{server_message, Command, CommandResult, Frame, ServerMessage};
@@ -443,8 +443,34 @@ impl NodeDriver for RemoteHandle {
                 project: project.into(),
                 file: file.into(),
                 action,
+                logins: Vec::new(),
             })
             .await
+    }
+
+    /// The agent runs the command and answers when it ends, so the sink gets the
+    /// whole output at once.
+    async fn compose_run(
+        &self,
+        project: &str,
+        file: &str,
+        action: ComposeAction,
+        options: &ComposeOptions,
+        sink: Option<&LogSink>,
+    ) -> Result<String, Error> {
+        let output: String = self
+            .0
+            .call(Request::Compose {
+                project: project.into(),
+                file: file.into(),
+                action,
+                logins: options.logins.clone(),
+            })
+            .await?;
+        if let Some(sink) = sink {
+            sink(&output);
+        }
+        Ok(output)
     }
 
     async fn docker_health(&self, id: &str) -> Result<HealthState, Error> {

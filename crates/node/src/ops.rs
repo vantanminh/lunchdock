@@ -6,8 +6,8 @@
 //! `Channel` RPC named by the command's `stream_id`.
 
 use rudder_core::{
-    ArchiveSource, CachePurge, ComposeAction, ContainerSpec, Error, ExecSpec, NodeDriver,
-    RegistryAuth, ReplaceContainer,
+    ArchiveSource, CachePurge, ComposeAction, ComposeOptions, ContainerSpec, Error, ExecSpec,
+    NodeDriver, RegistryAuth, ReplaceContainer,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -60,6 +60,9 @@ pub enum Request {
         project: String,
         file: String,
         action: ComposeAction,
+        /// Registry logins for the run. Agents from before this field ignore it.
+        #[serde(default)]
+        logins: Vec<RegistryAuth>,
     },
     DockerHealth {
         id: String,
@@ -207,7 +210,9 @@ impl Request {
     /// How long the panel waits for the result of a unary call.
     pub fn timeout_secs(&self) -> u64 {
         match self {
-            Self::PullImage { .. } | Self::Compose { .. } | Self::Prune => 1800,
+            Self::PullImage { .. } | Self::Prune => 1800,
+            // Builds are slow; the panel enforces its own limit per stack action.
+            Self::Compose { .. } => 4 * 3600,
             Self::StopContainer { timeout_secs, .. } => (*timeout_secs).max(0) as u64 + 60,
             Self::ReplaceContainer { request } => request.timeout_secs.min(1800) + 120,
             Self::UpdateAgent { .. } => 600,
@@ -244,7 +249,15 @@ pub async fn call(driver: &dyn NodeDriver, request: Request) -> Result<Value, Er
             project,
             file,
             action,
-        } => json(driver.compose(&project, &file, action).await?),
+            logins,
+        } => {
+            let options = ComposeOptions { logins };
+            json(
+                driver
+                    .compose_run(&project, &file, action, &options, None)
+                    .await?,
+            )
+        }
         Request::DockerHealth { id } => json(driver.docker_health(&id).await?),
         Request::HttpReady { id, port, path } => json(driver.http_ready(&id, port, &path).await?),
         Request::TcpReady { id, port } => json(driver.tcp_ready(&id, port).await?),
@@ -305,12 +318,14 @@ mod tests {
             r#"{"op":"compose","project":"shop","file":"stacks/shop.yml","action":"destroy"}"#,
         )
         .unwrap();
+        // Requests written before registry logins existed still decode.
         assert!(matches!(
             compose,
             Request::Compose {
                 action: ComposeAction::Destroy,
+                ref logins,
                 ..
-            }
+            } if logins.is_empty()
         ));
     }
 
