@@ -1412,6 +1412,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/env/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview or save many variables from the text of a .env file */
+        post: operations["post_v1_services__id__env_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/env/{key}": {
         parameters: {
             query?: never;
@@ -1424,6 +1441,23 @@ export interface paths {
         post?: never;
         /** Delete an environment variable */
         delete: operations["delete_v1_services__id__env__key_"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/env/{key}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check a typed value against the saved one without revealing it */
+        post: operations["post_v1_services__id__env__key__verify"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2464,6 +2498,16 @@ export interface components {
         EnvVarView: {
             is_build_secret: boolean;
             key: string;
+            /**
+             * Format: int32
+             * @description Characters in the saved value, so a typo or a truncated paste shows without revealing it.
+             */
+            length: number;
+            /**
+             * Format: date-time
+             * @description When the value was last written.
+             */
+            updated_at: string;
         };
         EnvironmentView: {
             description: string;
@@ -2530,6 +2574,31 @@ export interface components {
             product: string;
             status: string;
             version: string;
+        };
+        ImportEnv: {
+            /** @description Only report what would change; save nothing. */
+            dry_run?: boolean;
+            is_build_secret?: boolean;
+            /** @description The text of a `.env` file: `KEY=value` lines, `#` comments, quotes. */
+            text: string;
+        };
+        ImportEnvEntry: {
+            key: string;
+            /** Format: int32 */
+            length: number;
+            /** @description `new`, `changed`, or `unchanged` compared with what is saved. */
+            status: string;
+        };
+        ImportEnvError: {
+            /** Format: int32 */
+            line: number;
+            message: string;
+        };
+        ImportEnvResult: {
+            /** @description The values were saved. False for a dry run or when the text has errors. */
+            applied: boolean;
+            entries: components["schemas"]["ImportEnvEntry"][];
+            errors: components["schemas"]["ImportEnvError"][];
         };
         IngestEntry: {
             fields?: Record<string, never> | null;
@@ -3306,6 +3375,14 @@ export interface components {
             id: string;
             role: string;
             totp_enabled: boolean;
+        };
+        VerifyEnvResult: {
+            /** @description The value typed matches the saved one exactly. */
+            matches: boolean;
+        };
+        VerifyEnvVar: {
+            is_build_secret?: boolean;
+            value: string;
         };
     };
     responses: never;
@@ -5672,6 +5749,30 @@ export interface operations {
             };
         };
     };
+    post_v1_services__id__env_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ImportEnv"];
+            };
+        };
+        responses: {
+            /** @description Preview or save many variables from the text of a .env file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportEnvResult"];
+                };
+            };
+        };
+    };
     delete_v1_services__id__env__key_: {
         parameters: {
             query?: never;
@@ -5687,6 +5788,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    post_v1_services__id__env__key__verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VerifyEnvVar"];
+            };
+        };
+        responses: {
+            /** @description Check a typed value against the saved one without revealing it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyEnvResult"];
+                };
             };
         };
     };

@@ -92,6 +92,58 @@ async fn owner(app: &axum::Router) -> (String, String) {
     (cookie, csrf)
 }
 
+/// A local server, project, environment and application service; returns the service id.
+async fn a_service(app: &axum::Router, cookie: &str, csrf: &str) -> String {
+    let server = call(
+        app,
+        "POST",
+        "/api/v1/servers",
+        Some(cookie),
+        Some(csrf),
+        Some(json!({ "name": "local", "kind": "local" })),
+    )
+    .await;
+    let project = call(
+        app,
+        "POST",
+        "/api/v1/projects",
+        Some(cookie),
+        Some(csrf),
+        Some(json!({ "name": "blog" })),
+    )
+    .await;
+    let environment = call(
+        app,
+        "POST",
+        &format!(
+            "/api/v1/projects/{}/environments",
+            project.body["id"].as_str().unwrap()
+        ),
+        Some(cookie),
+        Some(csrf),
+        Some(json!({ "name": "prod" })),
+    )
+    .await;
+    let service = call(
+        app,
+        "POST",
+        &format!(
+            "/api/v1/environments/{}/services",
+            environment.body["id"].as_str().unwrap()
+        ),
+        Some(cookie),
+        Some(csrf),
+        Some(json!({
+            "name": "web",
+            "kind": "application",
+            "server_id": server.body["id"],
+            "spec": { "image": "ghcr.io/acme/web:1" }
+        })),
+    )
+    .await;
+    service.body["id"].as_str().unwrap().to_owned()
+}
+
 #[sqlx::test(migrations = "./migrations")]
 async fn servers_projects_and_services_round_trip(pool: PgPool) {
     let app = app(pool);
@@ -249,6 +301,119 @@ async fn servers_projects_and_services_round_trip(pool: PgPool) {
     )
     .await;
     assert_eq!(removed_remote.status, StatusCode::NO_CONTENT);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn env_import_previews_applies_and_verifies(pool: PgPool) {
+    let app = app(pool);
+    let (cookie, csrf) = owner(&app).await;
+    let service_id = a_service(&app, &cookie, &csrf).await;
+    let import = format!("/api/v1/services/{service_id}/env/import");
+    let list = format!("/api/v1/services/{service_id}/env");
+
+    let preview = call(
+        &app,
+        "POST",
+        &import,
+        Some(&cookie),
+        Some(&csrf),
+        Some(json!({ "text": "A=1\nB='two words'\n", "dry_run": true })),
+    )
+    .await;
+    assert_eq!(preview.status, StatusCode::OK);
+    assert_eq!(preview.body["applied"], false);
+    assert_eq!(preview.body["entries"][0]["key"], "A");
+    assert_eq!(preview.body["entries"][0]["status"], "new");
+    assert_eq!(preview.body["entries"][1]["status"], "new");
+    assert_eq!(preview.body["entries"][1]["length"], 9);
+    let none = call(&app, "GET", &list, Some(&cookie), None, None).await;
+    assert_eq!(none.body.as_array().unwrap().len(), 0);
+
+    let applied = call(
+        &app,
+        "POST",
+        &import,
+        Some(&cookie),
+        Some(&csrf),
+        Some(json!({ "text": "A=1\nB='two words'\n" })),
+    )
+    .await;
+    assert_eq!(applied.status, StatusCode::OK);
+    assert_eq!(applied.body["applied"], true);
+
+    let again = call(
+        &app,
+        "POST",
+        &import,
+        Some(&cookie),
+        Some(&csrf),
+        Some(json!({ "text": "A=1\nB=changed\nC=3", "dry_run": true })),
+    )
+    .await;
+    let statuses: Vec<&str> = again.body["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| entry["status"].as_str().unwrap())
+        .collect();
+    assert_eq!(statuses, ["unchanged", "changed", "new"]);
+
+    let broken = call(
+        &app,
+        "POST",
+        &import,
+        Some(&cookie),
+        Some(&csrf),
+        Some(json!({ "text": "D=4\nnot a variable line\n" })),
+    )
+    .await;
+    assert_eq!(broken.status, StatusCode::BAD_REQUEST);
+    assert_eq!(broken.body["error"]["code"], "invalid_env");
+    let listed = call(&app, "GET", &list, Some(&cookie), None, None).await;
+    let keys: Vec<&str> = listed
+        .body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| entry["key"].as_str().unwrap())
+        .collect();
+    assert_eq!(keys, ["A", "B"]);
+    assert_eq!(listed.body[1]["length"], 9);
+    assert!(listed.body[1]["updated_at"].is_string());
+    assert!(!listed.body.to_string().contains("two words"));
+
+    let verify = |value: &'static str| {
+        let app = app.clone();
+        let cookie = cookie.clone();
+        let csrf = csrf.clone();
+        let path = format!("/api/v1/services/{service_id}/env/B/verify");
+        async move {
+            call(
+                &app,
+                "POST",
+                &path,
+                Some(&cookie),
+                Some(&csrf),
+                Some(json!({ "value": value })),
+            )
+            .await
+        }
+    };
+    let good = verify("two words").await;
+    assert_eq!(good.status, StatusCode::OK);
+    assert_eq!(good.body["matches"], true);
+    assert_eq!(verify("two word").await.body["matches"], false);
+    assert!(!good.body.to_string().contains("two words"));
+    let missing = call(
+        &app,
+        "POST",
+        &format!("/api/v1/services/{service_id}/env/NOPE/verify"),
+        Some(&cookie),
+        Some(&csrf),
+        Some(json!({ "value": "x" })),
+    )
+    .await;
+    assert_eq!(missing.status, StatusCode::NOT_FOUND);
 }
 
 #[sqlx::test(migrations = "./migrations")]

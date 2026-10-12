@@ -24,6 +24,7 @@ import {
   QuickPick,
   Select,
   Td,
+  TextArea,
   TextInput,
   Th,
   toneOf,
@@ -795,129 +796,364 @@ export function EnvironmentPanel({ serviceId }: { serviceId: string }) {
     onError: (error) => toast.error(errorMessage(error, t("Could not delete the variable"))),
   });
   const list = vars.data ?? [];
+  const [checking, setChecking] = useState<EnvVar | null>(null);
+  return (
+    <div className="grid gap-6">
+      <Card
+        title={t("Environment variables")}
+        description={t(
+          "Values are encrypted and write-only. Saving an existing key replaces its value; redeploy to apply.",
+        )}
+        flush
+      >
+        <form
+          className="grid gap-4 px-5 pb-5 sm:px-6 md:grid-cols-[1fr_2fr_auto]"
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault();
+            save.mutate();
+          }}
+        >
+          <Field
+            label={t("Key")}
+            presets={
+              <QuickPick
+                label={t("Common variables")}
+                options={ENV_KEYS.map((item) => ({ label: item.key, value: item.key }))}
+                value={key}
+                onPick={setKey}
+              />
+            }
+          >
+            <TextInput
+              required
+              value={key}
+              placeholder="DATABASE_URL"
+              onChange={(event) => setKey(event.target.value)}
+            />
+          </Field>
+          <Field
+            label={t("Value")}
+            presets={
+              suggestedValues.length > 0 ? (
+                <QuickPick
+                  label={t("Common values")}
+                  options={suggestedValues.map((item) => ({ label: item, value: item }))}
+                  value={value}
+                  onPick={setValue}
+                />
+              ) : undefined
+            }
+          >
+            <TextInput
+              required
+              type="password"
+              autoComplete="off"
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+            />
+          </Field>
+          <div className="grid content-start gap-2">
+            <span className="hidden text-[13px] font-medium text-transparent select-none md:block">
+              {t("Save")}
+            </span>
+            <Button type="submit" disabled={save.isPending}>
+              {t("Save")}
+            </Button>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-ink-soft md:col-span-3">
+            <input
+              type="checkbox"
+              checked={buildSecret}
+              onChange={(event) => setBuildSecret(event.target.checked)}
+            />
+            {t("Build secret")}
+            <span className="text-muted">— {t("only available while building the image")}</span>
+          </label>
+        </form>
+        {list.length === 0 && !vars.isLoading ? (
+          <div className="border-t border-line">
+            <Empty icon="sliders" title={t("No variables yet")}>
+              {t("Add the settings and secrets your service reads at startup.")}
+            </Empty>
+          </div>
+        ) : (
+          <DataTable
+            minWidth={640}
+            head={
+              <>
+                <Th>{t("Key")}</Th>
+                <Th>{t("Value")}</Th>
+                <Th>{t("Updated")}</Th>
+                <Th>{t("Type")}</Th>
+                <Th>
+                  <span className="sr-only">{t("Actions")}</span>
+                </Th>
+              </>
+            }
+          >
+            {list.map((item) => (
+              <tr key={item.key}>
+                <Td className="font-mono text-[13px] font-medium text-ink">{item.key}</Td>
+                <Td className="font-mono text-[13px] text-faint" title={t("Write-only")}>
+                  •••••••• <span className="font-sans text-xs">{t("{count} characters", { count: item.length })}</span>
+                </Td>
+                <Td className="text-[13px] text-muted">
+                  <time dateTime={item.updated_at} title={formatTime(item.updated_at)}>
+                    {formatRelative(item.updated_at)}
+                  </time>
+                </Td>
+                <Td>
+                  <Badge
+                    value={item.is_build_secret ? "build secret" : "runtime"}
+                    tone="outline"
+                  />
+                </Td>
+                <Td className="text-right whitespace-nowrap">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="check"
+                    title={t("Type the value to confirm it was saved correctly")}
+                    onClick={() => setChecking(item)}
+                  >
+                    {t("Check value")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="trash"
+                    className="text-danger hover:bg-danger-soft hover:text-danger"
+                    aria-label={t("Delete {key}", { key: item.key })}
+                    title={t("Delete")}
+                    onClick={() => {
+                      if (window.confirm(t("Delete {key}?", { key: item.key }))) {
+                        remove.mutate(item.key);
+                      }
+                    }}
+                  />
+                </Td>
+              </tr>
+            ))}
+          </DataTable>
+        )}
+      </Card>
+      <ImportEnvCard serviceId={serviceId} />
+      {checking ? (
+        <CheckValueDialog serviceId={serviceId} item={checking} onClose={() => setChecking(null)} />
+      ) : null}
+    </div>
+  );
+}
+
+type EnvVar = Schemas["EnvVarView"];
+type ImportPreview = Schemas["ImportEnvResult"];
+
+/** Paste or upload a `.env` file, see what would change, then save every key at once. */
+function ImportEnvCard({ serviceId }: { serviceId: string }) {
+  const t = useT();
+  const queryClient = useQueryClient();
+  const [text, setText] = useState("");
+  const [buildSecret, setBuildSecret] = useState(false);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const run = useMutation({
+    mutationFn: (dryRun: boolean) =>
+      api<ImportPreview>(`/api/v1/services/${serviceId}/env/import`, {
+        method: "POST",
+        body: JSON.stringify({ text, is_build_secret: buildSecret, dry_run: dryRun }),
+      }),
+    onSuccess: async (result, dryRun) => {
+      setPreview(result);
+      if (!dryRun) {
+        const count = result.entries.filter((entry) => entry.status !== "unchanged").length;
+        toast.success(t("{count} variables saved", { count }));
+        setText("");
+        setPreview(null);
+        await queryClient.invalidateQueries({ queryKey: ["env", serviceId] });
+        await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
+      }
+    },
+    onError: (error) => toast.error(errorMessage(error, t("Could not import the variables"))),
+  });
+  const changes = preview?.entries.filter((entry) => entry.status !== "unchanged").length ?? 0;
   return (
     <Card
-      title={t("Environment variables")}
+      title={t("Import .env")}
       description={t(
-        "Values are encrypted and write-only. Saving an existing key replaces its value; redeploy to apply.",
+        "Paste the contents of a .env file or choose one. Nothing is saved until you press Apply.",
       )}
-      flush
+    >
+      <div className="grid gap-4">
+        <TextArea
+          aria-label={t("Contents of a .env file")}
+          className="min-h-40"
+          placeholder={"DATABASE_URL=postgres://user:pass@db/app\nPORT=3000"}
+          autoComplete="off"
+          spellCheck={false}
+          value={text}
+          onChange={(event) => {
+            setText(event.target.value);
+            setPreview(null);
+          }}
+        />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline">
+            <Icon name="download" size={15} />
+            {t("Choose a file")}
+            <input
+              type="file"
+              className="sr-only"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) {
+                  setText(await file.text());
+                  setPreview(null);
+                }
+              }}
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
+            <input
+              type="checkbox"
+              checked={buildSecret}
+              onChange={(event) => {
+                setBuildSecret(event.target.checked);
+                setPreview(null);
+              }}
+            />
+            {t("Build secret")}
+          </label>
+          <div className="ml-auto flex gap-2">
+            <Button
+              variant="secondary"
+              disabled={!text.trim() || run.isPending}
+              onClick={() => run.mutate(true)}
+            >
+              {t("Preview")}
+            </Button>
+            <Button
+              disabled={!preview || preview.errors.length > 0 || changes === 0 || run.isPending}
+              onClick={() => run.mutate(false)}
+            >
+              {t("Apply")}
+            </Button>
+          </div>
+        </div>
+        {preview ? (
+          <div className="grid gap-3">
+            {preview.errors.length > 0 ? (
+              <Alert tone="error" title={t("Fix these lines first")}>
+                <ul className="list-disc pl-5">
+                  {preview.errors.map((error) => (
+                    <li key={`${error.line}-${error.message}`}>
+                      {t("Line {line}: {message}", { line: error.line, message: error.message })}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            ) : null}
+            {preview.entries.length > 0 ? (
+              <ul className="divide-y divide-line rounded-control border border-line text-sm">
+                {preview.entries.map((entry) => (
+                  <li key={entry.key} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <span className="min-w-0 truncate font-mono text-[13px] text-ink">
+                      {entry.key}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-3 text-xs text-muted">
+                      {t("{count} characters", { count: entry.length })}
+                      <Badge
+                        value={entry.status}
+                        tone={entry.status === "unchanged" ? "outline" : "live"}
+                      />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {preview.errors.length === 0 ? (
+              <p className="text-sm text-muted">
+                {changes === 0
+                  ? t("Every key is already saved with this value.")
+                  : t("{count} variables will be saved. Values are never shown again.", {
+                      count: changes,
+                    })}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+/** Type a value and learn whether it equals the saved one; the saved value is never sent back. */
+function CheckValueDialog({
+  serviceId,
+  item,
+  onClose,
+}: {
+  serviceId: string;
+  item: EnvVar;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const [value, setValue] = useState("");
+  const verify = useMutation({
+    mutationFn: () =>
+      api<Schemas["VerifyEnvResult"]>(
+        `/api/v1/services/${serviceId}/env/${encodeURIComponent(item.key)}/verify`,
+        {
+          method: "POST",
+          body: JSON.stringify({ value, is_build_secret: item.is_build_secret }),
+        },
+      ),
+    onError: (error) => toast.error(errorMessage(error, t("Could not check the value"))),
+  });
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t("Check {key}", { key: item.key })}
+      description={t(
+        "The saved value is never shown. Type what you expect it to be and the panel says whether it matches.",
+      )}
     >
       <form
-        className="grid gap-4 px-5 pb-5 sm:px-6 md:grid-cols-[1fr_2fr_auto]"
+        className="grid gap-4"
         onSubmit={(event: FormEvent) => {
           event.preventDefault();
-          save.mutate();
+          verify.mutate();
         }}
       >
-        <Field
-          label={t("Key")}
-          presets={
-            <QuickPick
-              label={t("Common variables")}
-              options={ENV_KEYS.map((item) => ({ label: item.key, value: item.key }))}
-              value={key}
-              onPick={setKey}
-            />
-          }
-        >
-          <TextInput
-            required
-            value={key}
-            placeholder="DATABASE_URL"
-            onChange={(event) => setKey(event.target.value)}
-          />
-        </Field>
-        <Field
-          label={t("Value")}
-          presets={
-            suggestedValues.length > 0 ? (
-              <QuickPick
-                label={t("Common values")}
-                options={suggestedValues.map((item) => ({ label: item, value: item }))}
-                value={value}
-                onPick={setValue}
-              />
-            ) : undefined
-          }
-        >
+        <Field label={t("Value")}>
           <TextInput
             required
             type="password"
             autoComplete="off"
+            autoFocus
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => {
+              setValue(event.target.value);
+              verify.reset();
+            }}
           />
         </Field>
-        <div className="grid content-start gap-2">
-          <span className="hidden text-[13px] font-medium text-transparent select-none md:block">
-            {t("Save")}
-          </span>
-          <Button type="submit" disabled={save.isPending}>
-            {t("Save")}
+        {verify.data ? (
+          verify.data.matches ? (
+            <Alert tone="success">{t("It matches the saved value.")}</Alert>
+          ) : (
+            <Alert tone="error">{t("It does not match the saved value.")}</Alert>
+          )
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>
+            {t("Close")}
+          </Button>
+          <Button type="submit" disabled={verify.isPending}>
+            {t("Check")}
           </Button>
         </div>
-        <label className="flex items-center gap-2 text-sm text-ink-soft md:col-span-3">
-          <input
-            type="checkbox"
-            checked={buildSecret}
-            onChange={(event) => setBuildSecret(event.target.checked)}
-          />
-          {t("Build secret")}
-          <span className="text-muted">— {t("only available while building the image")}</span>
-        </label>
       </form>
-      {list.length === 0 && !vars.isLoading ? (
-        <div className="border-t border-line">
-          <Empty icon="sliders" title={t("No variables yet")}>
-            {t("Add the settings and secrets your service reads at startup.")}
-          </Empty>
-        </div>
-      ) : (
-        <DataTable
-          minWidth={480}
-          head={
-            <>
-              <Th>{t("Key")}</Th>
-              <Th>{t("Value")}</Th>
-              <Th>{t("Type")}</Th>
-              <Th>
-                <span className="sr-only">{t("Actions")}</span>
-              </Th>
-            </>
-          }
-        >
-          {list.map((item) => (
-            <tr key={item.key}>
-              <Td className="font-mono text-[13px] font-medium text-ink">{item.key}</Td>
-              <Td className="font-mono text-[13px] text-faint" title={t("Write-only")}>
-                ••••••••
-              </Td>
-              <Td>
-                <Badge
-                  value={item.is_build_secret ? "build secret" : "runtime"}
-                  tone="outline"
-                />
-              </Td>
-              <Td className="text-right">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="trash"
-                  className="text-danger hover:bg-danger-soft hover:text-danger"
-                  aria-label={t("Delete {key}", { key: item.key })}
-                  title={t("Delete")}
-                  onClick={() => {
-                    if (window.confirm(t("Delete {key}?", { key: item.key }))) {
-                      remove.mutate(item.key);
-                    }
-                  }}
-                />
-              </Td>
-            </tr>
-          ))}
-        </DataTable>
-      )}
-    </Card>
+    </Dialog>
   );
 }

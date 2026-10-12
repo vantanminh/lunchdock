@@ -25,6 +25,14 @@ Traefik routes are written by the panel's file provider (see decision 0011), not
 
 Reference values as `${NAME}` (or `${NAME:-default}`) in the compose file and set them on the Environment tab. They are stored encrypted and written to a mode 0600 `.env` next to the generated file each time the stack is deployed; values are quoted so compose does not expand `$` inside them. The stack page lists referenced variables that have no value yet; a variable with a fallback (`${NAME:-x}`) is not reported. Use `$$` for a literal dollar sign in the compose file. Container and compose output is masked with these values before it is stored or shown.
 
+### Importing many variables
+
+**Import .env** on the Environment tab takes the text of a `.env` file (pasted or chosen from disk) and saves every key in one request. Lines are `KEY=value`, optionally `export KEY=value`; values may be unquoted, `'single'` or `"double"` quoted, and a quoted value can span several lines; `#` starts a comment. **Preview** shows each key as *new*, *changed* or *unchanged* with its length, and any line that cannot be read; **Apply** saves all of them or, when a line is wrong, none. The *Build secret* box applies to the whole import. API: `POST /api/v1/services/{id}/env/import` with `{ "text", "is_build_secret", "dry_run" }`.
+
+### Checking a saved value
+
+Values stay write-only, but the list shows when each key was last written and how many characters it holds, so a truncated paste is visible. **Check value** takes a typed value and says whether it equals the saved one (`POST /api/v1/services/{id}/env/{key}/verify`, compared in constant time); the saved value is never returned.
+
 ## Actions
 
 | Action | Command |
