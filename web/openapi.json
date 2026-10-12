@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "version": "0.1.5"
+    "version": "0.2.0"
   },
   "paths": {
     "/api/health": {
@@ -1067,6 +1067,48 @@
         }
       }
     },
+    "/api/v1/git-providers/{id}/branches": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Branches of a repository the GitHub App can read (?repo=), default branch first",
+        "operationId": "get_v1_git-providers__id__branches",
+        "responses": {
+          "200": {
+            "description": "Branches of a repository the GitHub App can read (?repo=), default branch first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubBranchesView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/git-providers/{id}/compose-files": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Compose files found in a repository branch (?repo=&branch=)",
+        "operationId": "get_v1_git-providers__id__compose-files",
+        "responses": {
+          "200": {
+            "description": "Compose files found in a repository branch (?repo=&branch=)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubComposeFilesView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/git-providers/{id}/install-link": {
       "post": {
         "tags": [
@@ -1081,6 +1123,30 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InstallLink"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/git-providers/{id}/repositories": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Repositories the GitHub App installation can read",
+        "operationId": "get_v1_git-providers__id__repositories",
+        "responses": {
+          "200": {
+            "description": "Repositories the GitHub App installation can read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GithubRepoView"
+                  }
                 }
               }
             }
@@ -2454,6 +2520,20 @@
         }
       }
     },
+    "/api/v1/services/{id}/deployments/{deployment}/logs": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "The whole log of a deployment as plain text",
+        "operationId": "get_v1_services__id__deployments__deployment__logs",
+        "responses": {
+          "200": {
+            "description": "The whole log of a deployment as plain text"
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/domains": {
       "get": {
         "tags": [
@@ -2551,6 +2631,36 @@
         }
       }
     },
+    "/api/v1/services/{id}/env/import": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Preview or save many variables from the text of a .env file",
+        "operationId": "post_v1_services__id__env_import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportEnv"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview or save many variables from the text of a .env file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportEnvResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/env/{key}": {
       "delete": {
         "tags": [
@@ -2561,6 +2671,36 @@
         "responses": {
           "204": {
             "description": "Delete an environment variable"
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/env/{key}/verify": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Check a typed value against the saved one without revealing it",
+        "operationId": "post_v1_services__id__env__key__verify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEnvVar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Check a typed value against the saved one without revealing it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEnvResult"
+                }
+              }
+            }
           }
         }
       }
@@ -2777,6 +2917,20 @@
         }
       }
     },
+    "/api/v1/services/{id}/stack/cancel": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Stop the stack action that is running",
+        "operationId": "post_v1_services__id__stack_cancel",
+        "responses": {
+          "202": {
+            "description": "Stop the stack action that is running"
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/stack/logs": {
       "get": {
         "tags": [
@@ -2798,16 +2952,37 @@
         }
       }
     },
+    "/api/v1/services/{id}/stack/refresh": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Read the compose file from Git again and plan it, without deploying",
+        "operationId": "post_v1_services__id__stack_refresh",
+        "responses": {
+          "200": {
+            "description": "Read the compose file from Git again and plan it, without deploying",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/stack/{action}": {
       "post": {
         "tags": [
           "stacks"
         ],
-        "summary": "Run up, down, restart, or pull in the background",
+        "summary": "Run up, rebuild, update, down, restart, or pull in the background",
         "operationId": "post_v1_services__id__stack__action_",
         "responses": {
           "202": {
-            "description": "Run up, down, restart, or pull in the background",
+            "description": "Run up, rebuild, update, down, restart, or pull in the background",
             "content": {
               "application/json": {
                 "schema": {
@@ -4524,11 +4699,25 @@
           "source"
         ],
         "properties": {
+          "build_on_deploy": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Deploy also builds images that have a `build:` section. Defaults to false."
+          },
           "compose_yaml": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "deploy_on_push": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "A push to the Git branch deploys the stack. Defaults to false."
           },
           "git": {
             "oneOf": [
@@ -4549,6 +4738,13 @@
           },
           "name": {
             "type": "string"
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Compose project name, which prefixes the containers, networks and named volumes. Give the\nname of a project that already runs on the server to take its volumes over. Defaults to\nthe stack name plus six random characters."
           },
           "server_id": {
             "type": "string",
@@ -4791,6 +4987,7 @@
           "status",
           "trigger",
           "logs",
+          "logs_truncated",
           "created_at"
         ],
         "properties": {
@@ -4822,7 +5019,12 @@
             ]
           },
           "logs": {
-            "type": "string"
+            "type": "string",
+            "description": "The end of the log (at most 200 000 characters); see `logs_truncated`."
+          },
+          "logs_truncated": {
+            "type": "boolean",
+            "description": "The log is longer than `logs`; the whole text is at\n`/api/v1/services/{id}/deployments/{deployment}/logs`."
           },
           "service_id": {
             "type": "string",
@@ -5060,7 +5262,9 @@
         "type": "object",
         "required": [
           "key",
-          "is_build_secret"
+          "is_build_secret",
+          "updated_at",
+          "length"
         ],
         "properties": {
           "is_build_secret": {
@@ -5068,6 +5272,16 @@
           },
           "key": {
             "type": "string"
+          },
+          "length": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Characters in the saved value, so a typo or a truncated paste shows without revealing it."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the value was last written."
           }
         }
       },
@@ -5267,6 +5481,64 @@
           }
         }
       },
+      "GithubBranchesView": {
+        "type": "object",
+        "required": [
+          "default_branch",
+          "branches"
+        ],
+        "properties": {
+          "branches": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default_branch": {
+            "type": "string"
+          }
+        }
+      },
+      "GithubComposeFilesView": {
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Paths of compose files in the repository, shortest first."
+          }
+        }
+      },
+      "GithubRepoView": {
+        "type": "object",
+        "required": [
+          "full_name",
+          "url",
+          "private",
+          "default_branch"
+        ],
+        "properties": {
+          "default_branch": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "`owner/name`."
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string",
+            "description": "HTTPS clone address to use as the repository."
+          }
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "required": [
@@ -5283,6 +5555,88 @@
           },
           "version": {
             "type": "string"
+          }
+        }
+      },
+      "ImportEnv": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "dry_run": {
+            "type": "boolean",
+            "description": "Only report what would change; save nothing."
+          },
+          "is_build_secret": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string",
+            "description": "The text of a `.env` file: `KEY=value` lines, `#` comments, quotes."
+          }
+        }
+      },
+      "ImportEnvEntry": {
+        "type": "object",
+        "required": [
+          "key",
+          "status",
+          "length"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "length": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "description": "`new`, `changed`, or `unchanged` compared with what is saved."
+          }
+        }
+      },
+      "ImportEnvError": {
+        "type": "object",
+        "required": [
+          "line",
+          "message"
+        ],
+        "properties": {
+          "line": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportEnvResult": {
+        "type": "object",
+        "required": [
+          "entries",
+          "errors",
+          "applied"
+        ],
+        "properties": {
+          "applied": {
+            "type": "boolean",
+            "description": "The values were saved. False for a dry run or when the text has errors."
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportEnvEntry"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportEnvError"
+            }
           }
         }
       },
@@ -6865,9 +7219,14 @@
         "required": [
           "name",
           "container",
+          "build",
           "routed"
         ],
         "properties": {
+          "build": {
+            "type": "boolean",
+            "description": "Built from a `build:` section, so a plain deploy does not pick up new code."
+          },
           "container": {
             "type": "string"
           },
@@ -6892,6 +7251,32 @@
           }
         }
       },
+      "StackVariableView": {
+        "type": "object",
+        "required": [
+          "name",
+          "set",
+          "has_default",
+          "required"
+        ],
+        "properties": {
+          "has_default": {
+            "type": "boolean",
+            "description": "The file gives a fallback (`${NAME:-x}`) everywhere it reads the variable."
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "The file refuses to start without it (`${NAME:?error}`)."
+          },
+          "set": {
+            "type": "boolean",
+            "description": "A value is saved under Environment."
+          }
+        }
+      },
       "StackView": {
         "type": "object",
         "required": [
@@ -6904,14 +7289,25 @@
           "services",
           "warnings",
           "variables",
-          "missing_variables"
+          "missing_variables",
+          "variable_details",
+          "build_on_deploy",
+          "deploy_on_push"
         ],
         "properties": {
+          "build_on_deploy": {
+            "type": "boolean",
+            "description": "Deploy also builds images that have a `build:` section."
+          },
           "compose_path": {
             "type": "string"
           },
           "compose_yaml": {
             "type": "string"
+          },
+          "deploy_on_push": {
+            "type": "boolean",
+            "description": "A push to the Git branch deploys the stack."
           },
           "generated_yaml": {
             "type": "string",
@@ -6938,7 +7334,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Referenced variables with no value under Environment."
+            "description": "Referenced variables with no value under Environment and no fallback in the file."
           },
           "project": {
             "type": "string"
@@ -6960,6 +7356,13 @@
               "string",
               "null"
             ]
+          },
+          "variable_details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackVariableView"
+            },
+            "description": "Every variable the file reads, and whether it is set or has a fallback."
           },
           "variables": {
             "type": "array",
@@ -7314,6 +7717,13 @@
                 "type": "null"
               }
             ]
+          },
+          "pending": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseInfo"
+            },
+            "description": "Every release between the installed version and `latest`, oldest first,\n`latest` included: what an update installs, with each release's notes."
           },
           "verified": {
             "type": "boolean",
@@ -7744,11 +8154,25 @@
           "source"
         ],
         "properties": {
+          "build_on_deploy": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Deploy also builds images that have a `build:` section. Unchanged when omitted."
+          },
           "compose_yaml": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "deploy_on_push": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "A push to the Git branch deploys the stack. Unchanged when omitted."
           },
           "git": {
             "oneOf": [
@@ -7765,6 +8189,13 @@
               "string",
               "null"
             ]
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New compose project name. Only accepted before the first deploy; unchanged when omitted."
           },
           "source": {
             "type": "string"
@@ -7844,6 +8275,32 @@
           },
           "totp_enabled": {
             "type": "boolean"
+          }
+        }
+      },
+      "VerifyEnvResult": {
+        "type": "object",
+        "required": [
+          "matches"
+        ],
+        "properties": {
+          "matches": {
+            "type": "boolean",
+            "description": "The value typed matches the saved one exactly."
+          }
+        }
+      },
+      "VerifyEnvVar": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "is_build_secret": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": "string"
           }
         }
       }

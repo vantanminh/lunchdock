@@ -66,6 +66,8 @@ pub struct Config {
     pub self_container: String,
     /// Seconds between background release checks; 0 turns them off.
     pub update_check_secs: u64,
+    /// Longest a compose stack action (up, build, pull) may run, in seconds; 0 means no limit.
+    pub stack_timeout_secs: u64,
 }
 
 /// Release signing key compiled into official builds.
@@ -244,6 +246,13 @@ impl Config {
                 reason: "expected a number of seconds".into(),
             })?,
         };
+        let stack_timeout_secs = match vars.get("RUDDER_STACK_TIMEOUT_SECS") {
+            None => 3600,
+            Some(value) => value.parse().map_err(|_| ConfigError::Invalid {
+                name: "RUDDER_STACK_TIMEOUT_SECS",
+                reason: "expected a number of seconds".into(),
+            })?,
+        };
         Ok(Self {
             database_url,
             bind,
@@ -268,6 +277,7 @@ impl Config {
             update_public_key,
             self_container,
             update_check_secs,
+            stack_timeout_secs,
         })
     }
 }

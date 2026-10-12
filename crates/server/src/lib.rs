@@ -279,6 +279,7 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::edge::router())
         .merge(routes::git::router())
         .merge(routes::github_app::router())
+        .merge(routes::github_repos::router())
         .merge(routes::databases::router())
         .merge(routes::backups::router())
         .merge(routes::stacks::router())

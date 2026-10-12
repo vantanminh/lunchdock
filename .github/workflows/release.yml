@@ -27,6 +27,17 @@ jobs:
   preflight:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: CHANGELOG.md describes this release
+        run: |
+          # The panel shows these notes to everyone before they update.
+          if ! sh deploy/release/changelog.sh "${GITHUB_REF_NAME#v}" >/dev/null; then
+            echo "::error::add a [${GITHUB_REF_NAME#v}] section to CHANGELOG.md (rename [Unreleased]) before tagging"
+            exit 1
+          fi
+
       - name: Signing configuration is present
         env:
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
@@ -224,4 +235,5 @@ jobs:
         run: |
           flags=""
           case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" dist/* --title "Rudder $GITHUB_REF_NAME" --generate-notes $flags
+          sh deploy/release/changelog.sh "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Rudder $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" $flags

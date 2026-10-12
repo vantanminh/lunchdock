@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, service_id, status, trigger, image_ref, error, logs, started_at, finished_at,\n               created_at\n        FROM deployments\n        WHERE service_id = $1\n        ORDER BY created_at DESC\n        LIMIT 50\n        ",
+  "query": "\n        SELECT id, service_id, status, trigger, image_ref, error,\n               right(logs, 200000) AS \"logs!\", length(logs) > 200000 AS \"logs_truncated!\",\n               started_at, finished_at, created_at\n        FROM deployments\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -35,21 +35,26 @@
       },
       {
         "ordinal": 6,
-        "name": "logs",
+        "name": "logs!",
         "type_info": "Text"
       },
       {
         "ordinal": 7,
+        "name": "logs_truncated!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
         "name": "started_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "finished_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -66,11 +71,12 @@
       false,
       true,
       true,
-      false,
+      null,
+      null,
       true,
       true,
       false
     ]
   },
-  "hash": "ebed2903e23351fc1305b8a58eefedd62c0ef61e5145c6f4f97af7026310520a"
+  "hash": "f53b77b7c3e263458fa15940c1ff17512e8da26990c737638922049d2cb72e16"
 }

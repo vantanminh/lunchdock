@@ -562,6 +562,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/git-providers/{id}/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Branches of a repository the GitHub App can read (?repo=), default branch first */
+        get: operations["get_v1_git-providers__id__branches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/git-providers/{id}/compose-files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compose files found in a repository branch (?repo=&branch=) */
+        get: operations["get_v1_git-providers__id__compose-files"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/git-providers/{id}/install-link": {
         parameters: {
             query?: never;
@@ -573,6 +607,23 @@ export interface paths {
         put?: never;
         /** A fresh GitHub link to install or reconfigure the app (admin, write) */
         post: operations["post_v1_git-providers__id__install-link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/git-providers/{id}/repositories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Repositories the GitHub App installation can read */
+        get: operations["get_v1_git-providers__id__repositories"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1359,6 +1410,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/deployments/{deployment}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The whole log of a deployment as plain text */
+        get: operations["get_v1_services__id__deployments__deployment__logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/domains": {
         parameters: {
             query?: never;
@@ -1395,6 +1463,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/env/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview or save many variables from the text of a .env file */
+        post: operations["post_v1_services__id__env_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/env/{key}": {
         parameters: {
             query?: never;
@@ -1407,6 +1492,23 @@ export interface paths {
         post?: never;
         /** Delete an environment variable */
         delete: operations["delete_v1_services__id__env__key_"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/env/{key}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check a typed value against the saved one without revealing it */
+        post: operations["post_v1_services__id__env__key__verify"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1517,6 +1619,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/stack/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop the stack action that is running */
+        post: operations["post_v1_services__id__stack_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/stack/logs": {
         parameters: {
             query?: never;
@@ -1534,6 +1653,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/stack/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read the compose file from Git again and plan it, without deploying */
+        post: operations["post_v1_services__id__stack_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/stack/{action}": {
         parameters: {
             query?: never;
@@ -1543,7 +1679,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Run up, down, restart, or pull in the background */
+        /** Run up, rebuild, update, down, restart, or pull in the background */
         post: operations["post_v1_services__id__stack__action_"];
         delete?: never;
         options?: never;
@@ -2273,11 +2409,21 @@ export interface components {
             spec?: unknown;
         };
         CreateStack: {
+            /** @description Deploy also builds images that have a `build:` section. Defaults to false. */
+            build_on_deploy?: boolean | null;
             compose_yaml?: string | null;
+            /** @description A push to the Git branch deploys the stack. Defaults to false. */
+            deploy_on_push?: boolean | null;
             git?: components["schemas"]["StackGit"] | null;
             /** @description Compose service new domains point at by default. */
             main_service?: string | null;
             name: string;
+            /**
+             * @description Compose project name, which prefixes the containers, networks and named volumes. Give the
+             *     name of a project that already runs on the server to take its volumes over. Defaults to
+             *     the stack name plus six random characters.
+             */
+            project?: string | null;
             /** Format: uuid */
             server_id: string;
             /** @description `inline` (paste YAML) or `git`. */
@@ -2347,7 +2493,13 @@ export interface components {
             /** Format: uuid */
             id: string;
             image_ref?: string | null;
+            /** @description The end of the log (at most 200 000 characters); see `logs_truncated`. */
             logs: string;
+            /**
+             * @description The log is longer than `logs`; the whole text is at
+             *     `/api/v1/services/{id}/deployments/{deployment}/logs`.
+             */
+            logs_truncated: boolean;
             /** Format: uuid */
             service_id: string;
             /** Format: date-time */
@@ -2420,6 +2572,16 @@ export interface components {
         EnvVarView: {
             is_build_secret: boolean;
             key: string;
+            /**
+             * Format: int32
+             * @description Characters in the saved value, so a typo or a truncated paste shows without revealing it.
+             */
+            length: number;
+            /**
+             * Format: date-time
+             * @description When the value was last written.
+             */
+            updated_at: string;
         };
         EnvironmentView: {
             description: string;
@@ -2482,10 +2644,51 @@ export interface components {
             /** @description False when the panel's address is private, so GitHub cannot deliver pushes. */
             webhook: boolean;
         };
+        GithubBranchesView: {
+            branches: string[];
+            default_branch: string;
+        };
+        GithubComposeFilesView: {
+            /** @description Paths of compose files in the repository, shortest first. */
+            files: string[];
+        };
+        GithubRepoView: {
+            default_branch: string;
+            /** @description `owner/name`. */
+            full_name: string;
+            private: boolean;
+            /** @description HTTPS clone address to use as the repository. */
+            url: string;
+        };
         HealthResponse: {
             product: string;
             status: string;
             version: string;
+        };
+        ImportEnv: {
+            /** @description Only report what would change; save nothing. */
+            dry_run?: boolean;
+            is_build_secret?: boolean;
+            /** @description The text of a `.env` file: `KEY=value` lines, `#` comments, quotes. */
+            text: string;
+        };
+        ImportEnvEntry: {
+            key: string;
+            /** Format: int32 */
+            length: number;
+            /** @description `new`, `changed`, or `unchanged` compared with what is saved. */
+            status: string;
+        };
+        ImportEnvError: {
+            /** Format: int32 */
+            line: number;
+            message: string;
+        };
+        ImportEnvResult: {
+            /** @description The values were saved. False for a dry run or when the text has errors. */
+            applied: boolean;
+            entries: components["schemas"]["ImportEnvEntry"][];
+            errors: components["schemas"]["ImportEnvError"][];
         };
         IngestEntry: {
             fields?: Record<string, never> | null;
@@ -2986,6 +3189,8 @@ export interface components {
             service: string;
         };
         StackServiceView: {
+            /** @description Built from a `build:` section, so a plain deploy does not pick up new code. */
+            build: boolean;
             container: string;
             image?: string | null;
             name: string;
@@ -2993,20 +3198,35 @@ export interface components {
             /** @description Null when the server cannot be reached. */
             running?: boolean | null;
         };
+        StackVariableView: {
+            /** @description The file gives a fallback (`${NAME:-x}`) everywhere it reads the variable. */
+            has_default: boolean;
+            name: string;
+            /** @description The file refuses to start without it (`${NAME:?error}`). */
+            required: boolean;
+            /** @description A value is saved under Environment. */
+            set: boolean;
+        };
         StackView: {
+            /** @description Deploy also builds images that have a `build:` section. */
+            build_on_deploy: boolean;
             compose_path: string;
             compose_yaml: string;
+            /** @description A push to the Git branch deploys the stack. */
+            deploy_on_push: boolean;
             /** @description The file Rudder runs: project name, labels, and proxy network applied. */
             generated_yaml: string;
             git?: components["schemas"]["StackGit"] | null;
             main_service?: string | null;
-            /** @description Referenced variables with no value under Environment. */
+            /** @description Referenced variables with no value under Environment and no fallback in the file. */
             missing_variables: string[];
             project: string;
             service: components["schemas"]["ServiceView"];
             services: components["schemas"]["StackServiceView"][];
             source: string;
             template?: string | null;
+            /** @description Every variable the file reads, and whether it is set or has a fallback. */
+            variable_details: components["schemas"]["StackVariableView"][];
             /** @description `${NAME}` references in the compose file. */
             variables: string[];
             warnings: string[];
@@ -3100,6 +3320,11 @@ export interface components {
             current: string;
             error?: string | null;
             latest?: components["schemas"]["ReleaseInfo"] | null;
+            /**
+             * @description Every release between the installed version and `latest`, oldest first,
+             *     `latest` included: what an update installs, with each release's notes.
+             */
+            pending?: components["schemas"]["ReleaseInfo"][];
             /** @description The latest release's signature and checksums were verified. */
             verified: boolean;
         };
@@ -3211,9 +3436,15 @@ export interface components {
             strategy: string;
         };
         UpdateStack: {
+            /** @description Deploy also builds images that have a `build:` section. Unchanged when omitted. */
+            build_on_deploy?: boolean | null;
             compose_yaml?: string | null;
+            /** @description A push to the Git branch deploys the stack. Unchanged when omitted. */
+            deploy_on_push?: boolean | null;
             git?: components["schemas"]["StackGit"] | null;
             main_service?: string | null;
+            /** @description New compose project name. Only accepted before the first deploy; unchanged when omitted. */
+            project?: string | null;
             source: string;
         };
         UpdateStarted: {
@@ -3236,6 +3467,14 @@ export interface components {
             id: string;
             role: string;
             totp_enabled: boolean;
+        };
+        VerifyEnvResult: {
+            /** @description The value typed matches the saved one exactly. */
+            matches: boolean;
+        };
+        VerifyEnvVar: {
+            is_build_secret?: boolean;
+            value: string;
         };
     };
     responses: never;
@@ -4214,6 +4453,46 @@ export interface operations {
             };
         };
     };
+    "get_v1_git-providers__id__branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Branches of a repository the GitHub App can read (?repo=), default branch first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubBranchesView"];
+                };
+            };
+        };
+    };
+    "get_v1_git-providers__id__compose-files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Compose files found in a repository branch (?repo=&branch=) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubComposeFilesView"];
+                };
+            };
+        };
+    };
     "post_v1_git-providers__id__install-link": {
         parameters: {
             query?: never;
@@ -4230,6 +4509,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstallLink"];
+                };
+            };
+        };
+    };
+    "get_v1_git-providers__id__repositories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Repositories the GitHub App installation can read */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubRepoView"][];
                 };
             };
         };
@@ -5498,6 +5797,24 @@ export interface operations {
             };
         };
     };
+    get_v1_services__id__deployments__deployment__logs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The whole log of a deployment as plain text */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_v1_services__id__domains: {
         parameters: {
             query?: never;
@@ -5584,6 +5901,30 @@ export interface operations {
             };
         };
     };
+    post_v1_services__id__env_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ImportEnv"];
+            };
+        };
+        responses: {
+            /** @description Preview or save many variables from the text of a .env file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportEnvResult"];
+                };
+            };
+        };
+    };
     delete_v1_services__id__env__key_: {
         parameters: {
             query?: never;
@@ -5599,6 +5940,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    post_v1_services__id__env__key__verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VerifyEnvVar"];
+            };
+        };
+        responses: {
+            /** @description Check a typed value against the saved one without revealing it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyEnvResult"];
+                };
             };
         };
     };
@@ -5796,6 +6161,24 @@ export interface operations {
             };
         };
     };
+    post_v1_services__id__stack_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stop the stack action that is running */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_v1_services__id__stack_logs: {
         parameters: {
             query?: never;
@@ -5816,6 +6199,26 @@ export interface operations {
             };
         };
     };
+    post_v1_services__id__stack_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read the compose file from Git again and plan it, without deploying */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackView"];
+                };
+            };
+        };
+    };
     post_v1_services__id__stack__action_: {
         parameters: {
             query?: never;
@@ -5825,7 +6228,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Run up, down, restart, or pull in the background */
+            /** @description Run up, rebuild, update, down, restart, or pull in the background */
             202: {
                 headers: {
                     [name: string]: unknown;

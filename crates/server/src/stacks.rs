@@ -7,16 +7,20 @@
 //! the service's encrypted environment variables. Domains are routed by the
 //! panel's Traefik file provider to the container named in `spec.containers`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use axum::http::StatusCode;
 use rudder_core::{
     redact, render_env_file, transform_compose, validate_branch, validate_compose_service,
-    validate_git_url, validate_rel_path, ComposeAction, NodeDriver, MAX_COMPOSE_BYTES,
+    validate_git_url, validate_name, validate_rel_path, ComposeAction, ComposeOptions, LogSink,
+    NodeDriver, RegistryAuth, MAX_COMPOSE_BYTES,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tokio_util::sync::CancellationToken;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -42,6 +46,9 @@ pub struct StackServiceSpec {
     pub name: String,
     pub container: String,
     pub image: Option<String>,
+    /// Built from a `build:` section instead of (or as well as) pulled.
+    #[serde(default)]
+    pub build: bool,
     pub routed: bool,
 }
 
@@ -64,11 +71,19 @@ pub struct StackSpec {
     pub warnings: Vec<String>,
     /// Generated file, relative to the node data directory. Empty until first written.
     pub compose_path: String,
+    /// Plain Deploy also builds images that have a `build:` section.
+    pub build_on_deploy: bool,
+    /// A push to the Git source's branch deploys the stack (GitHub App providers).
+    pub deploy_on_push: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StackAction {
     Up,
+    /// `up --build`: rebuild images from their `build:` sections, then start.
+    Rebuild,
+    /// `up --pull always`: fetch newer images, then start.
+    Update,
     Down,
     Restart,
     Pull,
@@ -78,6 +93,8 @@ impl StackAction {
     pub fn parse(text: &str) -> Result<Self, ApiError> {
         match text {
             "up" => Ok(Self::Up),
+            "rebuild" => Ok(Self::Rebuild),
+            "update" => Ok(Self::Update),
             "down" => Ok(Self::Down),
             "restart" => Ok(Self::Restart),
             "pull" => Ok(Self::Pull),
@@ -88,15 +105,21 @@ impl StackAction {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Up => "up",
+            Self::Rebuild => "rebuild",
+            Self::Update => "update",
             Self::Down => "down",
             Self::Restart => "restart",
             Self::Pull => "pull",
         }
     }
 
-    fn compose(self) -> ComposeAction {
+    /// The compose command for this action; a stack that builds on deploy turns Up into a rebuild.
+    fn compose(self, build_on_deploy: bool) -> ComposeAction {
         match self {
+            Self::Up if build_on_deploy => ComposeAction::UpBuild,
             Self::Up => ComposeAction::Up,
+            Self::Rebuild => ComposeAction::UpBuild,
+            Self::Update => ComposeAction::UpPull,
             Self::Down => ComposeAction::Down,
             Self::Restart => ComposeAction::Restart,
             Self::Pull => ComposeAction::Pull,
@@ -104,8 +127,170 @@ impl StackAction {
     }
 
     fn writes_files(self) -> bool {
-        matches!(self, Self::Up | Self::Pull)
+        matches!(self, Self::Up | Self::Rebuild | Self::Update | Self::Pull)
     }
+
+    /// Brings containers up, so a failure leaves the service failed.
+    fn starts(self) -> bool {
+        matches!(self, Self::Up | Self::Rebuild | Self::Update)
+    }
+
+    /// Talks to registries, so saved logins apply.
+    fn pulls(self) -> bool {
+        self.writes_files()
+    }
+}
+
+/// Compose actions that are running now, so one can be cancelled.
+#[derive(Default)]
+pub struct StackRuns {
+    running: Mutex<HashMap<Uuid, CancellationToken>>,
+}
+
+/// Removes a stack from [`StackRuns`] when its action ends, however it ends.
+pub struct RunGuard {
+    runs: Arc<StackRuns>,
+    id: Uuid,
+}
+
+impl Drop for RunGuard {
+    fn drop(&mut self) {
+        if let Ok(mut running) = self.runs.running.lock() {
+            running.remove(&self.id);
+        }
+    }
+}
+
+impl StackRuns {
+    fn begin(self: &Arc<Self>, id: Uuid) -> (CancellationToken, RunGuard) {
+        let token = CancellationToken::new();
+        if let Ok(mut running) = self.running.lock() {
+            running.insert(id, token.clone());
+        }
+        (
+            token,
+            RunGuard {
+                runs: self.clone(),
+                id,
+            },
+        )
+    }
+
+    /// Ask the running action of `id` to stop. False when nothing is running.
+    pub fn cancel(&self, id: Uuid) -> bool {
+        let token = self
+            .running
+            .lock()
+            .ok()
+            .and_then(|running| running.get(&id).cloned());
+        match token {
+            Some(token) => {
+                token.cancel();
+                true
+            }
+            None => false,
+        }
+    }
+}
+
+/// Most output kept for one action; older lines are dropped and the log says so.
+const MAX_LOG_BYTES: usize = 1024 * 1024;
+const FLUSH_EVERY: Duration = Duration::from_secs(1);
+
+/// The output of a running action, with secrets masked, written to the
+/// deployment row while the action runs so the panel can follow it.
+#[derive(Clone, Default)]
+pub struct LiveLog {
+    inner: Arc<Mutex<LogState>>,
+}
+
+#[derive(Default)]
+struct LogState {
+    text: String,
+    dropped: bool,
+    dirty: bool,
+    secrets: Vec<String>,
+}
+
+impl LiveLog {
+    /// Values to mask in everything pushed from now on.
+    pub fn set_secrets(&self, secrets: Vec<String>) {
+        if let Ok(mut state) = self.inner.lock() {
+            state.secrets = secrets
+                .into_iter()
+                .filter(|value| value.len() >= 4)
+                .collect();
+        }
+    }
+
+    pub fn push(&self, text: &str) {
+        let Ok(mut state) = self.inner.lock() else {
+            return;
+        };
+        let masked = {
+            let secrets: Vec<&str> = state.secrets.iter().map(String::as_str).collect();
+            redact(text, &secrets)
+        };
+        state.text.push_str(&masked);
+        state.dirty = true;
+        if state.text.len() > MAX_LOG_BYTES + MAX_LOG_BYTES / 4 {
+            let mut cut = state.text.len() - MAX_LOG_BYTES;
+            while !state.text.is_char_boundary(cut) {
+                cut += 1;
+            }
+            state.text.drain(..cut);
+            state.dropped = true;
+        }
+    }
+
+    pub fn snapshot(&self) -> String {
+        match self.inner.lock() {
+            Ok(state) if state.dropped => {
+                format!("[earlier output was dropped]\n{}", state.text)
+            }
+            Ok(state) => state.text.clone(),
+            Err(_) => String::new(),
+        }
+    }
+
+    /// The whole log when something was added since the last call.
+    fn take_dirty(&self) -> Option<String> {
+        let changed = {
+            let mut state = self.inner.lock().ok()?;
+            std::mem::take(&mut state.dirty)
+        };
+        changed.then(|| self.snapshot())
+    }
+}
+
+/// Write the log to the deployment row every second until the task is aborted.
+fn spawn_flusher(
+    state: &AppState,
+    deployment_id: Uuid,
+    log: &LiveLog,
+) -> tokio::task::JoinHandle<()> {
+    let pool = state.pool.clone();
+    let log = log.clone();
+    tokio::spawn(async move {
+        let mut tick = tokio::time::interval(FLUSH_EVERY);
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            tick.tick().await;
+            let Some(text) = log.take_dirty() else {
+                continue;
+            };
+            let written = sqlx::query!(
+                r#"UPDATE deployments SET logs = $2 WHERE id = $1 AND status = 'running'"#,
+                deployment_id,
+                text
+            )
+            .execute(&pool)
+            .await;
+            if let Err(error) = written {
+                tracing::warn!(%error, "could not store the live stack log");
+            }
+        }
+    })
 }
 
 pub struct StackRow {
@@ -234,6 +419,7 @@ pub fn replan(spec: &mut StackSpec, routed: &[String]) -> Result<(), ApiError> {
             name: service.name,
             container: service.container,
             image: service.image,
+            build: service.build,
             routed: service.routed,
         })
         .collect();
@@ -406,7 +592,7 @@ pub async fn start_action(
     .await
     .map_err(ApiError::database)?
     .ok_or_else(|| conflict("deploy_in_progress", "a stack action is already running"))?;
-    let deployment_id = sqlx::query_scalar!(
+    let inserted = sqlx::query_scalar!(
         r#"
         INSERT INTO deployments (service_id, status, trigger, logs, started_at)
         VALUES ($1, 'running', $2, '', now())
@@ -416,13 +602,66 @@ pub async fn start_action(
         format!("{trigger}:{}", action.as_str())
     )
     .fetch_one(&state.pool)
-    .await
-    .map_err(ApiError::database)?;
+    .await;
+    let deployment_id = match inserted {
+        Ok(deployment_id) => deployment_id,
+        Err(error) => {
+            // Do not leave the stack locked in `deploying`.
+            let _ = sqlx::query!(
+                r#"UPDATE services SET status = $2, updated_at = now() WHERE id = $1"#,
+                id,
+                previous
+            )
+            .execute(&state.pool)
+            .await;
+            return Err(ApiError::database(error));
+        }
+    };
+    let (cancel, guard) = state.stack_runs.begin(id);
     let task_state = state.clone();
     tokio::spawn(async move {
-        execute(&task_state, id, deployment_id, action, &previous).await;
+        execute(
+            &task_state,
+            id,
+            deployment_id,
+            action,
+            &previous,
+            cancel,
+            guard,
+        )
+        .await;
     });
     load_deployment(state, deployment_id).await
+}
+
+/// A push reached the Git branch of a stack: deploy it when the stack asked for that.
+/// `None` when push deploys are off. A stack that builds on deploy rebuilds, because
+/// `build_on_deploy` turns the plain deploy into `up --build`.
+pub async fn push_deploy(state: &AppState, id: Uuid) -> Result<Option<DeploymentView>, ApiError> {
+    let stack = load(state, id).await?;
+    if !stack.spec.deploy_on_push || stack.spec.source != "git" {
+        return Ok(None);
+    }
+    start_action(state, id, StackAction::Up, "push")
+        .await
+        .map(Some)
+}
+
+/// Stop the running action of a stack. The action ends as `cancelled`.
+pub async fn cancel(state: &AppState, id: Uuid) -> Result<(), ApiError> {
+    if state.stack_runs.cancel(id) {
+        Ok(())
+    } else {
+        Err(conflict("not_running", "this stack has no action running"))
+    }
+}
+
+/// How an action ended.
+enum Ended {
+    Finished,
+    Failed(String),
+    Cancelled,
+    TimedOut(u64),
 }
 
 async fn execute(
@@ -431,33 +670,76 @@ async fn execute(
     deployment_id: Uuid,
     action: StackAction,
     previous: &str,
+    cancel: CancellationToken,
+    guard: RunGuard,
 ) {
-    let mut logs = String::new();
-    let result = run(state, id, action, &mut logs).await;
-    let (status, error, service_status) = match &result {
-        Ok(()) => (
+    let log = LiveLog::default();
+    let flusher = spawn_flusher(state, deployment_id, &log);
+    let limit = state.config.stack_timeout_secs;
+    let ended = {
+        let work = run(state, id, action, &log);
+        tokio::pin!(work);
+        let timeout = async {
+            if limit == 0 {
+                std::future::pending::<()>().await;
+            } else {
+                tokio::time::sleep(Duration::from_secs(limit)).await;
+            }
+        };
+        // Dropping `work` at the end of this block stops the docker compose process.
+        tokio::select! {
+            result = &mut work => match result {
+                Ok(()) => Ended::Finished,
+                Err(message) => Ended::Failed(message),
+            },
+            () = cancel.cancelled() => Ended::Cancelled,
+            () = timeout => Ended::TimedOut(limit),
+        }
+    };
+    flusher.abort();
+    // The action is over: a Cancel from here on is answered "not running". The service stays
+    // `deploying` until the final status below, so no new action can start in between.
+    drop(guard);
+    let (status, error, service_status) = match &ended {
+        Ended::Finished => (
             "succeeded",
             None,
             match action {
                 StackAction::Down => "stopped",
                 StackAction::Pull => previous,
-                StackAction::Up | StackAction::Restart => "running",
+                _ => "running",
             },
         ),
-        Err(message) => (
+        Ended::Failed(message) => (
             "failed",
             Some(message.clone()),
-            if action == StackAction::Up {
-                "failed"
-            } else {
+            if action.starts() { "failed" } else { previous },
+        ),
+        Ended::TimedOut(secs) => (
+            "failed",
+            Some(format!(
+                "stopped after {} minutes; raise RUDDER_STACK_TIMEOUT_SECS for slower builds",
+                secs.div_ceil(60)
+            )),
+            if action.starts() { "failed" } else { previous },
+        ),
+        Ended::Cancelled => (
+            "cancelled",
+            Some("cancelled".to_owned()),
+            // The old containers keep running when the build never got that far.
+            if !action.starts() {
                 previous
+            } else if previous == "running" {
+                "running"
+            } else {
+                "stopped"
             },
         ),
     };
     if let Some(message) = &error {
-        logs.push_str(message);
-        logs.push('\n');
+        log.push(&format!("{message}\n"));
     }
+    let logs = log.snapshot();
     let finished = sqlx::query!(
         r#"
         UPDATE deployments
@@ -481,54 +763,211 @@ async fn execute(
     )
     .execute(&state.pool)
     .await;
-    let event = match &result {
-        Ok(()) => crate::events::Event::info(
+    let event = match &ended {
+        Ended::Finished => crate::events::Event::info(
             &format!("stack.{}", action.as_str()),
             format!("Stack {} finished", action.as_str()),
         ),
-        Err(message) => crate::events::Event::warning(
+        Ended::Cancelled => crate::events::Event::warning(
+            "stack.cancelled",
+            format!("Stack {} was cancelled", action.as_str()),
+        ),
+        Ended::Failed(_) | Ended::TimedOut(_) => crate::events::Event::warning(
             "stack.failed",
             format!("Stack {} failed", action.as_str()),
         )
-        .message(message.clone()),
+        .message(error.clone().unwrap_or_default()),
     };
     crate::events::record(&state.pool, event.service(id)).await;
 }
 
-async fn run(
-    state: &AppState,
-    id: Uuid,
-    action: StackAction,
-    logs: &mut String,
-) -> Result<(), String> {
+/// Registry logins for the images a stack pulls. Images from a registry without a
+/// saved login are left to the node's own `docker login`.
+async fn registry_logins(state: &AppState, spec: &StackSpec) -> Vec<RegistryAuth> {
+    let mut logins: Vec<RegistryAuth> = Vec::new();
+    for image in spec
+        .services
+        .iter()
+        .filter_map(|service| service.image.as_deref())
+    {
+        match crate::deploy::registry_auth(state, image, None).await {
+            Ok(Some(login)) if !logins.iter().any(|known| known.server == login.server) => {
+                logins.push(login);
+            }
+            Ok(_) => {}
+            Err(error) => {
+                tracing::warn!(image, message = %error.public_message(), "registry login skipped");
+            }
+        }
+    }
+    logins
+}
+
+/// The registries named by an authentication failure, to tell the user where to add a login.
+fn registry_hint(message: &str, spec: &StackSpec) -> Option<String> {
+    let lower = message.to_ascii_lowercase();
+    let denied = [
+        "unauthorized",
+        "denied",
+        "authentication required",
+        "no basic auth credentials",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle));
+    if !denied {
+        return None;
+    }
+    let mut hosts: Vec<&str> = spec
+        .services
+        .iter()
+        .filter_map(|service| service.image.as_deref())
+        .map(rudder_core::image_registry)
+        .collect();
+    hosts.sort_unstable();
+    hosts.dedup();
+    Some(format!(
+        "The registry refused the request. If an image is private, save a login for its registry (this stack uses {}) under Registries; stacks use those logins when they pull.",
+        hosts.join(", ")
+    ))
+}
+
+async fn run(state: &AppState, id: Uuid, action: StackAction, log: &LiveLog) -> Result<(), String> {
     let mut stack = load(state, id)
         .await
         .map_err(|error| error.public_message())?;
     let env = load_env(state, id)
         .await
         .map_err(|error| error.public_message())?;
-    let secrets = secret_values(&env);
+    let mut secrets: Vec<String> = env.iter().map(|(_, value)| value.clone()).collect();
+    log.set_secrets(secrets.clone());
     let driver = driver_for(state, stack.server_id)
         .await
         .map_err(|error| error.public_message())?;
     if action.writes_files() {
-        write_files(state, &mut stack, driver.as_ref(), &env, logs).await?;
+        write_files(state, &mut stack, driver.as_ref(), &env, log).await?;
     }
-    logs.push_str(&format!("docker compose {}\n", action.as_str()));
+    let logins = if action.pulls() {
+        registry_logins(state, &stack.spec).await
+    } else {
+        Vec::new()
+    };
+    secrets.extend(logins.iter().map(|login| login.password.clone()));
+    log.set_secrets(secrets.clone());
+    let compose = action.compose(stack.spec.build_on_deploy);
+    log.push(&format!("$ docker compose {}\n", compose_label(compose)));
+    let sink: LogSink = {
+        let log = log.clone();
+        Arc::new(move |text: &str| log.push(text))
+    };
+    let secret_refs: Vec<&str> = secrets.iter().map(String::as_str).collect();
     let output = driver
-        .compose(
+        .compose_run(
             &stack.spec.project,
             &stack.spec.compose_path,
-            action.compose(),
+            compose,
+            &ComposeOptions { logins },
+            Some(&sink),
         )
         .await;
     match output {
-        Ok(text) => {
-            logs.push_str(&redact(&text, &secrets));
-            Ok(())
+        Ok(_) => Ok(()),
+        Err(error) => {
+            let mut message = redact(&error.to_string(), &secret_refs);
+            if let Some(hint) = registry_hint(&message, &stack.spec) {
+                message.push('\n');
+                message.push_str(&hint);
+            }
+            Err(message)
         }
-        Err(error) => Err(redact(&error.to_string(), &secrets)),
     }
+}
+
+fn compose_label(action: ComposeAction) -> &'static str {
+    match action {
+        ComposeAction::Up => "up -d",
+        ComposeAction::UpBuild => "up -d --build",
+        ComposeAction::UpPull => "up -d --pull always",
+        ComposeAction::Down => "down",
+        ComposeAction::Restart => "restart",
+        ComposeAction::Pull => "pull",
+        ComposeAction::Destroy => "down --volumes",
+    }
+}
+
+/// Fetch the Git stack's repository on the panel host, read its compose file into the spec and
+/// plan it again. Returns the directory, relative to the node data directory, the files go in.
+async fn sync_compose(
+    state: &AppState,
+    stack: &mut StackRow,
+    logs: Option<&LiveLog>,
+) -> Result<String, String> {
+    let project = stack.spec.project.clone();
+    let git = stack
+        .spec
+        .git
+        .clone()
+        .ok_or_else(|| "git source is not configured".to_string())?;
+    let checkout = format!("stacks/{project}/src");
+    let dest = state.config.data_dir.join(&checkout);
+    if let Some(logs) = logs {
+        logs.push(&format!("syncing {} ({})\n", git.repo, git.branch));
+    }
+    let output = crate::build_queue::sync_repo(
+        state,
+        stack.id,
+        git.provider_id,
+        &git.repo,
+        &git.branch,
+        &dest,
+    )
+    .await?;
+    if let Some(logs) = logs {
+        logs.push(&output);
+    }
+    let file = dest.join(&git.compose_file);
+    let text = std::fs::read_to_string(&file)
+        .map_err(|_| format!("{} was not found in the repository", git.compose_file))?;
+    check_compose_text(&text).map_err(|error| error.public_message())?;
+    stack.spec.compose_yaml = text;
+    let routed = routed_services(state, stack.id, &stack.spec)
+        .await
+        .map_err(|error| error.public_message())?;
+    replan(&mut stack.spec, &routed).map_err(|error| error.public_message())?;
+    Ok(
+        match Path::new(&git.compose_file).parent().and_then(Path::to_str) {
+            Some(parent) if !parent.is_empty() => format!("{checkout}/{parent}"),
+            _ => checkout,
+        },
+    )
+}
+
+/// Read the compose file from Git now, so the variables it needs, the generated file and its
+/// warnings are known before the first deploy. Nothing is written to the server.
+pub async fn refresh_from_git(state: &AppState, id: Uuid) -> Result<(), ApiError> {
+    let mut stack = load(state, id).await?;
+    if stack.status == "deploying" {
+        return Err(conflict(
+            "deploy_in_progress",
+            "wait for the running stack action",
+        ));
+    }
+    if stack.spec.source != "git" {
+        return Err(bad(
+            "invalid",
+            "only a stack with a Git source can be refreshed",
+        ));
+    }
+    if stack.spec.project.is_empty() {
+        let name = crate::routes::catalog::load_service_view(state, id)
+            .await?
+            .name;
+        stack.spec.project = project_name(&name);
+    }
+    validate_source(&stack.spec)?;
+    sync_compose(state, &mut stack, None)
+        .await
+        .map_err(|message| bad("git_refresh_failed", message))?;
+    save(state, id, &stack.spec).await
 }
 
 async fn write_files(
@@ -536,41 +975,11 @@ async fn write_files(
     stack: &mut StackRow,
     driver: &dyn NodeDriver,
     env: &[(String, String)],
-    logs: &mut String,
+    logs: &LiveLog,
 ) -> Result<(), String> {
     let project = stack.spec.project.clone();
     let dir = if stack.spec.source == "git" {
-        let git = stack
-            .spec
-            .git
-            .clone()
-            .ok_or_else(|| "git source is not configured".to_string())?;
-        let checkout = format!("stacks/{project}/src");
-        let dest = state.config.data_dir.join(&checkout);
-        logs.push_str(&format!("syncing {} ({})\n", git.repo, git.branch));
-        let output = crate::build_queue::sync_repo(
-            state,
-            stack.id,
-            git.provider_id,
-            &git.repo,
-            &git.branch,
-            &dest,
-        )
-        .await?;
-        logs.push_str(&output);
-        let file = dest.join(&git.compose_file);
-        let text = std::fs::read_to_string(&file)
-            .map_err(|_| format!("{} was not found in the repository", git.compose_file))?;
-        check_compose_text(&text).map_err(|error| error.public_message())?;
-        stack.spec.compose_yaml = text;
-        let routed = routed_services(state, stack.id, &stack.spec)
-            .await
-            .map_err(|error| error.public_message())?;
-        replan(&mut stack.spec, &routed).map_err(|error| error.public_message())?;
-        match Path::new(&git.compose_file).parent().and_then(Path::to_str) {
-            Some(parent) if !parent.is_empty() => format!("{checkout}/{parent}"),
-            _ => checkout,
-        }
+        sync_compose(state, stack, Some(logs)).await?
     } else {
         format!("stacks/{project}")
     };
@@ -592,9 +1001,9 @@ async fn write_files(
         .await
         .map_err(|error| error.public_message())?;
     for warning in &stack.spec.warnings {
-        logs.push_str(&format!("warning: {warning}\n"));
+        logs.push(&format!("warning: {warning}\n"));
     }
-    logs.push_str(&format!(
+    logs.push(&format!(
         "wrote {} and .env ({} variables)\n",
         stack.spec.compose_path,
         env.len()
@@ -602,7 +1011,7 @@ async fn write_files(
     Ok(())
 }
 
-/// Logs of one compose service, with environment values masked.
+// Logs of one compose service, with environment values masked.
 pub async fn service_logs(
     state: &AppState,
     id: Uuid,
@@ -676,6 +1085,43 @@ pub async fn destroy(state: &AppState, id: Uuid, volumes: bool) -> Result<(), Ap
     Ok(())
 }
 
+/// A compose project name chosen by the user. It is the prefix of the stack's containers,
+/// networks and named volumes, so using the name of a project that already runs on the server
+/// (or whose volumes are still there) takes those volumes over. Names are unique per server.
+pub async fn claim_project(
+    state: &AppState,
+    server_id: Uuid,
+    except: Option<Uuid>,
+    name: &str,
+) -> Result<String, ApiError> {
+    let name = name.trim();
+    validate_name(name).map_err(core_error)?;
+    let taken = sqlx::query_scalar!(
+        r#"
+        SELECT id
+        FROM services
+        WHERE kind = 'compose'
+          AND server_id = $1
+          AND spec ->> 'project' = $2
+          AND ($3::uuid IS NULL OR id <> $3)
+        LIMIT 1
+        "#,
+        server_id,
+        name,
+        except
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    if taken.is_some() {
+        return Err(conflict(
+            "project_taken",
+            "another stack on this server already uses that project name",
+        ));
+    }
+    Ok(name.to_owned())
+}
+
 /// Fields a new stack row starts with.
 pub fn initial_spec(
     name: &str,
@@ -730,7 +1176,7 @@ mod tests {
         let long = "a".repeat(63);
         let first = project_name(&long);
         assert_eq!(first.len(), 47);
-        rudder_core::validate_name(&first).unwrap();
+        validate_name(&first).unwrap();
         assert_ne!(first, project_name(&long));
         assert!(project_name("web-").starts_with("web-"));
     }

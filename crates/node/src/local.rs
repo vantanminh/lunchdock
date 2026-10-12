@@ -19,9 +19,10 @@ use bollard::query_parameters::{
 use bollard::Docker;
 use futures_util::StreamExt;
 use rudder_core::{
-    compose_args, validate_env_key, validate_image_ref, validate_name, ArchiveSource, ByteStream,
-    ComposeAction, ContainerSpec, DockerInfo, Error, ExecOutput, ExecSpec, HealthState, NodeDriver,
-    RegistryAuth, VolumeMount, CACHE_TOKEN_FILE, PROXY_NETWORK,
+    compose_args, docker_config_with_logins, validate_env_key, validate_image_ref, validate_name,
+    ArchiveSource, ByteStream, ComposeAction, ComposeOptions, ContainerSpec, DockerInfo, Error,
+    ExecOutput, ExecSpec, HealthState, LogSink, NodeDriver, RegistryAuth, VolumeMount,
+    CACHE_TOKEN_FILE, PROXY_NETWORK,
 };
 use rudder_core::{
     ContainerInfo, LogLine, LogLineStream, LogStreamKind, TerminalInput, TerminalInputStream,
@@ -402,36 +403,80 @@ impl NodeDriver for LocalDriver {
         file: &str,
         action: ComposeAction,
     ) -> Result<String, Error> {
+        self.compose_run(project, file, action, &ComposeOptions::default(), None)
+            .await
+    }
+
+    async fn compose_run(
+        &self,
+        project: &str,
+        file: &str,
+        action: ComposeAction,
+        options: &ComposeOptions,
+        sink: Option<&LogSink>,
+    ) -> Result<String, Error> {
         let path = confined_path(&self.root, file)?;
         let path = path
             .to_str()
             .ok_or_else(|| Error::Validation("compose file path is not UTF-8".into()))?;
         let args = compose_args(project, path, action)?;
+        // Removed when this function returns or its future is dropped.
+        let config = TempDockerConfig::create(&self.root, &options.logins)?;
         let mut command = Command::new("docker");
         if let Some(socket) = &self.socket {
             command.env("DOCKER_HOST", format!("unix://{}", socket.display()));
         }
-        let output = command
+        if let Some(config) = &config {
+            command.env("DOCKER_CONFIG", config.path());
+        }
+        // Not a terminal: ask for line-per-event progress instead of redrawn bars.
+        command
+            .env("BUILDKIT_PROGRESS", "plain")
+            .env("COMPOSE_PROGRESS", "plain")
+            .env("COMPOSE_ANSI", "never");
+        let mut child = command
             .args(&args)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .output()
-            .await
+            .kill_on_drop(true)
+            .spawn()
             .map_err(Self::node)?;
-        let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
-        if !output.stderr.is_empty() {
-            if !text.is_empty() {
-                text.push('\n');
-            }
-            text.push_str(&String::from_utf8_lossy(&output.stderr));
+        let (lines, mut received) = tokio::sync::mpsc::unbounded_channel::<String>();
+        if let Some(stdout) = child.stdout.take() {
+            forward_lines(stdout, lines.clone());
         }
-        if output.status.success() {
-            Ok(text)
+        if let Some(stderr) = child.stderr.take() {
+            forward_lines(stderr, lines.clone());
+        }
+        drop(lines);
+        let mut captured = String::new();
+        let mut take = |line: String| {
+            if let Some(sink) = sink {
+                sink(&line);
+            }
+            captured.push_str(&line);
+            keep_tail(&mut captured, MAX_COMPOSE_CAPTURE);
+        };
+        let status = loop {
+            tokio::select! {
+                Some(line) = received.recv() => take(line),
+                status = child.wait() => break status.map_err(Self::node)?,
+            }
+        };
+        // The pipes stay open if a helper process outlives compose; do not wait for them.
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            while let Some(line) = received.recv().await {
+                take(line);
+            }
+        })
+        .await;
+        if status.success() {
+            Ok(captured)
         } else {
             Err(Error::Node(format!(
-                "docker compose exited {}: {text}",
-                output.status
+                "docker compose exited {status}: {}",
+                tail_chars(&captured, COMPOSE_ERROR_CHARS)
             )))
         }
     }
@@ -1245,6 +1290,118 @@ fn restart_policy(value: &str) -> Result<RestartPolicyNameEnum, Error> {
 }
 
 /// Join `relative` onto `root`, rejecting absolute paths and `..`.
+/// Most output a compose run keeps for its caller; the sink sees all of it.
+const MAX_COMPOSE_CAPTURE: usize = 256 * 1024;
+/// How much of the end of the output goes into the error of a failed run.
+const COMPOSE_ERROR_CHARS: usize = 2000;
+
+/// Read `reader` line by line and send each line, newline included.
+fn forward_lines<R>(reader: R, lines: tokio::sync::mpsc::UnboundedSender<String>)
+where
+    R: tokio::io::AsyncRead + Unpin + Send + 'static,
+{
+    tokio::spawn(async move {
+        let mut reader = tokio::io::BufReader::new(reader);
+        let mut buffer = Vec::new();
+        loop {
+            buffer.clear();
+            match tokio::io::AsyncBufReadExt::read_until(&mut reader, b'\n', &mut buffer).await {
+                Ok(0) | Err(_) => break,
+                Ok(_) => {
+                    let line = String::from_utf8_lossy(&buffer).into_owned();
+                    if lines.send(line).is_err() {
+                        break;
+                    }
+                }
+            }
+        }
+    });
+}
+
+/// Drop the start of `text` until at most `max` bytes remain, on a character boundary.
+fn keep_tail(text: &mut String, max: usize) {
+    if text.len() <= max {
+        return;
+    }
+    let mut cut = text.len() - max;
+    while !text.is_char_boundary(cut) {
+        cut += 1;
+    }
+    text.drain(..cut);
+}
+
+/// The last `max` characters of `text`, without trailing whitespace.
+fn tail_chars(text: &str, max: usize) -> &str {
+    let count = text.chars().count();
+    if count <= max {
+        return text.trim_end();
+    }
+    let start = text
+        .char_indices()
+        .nth(count - max)
+        .map_or(0, |(index, _)| index);
+    text[start..].trim_end()
+}
+
+/// A Docker config directory that holds registry logins for one compose run and is
+/// removed afterwards.
+struct TempDockerConfig {
+    dir: PathBuf,
+}
+
+impl TempDockerConfig {
+    fn create(root: &Path, logins: &[RegistryAuth]) -> Result<Option<Self>, Error> {
+        if logins.is_empty() {
+            return Ok(None);
+        }
+        let user_dir = std::env::var_os("DOCKER_CONFIG")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".docker")));
+        let existing = user_dir
+            .as_ref()
+            .and_then(|dir| std::fs::read_to_string(dir.join("config.json")).ok());
+        let plugin_dirs: Vec<String> = user_dir
+            .iter()
+            .map(|dir| dir.join("cli-plugins").display().to_string())
+            .collect();
+        // A broken config of the user's own is not ours to fix; run without it.
+        let text = docker_config_with_logins(existing.as_deref(), logins, &plugin_dirs)
+            .or_else(|_| docker_config_with_logins(None, logins, &plugin_dirs))?;
+        let dir = root.join("tmp").join(format!(
+            "docker-{}",
+            hex::encode(rudder_core::random_bytes::<8>())
+        ));
+        std::fs::create_dir_all(&dir).map_err(LocalDriver::node)?;
+        // From here the directory is removed on every exit path.
+        let config = Self { dir };
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&config.dir, std::fs::Permissions::from_mode(0o700))
+                .map_err(LocalDriver::node)?;
+        }
+        let file = config.dir.join("config.json");
+        std::fs::write(&file, text).map_err(LocalDriver::node)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600))
+                .map_err(LocalDriver::node)?;
+        }
+        Ok(Some(config))
+    }
+
+    fn path(&self) -> &Path {
+        &self.dir
+    }
+}
+
+impl Drop for TempDockerConfig {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.dir);
+    }
+}
+
 pub fn confined_path(root: &Path, relative: &str) -> Result<PathBuf, Error> {
     if relative.is_empty()
         || relative.contains('\0')

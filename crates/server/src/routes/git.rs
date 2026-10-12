@@ -380,6 +380,8 @@ async fn put_source(
             "git source is available for application services",
         ));
     }
+    super::github_repos::check_source_access(&state, body.provider_id, &body.repo, &body.branch)
+        .await?;
     let secret = hex::encode(rudder_core::random_bytes::<32>());
     let secret_enc = state.cipher.encrypt(secret.as_bytes()).map_err(|_| {
         ApiError::new(

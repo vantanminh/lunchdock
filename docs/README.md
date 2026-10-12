@@ -9,6 +9,7 @@ Operating and product documentation for this repository.
 | `ARCHITECTURE.md` | Layering and discovery rules |
 | `CONTEXT_RULES.md` | What to read when |
 | `TEST_MATRIX.md` | Behavior-to-proof map |
+| `panel-https.md` | Warning and steps for a panel opened over plain HTTP |
 | `product/` | Product contracts |
 | `stories/` | Story packets |
 | `decisions/` | Architecture and product decisions |

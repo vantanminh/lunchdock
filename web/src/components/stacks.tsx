@@ -7,13 +7,12 @@ import { errorMessage } from "../format";
 import { providerLabel, providerReady } from "../git";
 import { useT } from "../i18n";
 import {
-  BRANCHES,
-  COMPOSE_FILES,
   COMPOSE_STARTERS,
   MAIN_SERVICES,
   STACK_SOURCES,
 } from "../presets";
 import type { Schemas } from "../types";
+import { BranchField, ComposeFileField, RepositoryField } from "./git-pickers";
 import {
   Alert,
   Badge,
@@ -63,7 +62,7 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
   const navigate = useNavigate();
   const stack = useStack(serviceId);
   const action = useMutation({
-    mutationFn: (name: "up" | "down" | "restart" | "pull") =>
+    mutationFn: (name: "up" | "rebuild" | "update" | "down" | "restart" | "pull") =>
       api<Schemas["DeploymentView"]>(`/api/v1/services/${serviceId}/stack/${name}`, {
         method: "POST",
       }),
@@ -73,6 +72,32 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
       await queryClient.invalidateQueries({ queryKey: ["deployments", serviceId] });
     },
     onError: (error) => toast.error(errorMessage(error, t("Stack action failed"))),
+  });
+  const refresh = useMutation({
+    mutationFn: () =>
+      api<StackView>(`/api/v1/services/${serviceId}/stack/refresh`, { method: "POST" }),
+    onSuccess: async (next) => {
+      queryClient.setQueryData(["stack", serviceId], next);
+      toast.success(
+        next.missing_variables.length > 0
+          ? t("Read from Git. {count} variables still need a value.", {
+              count: next.missing_variables.length,
+            })
+          : t("Read from Git. Nothing is missing."),
+      );
+      await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
+    },
+    onError: (error) => toast.error(errorMessage(error, t("Could not read the compose file from Git"))),
+  });
+  const cancel = useMutation({
+    mutationFn: () =>
+      api(`/api/v1/services/${serviceId}/stack/cancel`, { method: "POST" }),
+    onSuccess: async () => {
+      toast.success(t("Stopping the running action…"));
+      await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
+      await queryClient.invalidateQueries({ queryKey: ["deployments", serviceId] });
+    },
+    onError: (error) => toast.error(errorMessage(error, t("Could not cancel the action"))),
   });
   const remove = useMutation({
     mutationFn: (volumes: boolean) =>
@@ -90,9 +115,33 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
   if (!view) {
     return <Empty>{t("Loading stack…")}</Empty>;
   }
-  const busy = view.service.status === "deploying" || action.isPending;
+  const running = view.service.status === "deploying";
+  const busy = running || action.isPending;
+  const builds = view.services.some((service) => service.build);
+  const pulls = view.services.some((service) => service.image);
+  const unread = view.source === "git" && !view.compose_yaml;
   return (
     <>
+      {unread ? (
+        <Alert
+          tone="info"
+          title={t("The compose file has not been read from Git yet")}
+          action={
+            <Button
+              size="sm"
+              icon="refresh"
+              disabled={busy || refresh.isPending}
+              onClick={() => refresh.mutate()}
+            >
+              {t("Refresh from Git")}
+            </Button>
+          }
+        >
+          {t(
+            "Read it now to see the variables it needs, the services and the generated file before the first deploy.",
+          )}
+        </Alert>
+      ) : null}
       {view.missing_variables.length > 0 ? (
         <Alert tone="warning">
           {t("Not set under Environment: {names}", { names: view.missing_variables.join(", ") })}
@@ -122,8 +171,41 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
         />
         <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
           <Button icon="play" disabled={busy} onClick={() => action.mutate("up")}>
-            {t("Deploy (up)")}
+            {view.build_on_deploy ? t("Build and deploy") : t("Deploy (up)")}
           </Button>
+          {builds && !view.build_on_deploy ? (
+            <Button
+              variant="secondary"
+              icon="zap"
+              disabled={busy}
+              title={t("Rebuild the images that have a build section, then deploy")}
+              onClick={() => action.mutate("rebuild")}
+            >
+              {t("Rebuild and deploy")}
+            </Button>
+          ) : null}
+          {view.source === "git" && !unread ? (
+            <Button
+              variant="secondary"
+              icon="refresh"
+              disabled={busy || refresh.isPending}
+              title={t("Read the compose file from the repository again without deploying")}
+              onClick={() => refresh.mutate()}
+            >
+              {t("Refresh from Git")}
+            </Button>
+          ) : null}
+          {pulls ? (
+            <Button
+              variant="secondary"
+              icon="download"
+              disabled={busy}
+              title={t("Fetch newer versions of every image, then deploy")}
+              onClick={() => action.mutate("update")}
+            >
+              {t("Pull and deploy")}
+            </Button>
+          ) : null}
           <Button
             variant="secondary"
             icon="refresh"
@@ -136,6 +218,7 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
             variant="secondary"
             icon="download"
             disabled={busy}
+            title={t("Download images without restarting anything")}
             onClick={() => action.mutate("pull")}
           >
             {t("Pull images")}
@@ -148,6 +231,20 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
           >
             {t("Stop (down)")}
           </Button>
+          {running ? (
+            <Button
+              variant="danger"
+              icon="close"
+              disabled={cancel.isPending}
+              onClick={() => {
+                if (window.confirm(t("Stop the running action? A build in progress is lost."))) {
+                  cancel.mutate();
+                }
+              }}
+            >
+              {t("Cancel")}
+            </Button>
+          ) : null}
           <Button
             variant="danger"
             icon="trash"
@@ -175,7 +272,9 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
       </Card>
       <Card title={t("Services")} flush>
         {view.services.length === 0 ? (
-          <Empty>{t("The compose file is read from Git on the first deploy.")}</Empty>
+          <Empty>
+            {t("The compose file is read from Git on the first deploy, or when you press Refresh from Git.")}
+          </Empty>
         ) : (
           <DataTable
             minWidth={560}
@@ -200,6 +299,11 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
                 </Td>
                 <Td className="font-mono text-[13px] text-ink-soft">
                   {service.image ?? t("build")}
+                  {service.build && service.image ? (
+                    <span className="ml-2 align-middle font-sans">
+                      <Badge value="builds from source" tone="outline" />
+                    </span>
+                  ) : null}
                 </Td>
                 <Td className="font-mono text-[13px] text-muted">{service.container}</Td>
                 <Td>
@@ -298,6 +402,11 @@ function SourceForm({
     },
   );
   const [mainService, setMainService] = useState(initial.main_service ?? "");
+  const [project, setProject] = useState(initial.project);
+  const deployed = Boolean(initial.compose_path);
+  const [buildOnDeploy, setBuildOnDeploy] = useState(initial.build_on_deploy);
+  const [deployOnPush, setDeployOnPush] = useState(initial.deploy_on_push);
+  const hasBuilds = initial.services.some((service) => service.build);
   const save = useMutation({
     mutationFn: (deploy: boolean) =>
       api<StackView>(`/api/v1/services/${serviceId}/stack`, {
@@ -307,6 +416,9 @@ function SourceForm({
           compose_yaml: source === "inline" ? yaml : undefined,
           git: source === "git" ? git : undefined,
           main_service: mainService || undefined,
+          project: !deployed && project.trim() !== initial.project ? project.trim() : undefined,
+          build_on_deploy: buildOnDeploy,
+          deploy_on_push: source === "git" ? deployOnPush : false,
         }),
       }).then(async (view) => {
         if (deploy) {
@@ -358,6 +470,25 @@ function SourceForm({
             />
           </Field>
         </div>
+        <Field
+          label={t("Compose project name")}
+          hint={
+            deployed
+              ? t(
+                  "Fixed after the first deploy: the containers and volumes already carry this name.",
+                )
+              : t(
+                  "Use the name of a project already running on the server to take over its containers and volumes.",
+                )
+          }
+        >
+          <TextInput
+            value={project}
+            disabled={deployed}
+            pattern="[a-z0-9][a-z0-9\-]*"
+            onChange={(event) => setProject(event.target.value)}
+          />
+        </Field>
         {source === "inline" ? (
           <Field label="docker-compose.yml" presets={<YamlStarters yaml={yaml} onPick={setYaml} />}>
             <TextArea
@@ -371,6 +502,47 @@ function SourceForm({
         ) : (
           <GitFields git={git} providers={providers} onChange={setGit} />
         )}
+        <fieldset className="grid gap-2.5 rounded-alert border border-line p-3.5">
+          <legend className="px-1.5 text-xs font-medium text-muted">{t("When deploying")}</legend>
+          <label className="flex items-start gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={buildOnDeploy}
+              onChange={(event) => setBuildOnDeploy(event.target.checked)}
+            />
+            <span>
+              <span className="font-medium text-ink">{t("Build images on every deploy")}</span>
+              <span className="block text-muted">
+                {hasBuilds
+                  ? t(
+                      "Services with a build section are rebuilt each time, so new code is picked up. Slower than reusing the images from the last build.",
+                    )
+                  : t(
+                      "Only matters for compose files with a build section. Without it, a deploy reuses images that were built earlier and never picks up new code.",
+                    )}
+              </span>
+            </span>
+          </label>
+          {source === "git" ? (
+            <label className="flex items-start gap-2.5 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={deployOnPush}
+                onChange={(event) => setDeployOnPush(event.target.checked)}
+              />
+              <span>
+                <span className="font-medium text-ink">{t("Deploy when I push to the branch")}</span>
+                <span className="block text-muted">
+                  {t(
+                    "Needs a Git provider connected with the GitHub button; pushes reach the panel through its webhook.",
+                  )}
+                </span>
+              </span>
+            </label>
+          ) : null}
+        </fieldset>
         <p className="text-sm text-muted">
           {t(
             "Use {variable} for values from the Environment tab; Rudder writes them to a mode 0600 {file} next to the generated file.",
@@ -409,6 +581,7 @@ function GitFields({
   onChange: (git: StackGit) => void;
 }) {
   const t = useT();
+  const provider = providers.find((item) => item.id === git.provider_id);
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Field label={t("Provider")}>
@@ -425,48 +598,31 @@ function GitFields({
           ))}
         </Select>
       </Field>
-      <Field label={t("Repository")}>
-        <TextInput
-          required
-          value={git.repo}
-          placeholder="https://github.com/org/stack.git"
-          onChange={(event) => onChange({ ...git, repo: event.target.value })}
-        />
-      </Field>
-      <Field
-        label={t("Branch")}
-        presets={
-          <QuickPick
-            label={t("Branch presets")}
-            options={BRANCHES}
-            value={git.branch}
-            onPick={(branch) => onChange({ ...git, branch })}
-          />
+      <RepositoryField
+        provider={provider}
+        value={git.repo}
+        placeholder="https://github.com/org/stack.git"
+        onChange={(repo, defaultBranch) =>
+          onChange({
+            ...git,
+            repo,
+            ...(defaultBranch ? { branch: defaultBranch, compose_file: "" } : {}),
+          })
         }
-      >
-        <TextInput
-          required
-          value={git.branch}
-          onChange={(event) => onChange({ ...git, branch: event.target.value })}
-        />
-      </Field>
-      <Field
-        label={t("Compose file path")}
-        presets={
-          <QuickPick
-            label={t("Compose file presets")}
-            options={COMPOSE_FILES}
-            value={git.compose_file}
-            onPick={(compose_file) => onChange({ ...git, compose_file })}
-          />
-        }
-      >
-        <TextInput
-          required
-          value={git.compose_file}
-          onChange={(event) => onChange({ ...git, compose_file: event.target.value })}
-        />
-      </Field>
+      />
+      <BranchField
+        provider={provider}
+        repo={git.repo}
+        value={git.branch}
+        onChange={(branch) => onChange({ ...git, branch })}
+      />
+      <ComposeFileField
+        provider={provider}
+        repo={git.repo}
+        branch={git.branch}
+        value={git.compose_file}
+        onChange={(compose_file) => onChange({ ...git, compose_file })}
+      />
     </div>
   );
 }

@@ -80,3 +80,23 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm build
+
+  changelog:
+    name: changelog
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Changes that people can see are in CHANGELOG.md
+        run: |
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          if printf '%s\n' "$changed" | grep -Eq '^(crates|web/src|deploy|templates)/'; then
+            if ! printf '%s\n' "$changed" | grep -qx 'CHANGELOG.md'; then
+              echo "::error::this pull request changes code but not CHANGELOG.md; add a line under [Unreleased] that says what users will notice"
+              exit 1
+            fi
+          fi

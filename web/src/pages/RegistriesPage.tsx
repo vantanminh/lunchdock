@@ -2,15 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
-import { Button, Card, Field, PickField, TextInput } from "../components/ui";
+import { Alert, Button, Card, Field, PickField, TextInput } from "../components/ui";
 import { useT } from "../i18n";
 import { REGISTRIES } from "../presets";
 import type { Schemas } from "../types";
+import { useConfirmSecret } from "../insecure";
 
 type Registry = Schemas["RegistryView"];
 
 export function RegistriesPage() {
   const t = useT();
+  const confirmSecret = useConfirmSecret();
   const queryClient = useQueryClient();
   const registries = useQuery({
     queryKey: ["registries"],
@@ -38,12 +40,19 @@ export function RegistriesPage() {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    create.mutate();
+    if (confirmSecret()) {
+      create.mutate();
+    }
   }
 
   return (
     <>
       <h1 className="text-2xl font-semibold">{t("Registries")}</h1>
+      <Alert tone="info">
+        {t(
+          "These logins are used for single-image services and for compose stacks, whose images are pulled with them too. Images that a Dockerfile pulls with FROM are not covered.",
+        )}
+      </Alert>
       <Card title={t("Add credentials")}>
         <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
           <div className="md:col-span-2">

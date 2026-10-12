@@ -25,8 +25,9 @@ use crate::routes::cache::{
 };
 use crate::routes::catalog::{
     CreateEnvironment, CreateProject, CreateServer, CreateService, CreatedServer, EnvVarView,
-    EnvironmentView, ProjectView, PutEnvVar, ServerView, ServiceSummary, ServiceView, UpdateServer,
-    UpdateService,
+    EnvironmentView, ImportEnv, ImportEnvEntry, ImportEnvError, ImportEnvResult, ProjectView,
+    PutEnvVar, ServerView, ServiceSummary, ServiceView, UpdateServer, UpdateService,
+    VerifyEnvResult, VerifyEnvVar,
 };
 use crate::routes::databases::{
     ConnectionView, CreateDatabase, DatabaseEngineView, LifecycleView, LogsView, UpdateDatabase,
@@ -42,6 +43,7 @@ use crate::routes::github_app::{
     CompleteGithubApp, GithubAppCreated, GithubAppInstalled, GithubAppManifest, InstallLink,
     StartGithubApp,
 };
+use crate::routes::github_repos::{GithubBranchesView, GithubComposeFilesView, GithubRepoView};
 use crate::routes::health::HealthResponse;
 use crate::routes::logs::{IngestEntry, IngestRequest, IngestResult, LogPage, UpdateRetention};
 use crate::routes::monitoring::{
@@ -49,8 +51,9 @@ use crate::routes::monitoring::{
     PruneResult, SaveAlert, SaveChannel, ServerUsage, ServiceUsage,
 };
 use crate::routes::stacks::{
-    CreateStack, DeployTemplate, GeneratedValue, StackLogsView, StackServiceView, StackView,
-    TemplateDeployed, TemplateDetail, TemplateVariableView, TemplateView, UpdateStack,
+    CreateStack, DeployTemplate, GeneratedValue, StackLogsView, StackServiceView,
+    StackVariableView, StackView, TemplateDeployed, TemplateDetail, TemplateVariableView,
+    TemplateView, UpdateStack,
 };
 use crate::routes::system::{PanelBackupRequest, SystemInfo};
 use crate::routes::updates::{ComponentsStarted, UpdateOverview, UpdateSettings, UpdateStarted};
@@ -101,6 +104,12 @@ use rudder_core::{
         UpdateService,
         EnvVarView,
         PutEnvVar,
+        ImportEnv,
+        ImportEnvEntry,
+        ImportEnvError,
+        ImportEnvResult,
+        VerifyEnvVar,
+        VerifyEnvResult,
         CertificateView,
         UploadCertificate,
         DomainView,
@@ -115,6 +124,9 @@ use rudder_core::{
         PanelView,
         UpdatePanel,
         GitProviderView,
+        GithubRepoView,
+        GithubBranchesView,
+        GithubComposeFilesView,
         CreateGitProvider,
         StartGithubApp,
         GithubAppManifest,
@@ -145,6 +157,7 @@ use rudder_core::{
         CreateStack,
         UpdateStack,
         StackServiceView,
+        StackVariableView,
         StackView,
         StackLogsView,
         TemplateVariableView,
@@ -672,6 +685,33 @@ const ROUTES: &[Route] = &[
         status: 200,
     },
     Route {
+        path: "/api/v1/git-providers/{id}/repositories",
+        method: HttpMethod::Get,
+        tag: "source",
+        summary: "Repositories the GitHub App installation can read",
+        request: None,
+        response: Some("[GithubRepoView]"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/git-providers/{id}/branches",
+        method: HttpMethod::Get,
+        tag: "source",
+        summary: "Branches of a repository the GitHub App can read (?repo=), default branch first",
+        request: None,
+        response: Some("GithubBranchesView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/git-providers/{id}/compose-files",
+        method: HttpMethod::Get,
+        tag: "source",
+        summary: "Compose files found in a repository branch (?repo=&branch=)",
+        request: None,
+        response: Some("GithubComposeFilesView"),
+        status: 200,
+    },
+    Route {
         path: "/api/v1/git-providers/{id}/webhook",
         method: HttpMethod::Post,
         tag: "source",
@@ -981,10 +1021,55 @@ const ROUTES: &[Route] = &[
         path: "/api/v1/services/{id}/stack/{action}",
         method: HttpMethod::Post,
         tag: "stacks",
-        summary: "Run up, down, restart, or pull in the background",
+        summary: "Run up, rebuild, update, down, restart, or pull in the background",
         request: None,
         response: Some("DeploymentView"),
         status: 202,
+    },
+    Route {
+        path: "/api/v1/services/{id}/env/import",
+        method: HttpMethod::Post,
+        tag: "catalog",
+        summary: "Preview or save many variables from the text of a .env file",
+        request: Some("ImportEnv"),
+        response: Some("ImportEnvResult"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/env/{key}/verify",
+        method: HttpMethod::Post,
+        tag: "catalog",
+        summary: "Check a typed value against the saved one without revealing it",
+        request: Some("VerifyEnvVar"),
+        response: Some("VerifyEnvResult"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/deployments/{deployment}/logs",
+        method: HttpMethod::Get,
+        tag: "edge",
+        summary: "The whole log of a deployment as plain text",
+        request: None,
+        response: None,
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/stack/cancel",
+        method: HttpMethod::Post,
+        tag: "stacks",
+        summary: "Stop the stack action that is running",
+        request: None,
+        response: None,
+        status: 202,
+    },
+    Route {
+        path: "/api/v1/services/{id}/stack/refresh",
+        method: HttpMethod::Post,
+        tag: "stacks",
+        summary: "Read the compose file from Git again and plan it, without deploying",
+        request: None,
+        response: Some("StackView"),
+        status: 200,
     },
     Route {
         path: "/api/v1/services/{id}/stack/logs",

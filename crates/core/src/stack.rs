@@ -14,6 +14,8 @@ pub struct StackService {
     /// Container name Traefik routes to on the proxy network.
     pub container: String,
     pub image: Option<String>,
+    /// The service has a `build:` section, so deploying builds it from source.
+    pub build: bool,
     pub routed: bool,
 }
 
@@ -148,6 +150,7 @@ pub fn transform_compose(project: &str, source: &str, routed: &[&str]) -> Result
                 .get("image")
                 .and_then(Value::as_str)
                 .map(str::to_owned),
+            build: service.contains_key("build"),
             name,
             container,
             routed: is_routed,
@@ -240,9 +243,19 @@ fn add_labels(service: &mut Mapping, project: &str, name: &str) -> Result<(), Er
     Ok(())
 }
 
-/// Names referenced as `${NAME}`, `${NAME:-default}`, or `${NAME?err}`, in order of first use.
-pub fn compose_variables(source: &str) -> Vec<String> {
-    let mut found: Vec<String> = Vec::new();
+/// A variable a compose file reads with `${NAME}`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VariableRef {
+    pub name: String,
+    /// Every use has a fallback (`${NAME:-x}`), so the stack runs without a value.
+    pub has_default: bool,
+    /// Some use is `${NAME?error}` or `${NAME:?error}`: compose refuses to start without it.
+    pub required: bool,
+}
+
+/// Variables referenced as `${NAME}`, `${NAME:-default}`, or `${NAME?err}`, in order of first use.
+pub fn compose_variable_refs(source: &str) -> Vec<VariableRef> {
+    let mut found: Vec<VariableRef> = Vec::new();
     let bytes = source.as_bytes();
     let mut index = 0;
     while index + 1 < bytes.len() {
@@ -258,8 +271,19 @@ pub fn compose_variables(source: &str) -> Vec<String> {
             }
             if end > start {
                 let name = &source[start..end];
-                if !found.iter().any(|existing| existing == name) {
-                    found.push(name.to_owned());
+                let rest = &source[end..];
+                let default = rest.starts_with(":-") || rest.starts_with('-');
+                let required = rest.starts_with(":?") || rest.starts_with('?');
+                match found.iter_mut().find(|existing| existing.name == name) {
+                    Some(existing) => {
+                        existing.has_default &= default;
+                        existing.required |= required;
+                    }
+                    None => found.push(VariableRef {
+                        name: name.to_owned(),
+                        has_default: default,
+                        required,
+                    }),
                 }
             }
             index = end;
@@ -268,6 +292,14 @@ pub fn compose_variables(source: &str) -> Vec<String> {
         index += 1;
     }
     found
+}
+
+/// Names referenced as `${NAME}`, `${NAME:-default}`, or `${NAME?err}`, in order of first use.
+pub fn compose_variables(source: &str) -> Vec<String> {
+    compose_variable_refs(source)
+        .into_iter()
+        .map(|variable| variable.name)
+        .collect()
 }
 
 /// Render a `.env` file. Values are single-quoted so compose does not interpolate them.
@@ -402,6 +434,27 @@ volumes:
         assert_eq!(
             compose_variables("a: ${A}\nb: ${B:-x} $${NOT} ${A} ${C?e}"),
             vec!["A", "B", "C"]
+        );
+        let refs = compose_variable_refs("a: ${A} ${A:-x}\nb: ${B:-x} ${B-y}\nc: ${C:?need}");
+        assert_eq!(
+            refs,
+            vec![
+                VariableRef {
+                    name: "A".into(),
+                    has_default: false,
+                    required: false
+                },
+                VariableRef {
+                    name: "B".into(),
+                    has_default: true,
+                    required: false
+                },
+                VariableRef {
+                    name: "C".into(),
+                    has_default: false,
+                    required: true
+                },
+            ]
         );
         let env = render_env_file(&[
             ("A".into(), "plain $value".into()),

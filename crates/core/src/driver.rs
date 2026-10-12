@@ -267,6 +267,23 @@ pub trait NodeDriver: Send + Sync {
         file: &str,
         action: crate::ComposeAction,
     ) -> Result<String, Error>;
+    /// [`compose`](Self::compose) with registry logins, and the output handed to
+    /// `sink` as it appears. A driver that cannot stream calls the sink once, with
+    /// everything, when the command ends. Dropping the future stops the command.
+    async fn compose_run(
+        &self,
+        project: &str,
+        file: &str,
+        action: crate::ComposeAction,
+        _options: &crate::ComposeOptions,
+        sink: Option<&crate::LogSink>,
+    ) -> Result<String, Error> {
+        let output = self.compose(project, file, action).await?;
+        if let Some(sink) = sink {
+            sink(&output);
+        }
+        Ok(output)
+    }
     async fn docker_health(&self, id: &str) -> Result<HealthState, Error>;
     async fn http_ready(&self, id: &str, port: u16, path: &str) -> Result<bool, Error>;
     async fn tcp_ready(&self, id: &str, port: u16) -> Result<bool, Error>;

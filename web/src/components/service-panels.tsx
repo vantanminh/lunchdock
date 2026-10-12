@@ -5,8 +5,11 @@ import { api, ApiError } from "../api";
 import { errorMessage, formatDuration, formatRelative, formatTime } from "../format";
 import { providerLabel, providerReady } from "../git";
 import { useT } from "../i18n";
-import { BRANCHES, BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
+import { BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
+import { useConfirmSecret } from "../insecure";
+import { useStack } from "./stacks";
+import { BranchField, RepositoryField } from "./git-pickers";
 import { Icon, type IconName } from "./icons";
 import {
   Alert,
@@ -17,7 +20,6 @@ import {
   DataTable,
   DefinitionList,
   Dialog,
-  Disclosure,
   Empty,
   Field,
   LogPre,
@@ -25,6 +27,7 @@ import {
   QuickPick,
   Select,
   Td,
+  TextArea,
   TextInput,
   Th,
   toneOf,
@@ -220,27 +223,23 @@ export function GitSourceCard({ service }: { service: ServiceDetail }) {
               ))}
             </Select>
           </Field>
-          <Field label={t("Repository")}>
-            <TextInput
-              required
-              value={repo}
-              placeholder="https://github.com/org/app.git"
-              onChange={(event) => setRepo(event.target.value)}
-            />
-          </Field>
-          <Field
-            label={t("Branch")}
-            presets={
-              <QuickPick
-                label={t("Branch presets")}
-                options={BRANCHES}
-                value={branch}
-                onPick={setBranch}
-              />
-            }
-          >
-            <TextInput required value={branch} onChange={(event) => setBranch(event.target.value)} />
-          </Field>
+          <RepositoryField
+            provider={(providers.data ?? []).find((item) => item.id === providerId)}
+            value={repo}
+            placeholder="https://github.com/org/app.git"
+            onChange={(url, defaultBranch) => {
+              setRepo(url);
+              if (defaultBranch) {
+                setBranch(defaultBranch);
+              }
+            }}
+          />
+          <BranchField
+            provider={(providers.data ?? []).find((item) => item.id === providerId)}
+            repo={repo}
+            value={branch}
+            onChange={setBranch}
+          />
           <PickField
             label={t("Build")}
             options={BUILD_STRATEGIES}
@@ -568,6 +567,65 @@ const statusIcons: Record<string, [IconName, string]> = {
   neutral: ["info", "border-line bg-sunken text-ink-soft"],
 };
 
+/** The last non-empty line of a log: what a running action is doing right now. */
+function currentStep(logs: string): string {
+  const lines = logs.trimEnd().split("\n");
+  return (lines[lines.length - 1] ?? "").trim().slice(0, 160);
+}
+
+/** A deployment's log. It opens by itself while the action runs and follows the newest line. */
+function DeploymentLog({
+  serviceId,
+  deployment,
+}: {
+  serviceId: string;
+  deployment: Deployment;
+}) {
+  const t = useT();
+  const running = deployment.status === "running";
+  const [open, setOpen] = useState(running);
+  return (
+    <details
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      className="group rounded-alert border border-line bg-surface [&_summary::-webkit-details-marker]:hidden"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-alert px-3.5 py-2.5 text-sm font-medium text-ink-soft select-none hover:bg-paper">
+        <Icon
+          name="chevronRight"
+          size={14}
+          className="text-faint transition-transform group-open:rotate-90"
+        />
+        {t("Logs")}
+        {running ? (
+          <span className="ml-1 inline-flex items-center gap-1.5 text-xs font-normal text-muted">
+            <span className="animate-live size-1.5 rounded-full bg-current" />
+            {t("live")}
+          </span>
+        ) : null}
+      </summary>
+      <div className="border-t border-line px-3.5 py-4">
+        {deployment.logs_truncated ? (
+          <p className="mb-2 text-xs text-muted">
+            {t("Showing the end of a long log.")}{" "}
+            <a
+              className="underline"
+              href={`/api/v1/services/${serviceId}/deployments/${deployment.id}/logs`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("Open the whole log")}
+            </a>
+          </p>
+        ) : null}
+        <LogPre className="max-h-96" empty={t("No log output yet.")} follow={running}>
+          {deployment.logs}
+        </LogPre>
+      </div>
+    </details>
+  );
+}
+
 /** Every build and release of the service, newest first. */
 export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; isStack: boolean }) {
   const t = useT();
@@ -575,7 +633,17 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
   const deployments = useQuery({
     queryKey: ["deployments", serviceId],
     queryFn: () => api<Deployment[]>(`/api/v1/services/${serviceId}/deployments`),
-    refetchInterval: 4000,
+    // Follow a running action closely; an idle service needs little polling.
+    refetchInterval: (query) =>
+      query.state.data?.some((deployment) => deployment.status === "running") ? 2000 : 4000,
+  });
+  const cancel = useMutation({
+    mutationFn: () => api(`/api/v1/services/${serviceId}/stack/cancel`, { method: "POST" }),
+    onSuccess: async () => {
+      toast.success(t("Stopping the running action…"));
+      await queryClient.invalidateQueries({ queryKey: ["deployments", serviceId] });
+    },
+    onError: (error) => toast.error(errorMessage(error, t("Could not cancel the action"))),
   });
   const rollback = useMutation({
     mutationFn: (deploymentId: string) =>
@@ -607,7 +675,9 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
       ) : (
         <ol className="divide-y divide-line border-t border-line">
           {list.map((deployment) => {
-            const [icon, cls] = statusIcons[toneOf(deployment.status)] ?? statusIcons.neutral!;
+            const live = deployment.status === "running";
+            const [icon, cls] =
+              statusIcons[live ? "live" : toneOf(deployment.status)] ?? statusIcons.neutral!;
             const duration =
               deployment.started_at && deployment.finished_at
                 ? formatDuration(
@@ -627,6 +697,26 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
                     <Badge value={deployment.status} />
                     <Badge value={deployment.trigger} tone="outline" />
                     {deployment.id === currentId ? <Badge value="current" tone="success" /> : null}
+                    {live && isStack ? (
+                      <Button
+                        className="ml-auto"
+                        variant="danger"
+                        size="sm"
+                        icon="close"
+                        disabled={cancel.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              t("Stop the running action? A build in progress is lost."),
+                            )
+                          ) {
+                            cancel.mutate();
+                          }
+                        }}
+                      >
+                        {t("Cancel")}
+                      </Button>
+                    ) : null}
                     {deployment.status === "succeeded" && !isStack && deployment.id !== currentId ? (
                       <Button
                         className="ml-auto"
@@ -641,7 +731,9 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
                     ) : null}
                   </div>
                   <p className="mt-1.5 truncate font-mono text-[13px] text-ink-soft">
-                    {deployment.image_ref ?? t("no image")}
+                    {live && deployment.logs
+                      ? currentStep(deployment.logs)
+                      : (deployment.image_ref ?? t("no image"))}
                   </p>
                   <p className="mt-0.5 text-xs text-muted">
                     <time dateTime={deployment.created_at} title={formatTime(deployment.created_at)}>
@@ -655,13 +747,9 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
                       {deployment.error}
                     </p>
                   ) : null}
-                  {deployment.logs ? (
+                  {deployment.logs || live ? (
                     <div className="mt-3">
-                      <Disclosure title={t("Logs")}>
-                        <LogPre className="max-h-64" empty={t("No log output yet.")}>
-                          {deployment.logs}
-                        </LogPre>
-                      </Disclosure>
+                      <DeploymentLog serviceId={serviceId} deployment={deployment} />
                     </div>
                   ) : null}
                 </div>
@@ -675,8 +763,15 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
 }
 
 /** Encrypted, write-only environment variables for the service. */
-export function EnvironmentPanel({ serviceId }: { serviceId: string }) {
+export function EnvironmentPanel({
+  serviceId,
+  isStack = false,
+}: {
+  serviceId: string;
+  isStack?: boolean;
+}) {
   const t = useT();
+  const confirmSecret = useConfirmSecret();
   const queryClient = useQueryClient();
   const vars = useQuery({
     queryKey: ["env", serviceId],
@@ -697,139 +792,447 @@ export function EnvironmentPanel({ serviceId }: { serviceId: string }) {
       setKey("");
       setValue("");
       await queryClient.invalidateQueries({ queryKey: ["env", serviceId] });
+      await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
     },
     onError: (error) => toast.error(errorMessage(error, t("Could not save the variable"))),
   });
   const remove = useMutation({
     mutationFn: (name: string) =>
       api(`/api/v1/services/${serviceId}/env/${encodeURIComponent(name)}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["env", serviceId] }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["env", serviceId] });
+      await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
+    },
     onError: (error) => toast.error(errorMessage(error, t("Could not delete the variable"))),
   });
   const list = vars.data ?? [];
+  const stack = useStack(serviceId, isStack);
+  const needed = stack.data?.variable_details.filter((variable) => !variable.set) ?? [];
+  const [checking, setChecking] = useState<EnvVar | null>(null);
+  return (
+    <div className="grid gap-6">
+      {isStack && stack.data ? (
+        <StackVariables stack={stack.data} needed={needed} onPick={setKey} />
+      ) : null}
+      <Card
+        title={t("Environment variables")}
+        description={t(
+          "Values are encrypted and write-only. Saving an existing key replaces its value; redeploy to apply.",
+        )}
+        flush
+      >
+        <form
+          className="grid gap-4 px-5 pb-5 sm:px-6 md:grid-cols-[1fr_2fr_auto]"
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault();
+            if (confirmSecret()) {
+              save.mutate();
+            }
+          }}
+        >
+          <Field
+            label={t("Key")}
+            presets={
+              <QuickPick
+                label={needed.length > 0 ? t("Variables to set") : t("Common variables")}
+                options={(needed.length > 0
+                ? needed.map((variable) => variable.name)
+                : ENV_KEYS.map((item) => item.key)
+              ).map((name) => ({ label: name, value: name }))}
+                value={key}
+                onPick={setKey}
+              />
+            }
+          >
+            <TextInput
+              required
+              value={key}
+              placeholder="DATABASE_URL"
+              onChange={(event) => setKey(event.target.value)}
+            />
+          </Field>
+          <Field
+            label={t("Value")}
+            presets={
+              suggestedValues.length > 0 ? (
+                <QuickPick
+                  label={t("Common values")}
+                  options={suggestedValues.map((item) => ({ label: item, value: item }))}
+                  value={value}
+                  onPick={setValue}
+                />
+              ) : undefined
+            }
+          >
+            <TextInput
+              required
+              type="password"
+              autoComplete="off"
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+            />
+          </Field>
+          <div className="grid content-start gap-2">
+            <span className="hidden text-[13px] font-medium text-transparent select-none md:block">
+              {t("Save")}
+            </span>
+            <Button type="submit" disabled={save.isPending}>
+              {t("Save")}
+            </Button>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-ink-soft md:col-span-3">
+            <input
+              type="checkbox"
+              checked={buildSecret}
+              onChange={(event) => setBuildSecret(event.target.checked)}
+            />
+            {t("Build secret")}
+            <span className="text-muted">— {t("only available while building the image")}</span>
+          </label>
+        </form>
+        {list.length === 0 && !vars.isLoading ? (
+          <div className="border-t border-line">
+            <Empty icon="sliders" title={t("No variables yet")}>
+              {t("Add the settings and secrets your service reads at startup.")}
+            </Empty>
+          </div>
+        ) : (
+          <DataTable
+            minWidth={640}
+            head={
+              <>
+                <Th>{t("Key")}</Th>
+                <Th>{t("Value")}</Th>
+                <Th>{t("Updated")}</Th>
+                <Th>{t("Type")}</Th>
+                <Th>
+                  <span className="sr-only">{t("Actions")}</span>
+                </Th>
+              </>
+            }
+          >
+            {list.map((item) => (
+              <tr key={item.key}>
+                <Td className="font-mono text-[13px] font-medium text-ink">{item.key}</Td>
+                <Td className="font-mono text-[13px] text-faint" title={t("Write-only")}>
+                  •••••••• <span className="font-sans text-xs">{t("{count} characters", { count: item.length })}</span>
+                </Td>
+                <Td className="text-[13px] text-muted">
+                  <time dateTime={item.updated_at} title={formatTime(item.updated_at)}>
+                    {formatRelative(item.updated_at)}
+                  </time>
+                </Td>
+                <Td>
+                  <Badge
+                    value={item.is_build_secret ? "build secret" : "runtime"}
+                    tone="outline"
+                  />
+                </Td>
+                <Td className="text-right whitespace-nowrap">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="check"
+                    title={t("Type the value to confirm it was saved correctly")}
+                    onClick={() => setChecking(item)}
+                  >
+                    {t("Check value")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="trash"
+                    className="text-danger hover:bg-danger-soft hover:text-danger"
+                    aria-label={t("Delete {key}", { key: item.key })}
+                    title={t("Delete")}
+                    onClick={() => {
+                      if (window.confirm(t("Delete {key}?", { key: item.key }))) {
+                        remove.mutate(item.key);
+                      }
+                    }}
+                  />
+                </Td>
+              </tr>
+            ))}
+          </DataTable>
+        )}
+      </Card>
+      <ImportEnvCard serviceId={serviceId} />
+      {checking ? (
+        <CheckValueDialog serviceId={serviceId} item={checking} onClose={() => setChecking(null)} />
+      ) : null}
+    </div>
+  );
+}
+
+type EnvVar = Schemas["EnvVarView"];
+
+/** The variables a compose file reads that have no value yet, so none is found only after a deploy. */
+function StackVariables({
+  stack,
+  needed,
+  onPick,
+}: {
+  stack: Schemas["StackView"];
+  needed: Schemas["StackVariableView"][];
+  onPick: (name: string) => void;
+}) {
+  const t = useT();
+  if (stack.source === "git" && !stack.compose_yaml) {
+    return (
+      <Alert tone="info" title={t("Variables are not known yet")}>
+        {t(
+          "The compose file is still in Git. Press Refresh from Git on the General tab to list the variables it reads.",
+        )}
+      </Alert>
+    );
+  }
+  if (needed.length === 0) {
+    return stack.variable_details.length === 0 ? null : (
+      <Alert tone="success">{t("Every variable the compose file reads has a value or a fallback.")}</Alert>
+    );
+  }
   return (
     <Card
-      title={t("Environment variables")}
+      title={t("Variables this stack reads")}
+      description={t("Pick one to fill in its key below. Variables with a fallback can stay empty.")}
+    >
+      <ul className="flex flex-wrap gap-2">
+        {needed.map((variable) => (
+          <li key={variable.name}>
+            <button
+              type="button"
+              onClick={() => onPick(variable.name)}
+              className="inline-flex items-center gap-2 rounded-control border border-line px-2.5 py-1.5 font-mono text-[13px] text-ink transition-colors hover:bg-sunken"
+            >
+              {variable.name}
+              <Badge
+                value={variable.has_default ? "optional" : variable.required ? "required" : "needed"}
+                tone={variable.has_default ? "outline" : "live"}
+              />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+type ImportPreview = Schemas["ImportEnvResult"];
+
+/** Paste or upload a `.env` file, see what would change, then save every key at once. */
+function ImportEnvCard({ serviceId }: { serviceId: string }) {
+  const t = useT();
+  const confirmSecret = useConfirmSecret();
+  const queryClient = useQueryClient();
+  const [text, setText] = useState("");
+  const [buildSecret, setBuildSecret] = useState(false);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const run = useMutation({
+    mutationFn: (dryRun: boolean) =>
+      api<ImportPreview>(`/api/v1/services/${serviceId}/env/import`, {
+        method: "POST",
+        body: JSON.stringify({ text, is_build_secret: buildSecret, dry_run: dryRun }),
+      }),
+    onSuccess: async (result, dryRun) => {
+      setPreview(result);
+      if (!dryRun) {
+        const count = result.entries.filter((entry) => entry.status !== "unchanged").length;
+        toast.success(t("{count} variables saved", { count }));
+        setText("");
+        setPreview(null);
+        await queryClient.invalidateQueries({ queryKey: ["env", serviceId] });
+        await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
+      }
+    },
+    onError: (error) => toast.error(errorMessage(error, t("Could not import the variables"))),
+  });
+  const changes = preview?.entries.filter((entry) => entry.status !== "unchanged").length ?? 0;
+  return (
+    <Card
+      title={t("Import .env")}
       description={t(
-        "Values are encrypted and write-only. Saving an existing key replaces its value; redeploy to apply.",
+        "Paste the contents of a .env file or choose one. Nothing is saved until you press Apply.",
       )}
-      flush
+    >
+      <div className="grid gap-4">
+        <TextArea
+          aria-label={t("Contents of a .env file")}
+          className="min-h-40"
+          placeholder={"DATABASE_URL=postgres://user:pass@db/app\nPORT=3000"}
+          autoComplete="off"
+          spellCheck={false}
+          value={text}
+          onChange={(event) => {
+            setText(event.target.value);
+            setPreview(null);
+          }}
+        />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline">
+            <Icon name="download" size={15} />
+            {t("Choose a file")}
+            <input
+              type="file"
+              className="sr-only"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) {
+                  setText(await file.text());
+                  setPreview(null);
+                }
+              }}
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
+            <input
+              type="checkbox"
+              checked={buildSecret}
+              onChange={(event) => {
+                setBuildSecret(event.target.checked);
+                setPreview(null);
+              }}
+            />
+            {t("Build secret")}
+          </label>
+          <div className="ml-auto flex gap-2">
+            <Button
+              variant="secondary"
+              disabled={!text.trim() || run.isPending}
+              onClick={() => run.mutate(true)}
+            >
+              {t("Preview")}
+            </Button>
+            <Button
+              disabled={!preview || preview.errors.length > 0 || changes === 0 || run.isPending}
+              onClick={() => {
+                if (confirmSecret()) {
+                  run.mutate(false);
+                }
+              }}
+            >
+              {t("Apply")}
+            </Button>
+          </div>
+        </div>
+        {preview ? (
+          <div className="grid gap-3">
+            {preview.errors.length > 0 ? (
+              <Alert tone="error" title={t("Fix these lines first")}>
+                <ul className="list-disc pl-5">
+                  {preview.errors.map((error) => (
+                    <li key={`${error.line}-${error.message}`}>
+                      {t("Line {line}: {message}", { line: error.line, message: error.message })}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            ) : null}
+            {preview.entries.length > 0 ? (
+              <ul className="divide-y divide-line rounded-control border border-line text-sm">
+                {preview.entries.map((entry) => (
+                  <li key={entry.key} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <span className="min-w-0 truncate font-mono text-[13px] text-ink">
+                      {entry.key}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-3 text-xs text-muted">
+                      {t("{count} characters", { count: entry.length })}
+                      <Badge
+                        value={entry.status}
+                        tone={entry.status === "unchanged" ? "outline" : "live"}
+                      />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {preview.errors.length === 0 ? (
+              <p className="text-sm text-muted">
+                {changes === 0
+                  ? t("Every key is already saved with this value.")
+                  : t("{count} variables will be saved. Values are never shown again.", {
+                      count: changes,
+                    })}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+/** Type a value and learn whether it equals the saved one; the saved value is never sent back. */
+function CheckValueDialog({
+  serviceId,
+  item,
+  onClose,
+}: {
+  serviceId: string;
+  item: EnvVar;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const confirmSecret = useConfirmSecret();
+  const [value, setValue] = useState("");
+  const verify = useMutation({
+    mutationFn: () =>
+      api<Schemas["VerifyEnvResult"]>(
+        `/api/v1/services/${serviceId}/env/${encodeURIComponent(item.key)}/verify`,
+        {
+          method: "POST",
+          body: JSON.stringify({ value, is_build_secret: item.is_build_secret }),
+        },
+      ),
+    onError: (error) => toast.error(errorMessage(error, t("Could not check the value"))),
+  });
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t("Check {key}", { key: item.key })}
+      description={t(
+        "The saved value is never shown. Type what you expect it to be and the panel says whether it matches.",
+      )}
     >
       <form
-        className="grid gap-4 px-5 pb-5 sm:px-6 md:grid-cols-[1fr_2fr_auto]"
+        className="grid gap-4"
         onSubmit={(event: FormEvent) => {
           event.preventDefault();
-          save.mutate();
+          if (confirmSecret()) {
+            verify.mutate();
+          }
         }}
       >
-        <Field
-          label={t("Key")}
-          presets={
-            <QuickPick
-              label={t("Common variables")}
-              options={ENV_KEYS.map((item) => ({ label: item.key, value: item.key }))}
-              value={key}
-              onPick={setKey}
-            />
-          }
-        >
-          <TextInput
-            required
-            value={key}
-            placeholder="DATABASE_URL"
-            onChange={(event) => setKey(event.target.value)}
-          />
-        </Field>
-        <Field
-          label={t("Value")}
-          presets={
-            suggestedValues.length > 0 ? (
-              <QuickPick
-                label={t("Common values")}
-                options={suggestedValues.map((item) => ({ label: item, value: item }))}
-                value={value}
-                onPick={setValue}
-              />
-            ) : undefined
-          }
-        >
+        <Field label={t("Value")}>
           <TextInput
             required
             type="password"
             autoComplete="off"
+            autoFocus
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => {
+              setValue(event.target.value);
+              verify.reset();
+            }}
           />
         </Field>
-        <div className="grid content-start gap-2">
-          <span className="hidden text-[13px] font-medium text-transparent select-none md:block">
-            {t("Save")}
-          </span>
-          <Button type="submit" disabled={save.isPending}>
-            {t("Save")}
+        {verify.data ? (
+          verify.data.matches ? (
+            <Alert tone="success">{t("It matches the saved value.")}</Alert>
+          ) : (
+            <Alert tone="error">{t("It does not match the saved value.")}</Alert>
+          )
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>
+            {t("Close")}
+          </Button>
+          <Button type="submit" disabled={verify.isPending}>
+            {t("Check")}
           </Button>
         </div>
-        <label className="flex items-center gap-2 text-sm text-ink-soft md:col-span-3">
-          <input
-            type="checkbox"
-            checked={buildSecret}
-            onChange={(event) => setBuildSecret(event.target.checked)}
-          />
-          {t("Build secret")}
-          <span className="text-muted">— {t("only available while building the image")}</span>
-        </label>
       </form>
-      {list.length === 0 && !vars.isLoading ? (
-        <div className="border-t border-line">
-          <Empty icon="sliders" title={t("No variables yet")}>
-            {t("Add the settings and secrets your service reads at startup.")}
-          </Empty>
-        </div>
-      ) : (
-        <DataTable
-          minWidth={480}
-          head={
-            <>
-              <Th>{t("Key")}</Th>
-              <Th>{t("Value")}</Th>
-              <Th>{t("Type")}</Th>
-              <Th>
-                <span className="sr-only">{t("Actions")}</span>
-              </Th>
-            </>
-          }
-        >
-          {list.map((item) => (
-            <tr key={item.key}>
-              <Td className="font-mono text-[13px] font-medium text-ink">{item.key}</Td>
-              <Td className="font-mono text-[13px] text-faint" title={t("Write-only")}>
-                ••••••••
-              </Td>
-              <Td>
-                <Badge
-                  value={item.is_build_secret ? "build secret" : "runtime"}
-                  tone="outline"
-                />
-              </Td>
-              <Td className="text-right">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="trash"
-                  className="text-danger hover:bg-danger-soft hover:text-danger"
-                  aria-label={t("Delete {key}", { key: item.key })}
-                  title={t("Delete")}
-                  onClick={() => {
-                    if (window.confirm(t("Delete {key}?", { key: item.key }))) {
-                      remove.mutate(item.key);
-                    }
-                  }}
-                />
-              </Td>
-            </tr>
-          ))}
-        </DataTable>
-      )}
-    </Card>
+    </Dialog>
   );
 }

@@ -12,6 +12,7 @@ mod crypto;
 mod database;
 mod driver;
 mod envelope;
+mod envfile;
 mod error;
 mod github_app;
 mod image_ref;
@@ -48,7 +49,9 @@ pub use certs::{
     certificate_matches_host, matching_certificate, validate_key_and_chain, CertificateDetails,
     HostMatch,
 };
-pub use compose::{compose_args, ComposeAction};
+pub use compose::{
+    compose_args, docker_config_with_logins, ComposeAction, ComposeOptions, LogSink,
+};
 pub use crypto::Cipher;
 pub use database::{connection_string, database_runtime, DatabaseRequest, DatabaseRuntime, Engine};
 pub use driver::{
@@ -58,6 +61,9 @@ pub use driver::{
     TerminalInput, TerminalInputStream, VolumeMount,
 };
 pub use envelope::{Decryptor, Encryptor, MAGIC as ENVELOPE_MAGIC};
+pub use envfile::{
+    parse_env_text, EnvEntry, EnvParse, EnvParseError, MAX_ENV_VALUE_BYTES, MAX_IMPORT_ENTRIES,
+};
 pub use error::Error;
 pub use github_app::{
     github_app_jwt, github_app_manifest, github_repo_full_name, is_private_host, validate_app_name,
@@ -79,10 +85,10 @@ pub use metrics::{
     ALERT_KINDS, SAMPLE_INTERVAL_SECS,
 };
 pub use release::{
-    in_maintenance_window, parse_maintenance_window, parse_sha256sums, parse_version, pick_release,
-    sha256_hex, validate_pinned_image, verify_minisign, verify_release, GithubAsset, GithubRelease,
-    ReleaseImages, ReleaseManifest, UpdateChannel, AGENT_TARGETS, RELEASE_FORMAT, RELEASE_MANIFEST,
-    RELEASE_SIGNATURE, RELEASE_SUMS,
+    in_maintenance_window, newer_releases, parse_maintenance_window, parse_sha256sums,
+    parse_version, pick_release, sha256_hex, validate_pinned_image, verify_minisign,
+    verify_release, GithubAsset, GithubRelease, ReleaseImages, ReleaseManifest, UpdateChannel,
+    AGENT_TARGETS, RELEASE_FORMAT, RELEASE_MANIFEST, RELEASE_SIGNATURE, RELEASE_SUMS,
 };
 pub use retention::{expired_ids, BackupPoint, RetentionPolicy};
 pub use rollout::{
@@ -90,8 +96,8 @@ pub use rollout::{
 };
 pub use schedule::{is_due, next_after, parse_timezone, validate_schedule, PRESETS};
 pub use stack::{
-    compose_variables, render_env_file, transform_compose, validate_compose_service, StackPlan,
-    StackService, MAX_COMPOSE_BYTES,
+    compose_variable_refs, compose_variables, render_env_file, transform_compose,
+    validate_compose_service, StackPlan, StackService, VariableRef, MAX_COMPOSE_BYTES,
 };
 pub use template::{ResolvedTemplate, Template, TemplateVariable, VariableKind};
 pub use traefik::{
