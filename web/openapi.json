@@ -2886,6 +2886,27 @@
         }
       }
     },
+    "/api/v1/services/{id}/stack/refresh": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Read the compose file from Git again and plan it, without deploying",
+        "operationId": "post_v1_services__id__stack_refresh",
+        "responses": {
+          "200": {
+            "description": "Read the compose file from Git again and plan it, without deploying",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/stack/{action}": {
       "post": {
         "tags": [

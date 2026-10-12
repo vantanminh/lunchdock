@@ -74,6 +74,22 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
     },
     onError: (error) => toast.error(errorMessage(error, t("Stack action failed"))),
   });
+  const refresh = useMutation({
+    mutationFn: () =>
+      api<StackView>(`/api/v1/services/${serviceId}/stack/refresh`, { method: "POST" }),
+    onSuccess: async (next) => {
+      queryClient.setQueryData(["stack", serviceId], next);
+      toast.success(
+        next.missing_variables.length > 0
+          ? t("Read from Git. {count} variables still need a value.", {
+              count: next.missing_variables.length,
+            })
+          : t("Read from Git. Nothing is missing."),
+      );
+      await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
+    },
+    onError: (error) => toast.error(errorMessage(error, t("Could not read the compose file from Git"))),
+  });
   const cancel = useMutation({
     mutationFn: () =>
       api(`/api/v1/services/${serviceId}/stack/cancel`, { method: "POST" }),
@@ -104,8 +120,29 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
   const busy = running || action.isPending;
   const builds = view.services.some((service) => service.build);
   const pulls = view.services.some((service) => service.image);
+  const unread = view.source === "git" && !view.compose_yaml;
   return (
     <>
+      {unread ? (
+        <Alert
+          tone="info"
+          title={t("The compose file has not been read from Git yet")}
+          action={
+            <Button
+              size="sm"
+              icon="refresh"
+              disabled={busy || refresh.isPending}
+              onClick={() => refresh.mutate()}
+            >
+              {t("Refresh from Git")}
+            </Button>
+          }
+        >
+          {t(
+            "Read it now to see the variables it needs, the services and the generated file before the first deploy.",
+          )}
+        </Alert>
+      ) : null}
       {view.missing_variables.length > 0 ? (
         <Alert tone="warning">
           {t("Not set under Environment: {names}", { names: view.missing_variables.join(", ") })}
@@ -146,6 +183,17 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
               onClick={() => action.mutate("rebuild")}
             >
               {t("Rebuild and deploy")}
+            </Button>
+          ) : null}
+          {view.source === "git" && !unread ? (
+            <Button
+              variant="secondary"
+              icon="refresh"
+              disabled={busy || refresh.isPending}
+              title={t("Read the compose file from the repository again without deploying")}
+              onClick={() => refresh.mutate()}
+            >
+              {t("Refresh from Git")}
             </Button>
           ) : null}
           {pulls ? (
@@ -225,7 +273,9 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
       </Card>
       <Card title={t("Services")} flush>
         {view.services.length === 0 ? (
-          <Empty>{t("The compose file is read from Git on the first deploy.")}</Empty>
+          <Empty>
+            {t("The compose file is read from Git on the first deploy, or when you press Refresh from Git.")}
+          </Empty>
         ) : (
           <DataTable
             minWidth={560}

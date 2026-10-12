@@ -1602,6 +1602,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/stack/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read the compose file from Git again and plan it, without deploying */
+        post: operations["post_v1_services__id__stack_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/stack/{action}": {
         parameters: {
             query?: never;
@@ -6043,6 +6060,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StackLogsView"];
+                };
+            };
+        };
+    };
+    post_v1_services__id__stack_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read the compose file from Git again and plan it, without deploying */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackView"];
                 };
             };
         };

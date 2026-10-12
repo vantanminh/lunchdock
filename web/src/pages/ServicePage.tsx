@@ -419,7 +419,7 @@ function Panel({
     case "deployments":
       return <DeploymentsPanel serviceId={id} isStack={isStack} />;
     case "environment":
-      return <EnvironmentPanel serviceId={id} />;
+      return <EnvironmentPanel serviceId={id} isStack={isStack} />;
     case "domains":
       return <DomainsPanel serviceId={id} stackServices={stackServices} mainService={mainService} />;
     case "cache":

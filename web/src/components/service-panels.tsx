@@ -8,6 +8,7 @@ import { useT } from "../i18n";
 import { BRANCHES, BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
 import { useConfirmSecret } from "../insecure";
+import { useStack } from "./stacks";
 import { Icon, type IconName } from "./icons";
 import {
   Alert,
@@ -765,7 +766,13 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
 }
 
 /** Encrypted, write-only environment variables for the service. */
-export function EnvironmentPanel({ serviceId }: { serviceId: string }) {
+export function EnvironmentPanel({
+  serviceId,
+  isStack = false,
+}: {
+  serviceId: string;
+  isStack?: boolean;
+}) {
   const t = useT();
   const confirmSecret = useConfirmSecret();
   const queryClient = useQueryClient();
@@ -788,19 +795,28 @@ export function EnvironmentPanel({ serviceId }: { serviceId: string }) {
       setKey("");
       setValue("");
       await queryClient.invalidateQueries({ queryKey: ["env", serviceId] });
+      await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
     },
     onError: (error) => toast.error(errorMessage(error, t("Could not save the variable"))),
   });
   const remove = useMutation({
     mutationFn: (name: string) =>
       api(`/api/v1/services/${serviceId}/env/${encodeURIComponent(name)}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["env", serviceId] }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["env", serviceId] });
+      await queryClient.invalidateQueries({ queryKey: ["stack", serviceId] });
+    },
     onError: (error) => toast.error(errorMessage(error, t("Could not delete the variable"))),
   });
   const list = vars.data ?? [];
+  const stack = useStack(serviceId, isStack);
+  const needed = stack.data?.variable_details.filter((variable) => !variable.set) ?? [];
   const [checking, setChecking] = useState<EnvVar | null>(null);
   return (
     <div className="grid gap-6">
+      {isStack && stack.data ? (
+        <StackVariables stack={stack.data} needed={needed} onPick={setKey} />
+      ) : null}
       <Card
         title={t("Environment variables")}
         description={t(
@@ -821,8 +837,11 @@ export function EnvironmentPanel({ serviceId }: { serviceId: string }) {
             label={t("Key")}
             presets={
               <QuickPick
-                label={t("Common variables")}
-                options={ENV_KEYS.map((item) => ({ label: item.key, value: item.key }))}
+                label={needed.length > 0 ? t("Variables to set") : t("Common variables")}
+                options={(needed.length > 0
+                ? needed.map((variable) => variable.name)
+                : ENV_KEYS.map((item) => item.key)
+              ).map((name) => ({ label: name, value: name }))}
                 value={key}
                 onPick={setKey}
               />
@@ -950,6 +969,57 @@ export function EnvironmentPanel({ serviceId }: { serviceId: string }) {
 }
 
 type EnvVar = Schemas["EnvVarView"];
+
+/** The variables a compose file reads that have no value yet, so none is found only after a deploy. */
+function StackVariables({
+  stack,
+  needed,
+  onPick,
+}: {
+  stack: Schemas["StackView"];
+  needed: Schemas["StackVariableView"][];
+  onPick: (name: string) => void;
+}) {
+  const t = useT();
+  if (stack.source === "git" && !stack.compose_yaml) {
+    return (
+      <Alert tone="info" title={t("Variables are not known yet")}>
+        {t(
+          "The compose file is still in Git. Press Refresh from Git on the General tab to list the variables it reads.",
+        )}
+      </Alert>
+    );
+  }
+  if (needed.length === 0) {
+    return stack.variable_details.length === 0 ? null : (
+      <Alert tone="success">{t("Every variable the compose file reads has a value or a fallback.")}</Alert>
+    );
+  }
+  return (
+    <Card
+      title={t("Variables this stack reads")}
+      description={t("Pick one to fill in its key below. Variables with a fallback can stay empty.")}
+    >
+      <ul className="flex flex-wrap gap-2">
+        {needed.map((variable) => (
+          <li key={variable.name}>
+            <button
+              type="button"
+              onClick={() => onPick(variable.name)}
+              className="inline-flex items-center gap-2 rounded-control border border-line px-2.5 py-1.5 font-mono text-[13px] text-ink transition-colors hover:bg-sunken"
+            >
+              {variable.name}
+              <Badge
+                value={variable.has_default ? "optional" : variable.required ? "required" : "needed"}
+                tone={variable.has_default ? "outline" : "live"}
+              />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
 type ImportPreview = Schemas["ImportEnvResult"];
 
 /** Paste or upload a `.env` file, see what would change, then save every key at once. */

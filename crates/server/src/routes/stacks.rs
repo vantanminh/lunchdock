@@ -188,6 +188,7 @@ pub fn router() -> axum::Router<AppState> {
         )
         .route("/api/v1/services/{id}/stack/logs", get(stack_logs))
         .route("/api/v1/services/{id}/stack/cancel", post(cancel_stack))
+        .route("/api/v1/services/{id}/stack/refresh", post(refresh_stack))
         .route("/api/v1/services/{id}/stack/{action}", post(stack_action))
         .route("/api/v1/templates", get(list_templates))
         .route("/api/v1/templates/{slug}", get(get_template))
@@ -431,6 +432,27 @@ async fn stack_action(
     )
     .await;
     Ok((StatusCode::ACCEPTED, Json(deployment)))
+}
+
+/// Fetch the compose file from Git and plan it again, without deploying.
+async fn refresh_stack(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<StackView>, ApiError> {
+    auth.require_write()?;
+    stacks::refresh_from_git(&state, id).await?;
+    audit::record(
+        &state.pool,
+        Some(auth.id),
+        "stack.refresh",
+        "service",
+        Some(&id.to_string()),
+        json!({}),
+        None,
+    )
+    .await;
+    Ok(Json(stack_view(&state, id).await?))
 }
 
 async fn cancel_stack(

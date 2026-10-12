@@ -882,6 +882,82 @@ fn compose_label(action: ComposeAction) -> &'static str {
     }
 }
 
+/// Fetch the Git stack's repository on the panel host, read its compose file into the spec and
+/// plan it again. Returns the directory, relative to the node data directory, the files go in.
+async fn sync_compose(
+    state: &AppState,
+    stack: &mut StackRow,
+    logs: Option<&LiveLog>,
+) -> Result<String, String> {
+    let project = stack.spec.project.clone();
+    let git = stack
+        .spec
+        .git
+        .clone()
+        .ok_or_else(|| "git source is not configured".to_string())?;
+    let checkout = format!("stacks/{project}/src");
+    let dest = state.config.data_dir.join(&checkout);
+    if let Some(logs) = logs {
+        logs.push(&format!("syncing {} ({})\n", git.repo, git.branch));
+    }
+    let output = crate::build_queue::sync_repo(
+        state,
+        stack.id,
+        git.provider_id,
+        &git.repo,
+        &git.branch,
+        &dest,
+    )
+    .await?;
+    if let Some(logs) = logs {
+        logs.push(&output);
+    }
+    let file = dest.join(&git.compose_file);
+    let text = std::fs::read_to_string(&file)
+        .map_err(|_| format!("{} was not found in the repository", git.compose_file))?;
+    check_compose_text(&text).map_err(|error| error.public_message())?;
+    stack.spec.compose_yaml = text;
+    let routed = routed_services(state, stack.id, &stack.spec)
+        .await
+        .map_err(|error| error.public_message())?;
+    replan(&mut stack.spec, &routed).map_err(|error| error.public_message())?;
+    Ok(
+        match Path::new(&git.compose_file).parent().and_then(Path::to_str) {
+            Some(parent) if !parent.is_empty() => format!("{checkout}/{parent}"),
+            _ => checkout,
+        },
+    )
+}
+
+/// Read the compose file from Git now, so the variables it needs, the generated file and its
+/// warnings are known before the first deploy. Nothing is written to the server.
+pub async fn refresh_from_git(state: &AppState, id: Uuid) -> Result<(), ApiError> {
+    let mut stack = load(state, id).await?;
+    if stack.status == "deploying" {
+        return Err(conflict(
+            "deploy_in_progress",
+            "wait for the running stack action",
+        ));
+    }
+    if stack.spec.source != "git" {
+        return Err(bad(
+            "invalid",
+            "only a stack with a Git source can be refreshed",
+        ));
+    }
+    if stack.spec.project.is_empty() {
+        let name = crate::routes::catalog::load_service_view(state, id)
+            .await?
+            .name;
+        stack.spec.project = project_name(&name);
+    }
+    validate_source(&stack.spec)?;
+    sync_compose(state, &mut stack, None)
+        .await
+        .map_err(|message| bad("git_refresh_failed", message))?;
+    save(state, id, &stack.spec).await
+}
+
 async fn write_files(
     state: &AppState,
     stack: &mut StackRow,
@@ -891,37 +967,7 @@ async fn write_files(
 ) -> Result<(), String> {
     let project = stack.spec.project.clone();
     let dir = if stack.spec.source == "git" {
-        let git = stack
-            .spec
-            .git
-            .clone()
-            .ok_or_else(|| "git source is not configured".to_string())?;
-        let checkout = format!("stacks/{project}/src");
-        let dest = state.config.data_dir.join(&checkout);
-        logs.push(&format!("syncing {} ({})\n", git.repo, git.branch));
-        let output = crate::build_queue::sync_repo(
-            state,
-            stack.id,
-            git.provider_id,
-            &git.repo,
-            &git.branch,
-            &dest,
-        )
-        .await?;
-        logs.push(&output);
-        let file = dest.join(&git.compose_file);
-        let text = std::fs::read_to_string(&file)
-            .map_err(|_| format!("{} was not found in the repository", git.compose_file))?;
-        check_compose_text(&text).map_err(|error| error.public_message())?;
-        stack.spec.compose_yaml = text;
-        let routed = routed_services(state, stack.id, &stack.spec)
-            .await
-            .map_err(|error| error.public_message())?;
-        replan(&mut stack.spec, &routed).map_err(|error| error.public_message())?;
-        match Path::new(&git.compose_file).parent().and_then(Path::to_str) {
-            Some(parent) if !parent.is_empty() => format!("{checkout}/{parent}"),
-            _ => checkout,
-        }
+        sync_compose(state, stack, Some(logs)).await?
     } else {
         format!("stacks/{project}")
     };

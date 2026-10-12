@@ -1032,6 +1032,15 @@ const ROUTES: &[Route] = &[
         status: 202,
     },
     Route {
+        path: "/api/v1/services/{id}/stack/refresh",
+        method: HttpMethod::Post,
+        tag: "stacks",
+        summary: "Read the compose file from Git again and plan it, without deploying",
+        request: None,
+        response: Some("StackView"),
+        status: 200,
+    },
+    Route {
         path: "/api/v1/services/{id}/stack/logs",
         method: HttpMethod::Get,
         tag: "stacks",

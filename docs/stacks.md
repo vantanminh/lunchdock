@@ -21,6 +21,10 @@ The original file is stored unchanged. The generated file, shown on the stack's 
 
 Traefik routes are written by the panel's file provider (see decision 0011), not by Docker labels, so you do not need to add Traefik labels. Routed services must not use `network_mode`. Published host ports and `replicas` produce warnings.
 
+### Reading a Git stack before the first deploy
+
+A Git stack's compose file is read from the repository at deploy time, so until then the panel does not know which variables it needs. **Refresh from Git** on the stack page (`POST /api/v1/services/{id}/stack/refresh`) fetches the repository on the panel host, reads the compose file and plans it again, without writing anything to the server or starting a container. Afterwards the General tab shows the services, the generated file and the warnings, and the Environment tab lists the variables the file reads that have no value yet (marked *optional* when the file gives a fallback, *required* for `${NAME:?error}`); picking one fills in its key. Saving or deleting a variable updates that list. The same refresh runs again on every deploy. It is refused while an action is running and for stacks with a pasted-YAML source.
+
 ## Environment
 
 Reference values as `${NAME}` (or `${NAME:-default}`) in the compose file and set them on the Environment tab. They are stored encrypted and written to a mode 0600 `.env` next to the generated file each time the stack is deployed; values are quoted so compose does not expand `$` inside them. The stack page lists referenced variables that have no value yet; a variable with a fallback (`${NAME:-x}`) is not reported. Use `$$` for a literal dollar sign in the compose file. Container and compose output is masked with these values before it is stored or shown.

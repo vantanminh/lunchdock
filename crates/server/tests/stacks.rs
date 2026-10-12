@@ -512,6 +512,31 @@ async fn api_without_docker(pool: PgPool) {
         )
         .await;
     assert_eq!(git_up["error"]["code"], "remote_git");
+    let refresh_inline = client
+        .expect(
+            StatusCode::BAD_REQUEST,
+            "POST",
+            &format!("/api/v1/services/{stack_id}/stack/refresh"),
+            None,
+        )
+        .await;
+    assert_eq!(refresh_inline["error"]["code"], "invalid");
+    let refresh_git = client
+        .expect(
+            StatusCode::BAD_REQUEST,
+            "POST",
+            &format!(
+                "/api/v1/services/{}/stack/refresh",
+                git["service"]["id"].as_str().unwrap()
+            ),
+            None,
+        )
+        .await;
+    assert_eq!(refresh_git["error"]["code"], "git_refresh_failed");
+    assert!(refresh_git["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("git provider not found"));
 
     let deploy_path = format!("/api/v1/environments/{environment_id}/templates/minio/deploy");
     client
