@@ -58,6 +58,8 @@ pub struct Config {
     pub master_key_file: Option<PathBuf>,
     /// GitHub API base for release checks.
     pub update_api_url: String,
+    /// GitHub API base for GitHub App setup and installation tokens.
+    pub github_api_url: String,
     /// Minisign public key that signs releases. `None` disables applying updates.
     pub update_public_key: Option<String>,
     /// Name of the container the panel runs in.
@@ -207,6 +209,18 @@ impl Config {
                 reason: "expected an http:// or https:// URL".into(),
             });
         }
+        let github_api_url = vars
+            .get("RUDDER_GITHUB_API_URL")
+            .filter(|v| !v.is_empty())
+            .map_or("https://api.github.com", String::as_str)
+            .trim_end_matches('/')
+            .to_owned();
+        if !github_api_url.starts_with("https://") && !github_api_url.starts_with("http://") {
+            return Err(ConfigError::Invalid {
+                name: "RUDDER_GITHUB_API_URL",
+                reason: "expected an http:// or https:// URL".into(),
+            });
+        }
         let update_public_key = vars
             .get("RUDDER_UPDATE_PUBKEY")
             .map(String::as_str)
@@ -250,6 +264,7 @@ impl Config {
             pg_restore,
             master_key_file,
             update_api_url,
+            github_api_url,
             update_public_key,
             self_container,
             update_check_secs,
@@ -279,6 +294,7 @@ impl fmt::Debug for Config {
             .field("pg_dump", &self.pg_dump)
             .field("pg_restore", &self.pg_restore)
             .field("update_api_url", &self.update_api_url)
+            .field("github_api_url", &self.github_api_url)
             .field("update_public_key", &self.update_public_key.is_some())
             .field("self_container", &self.self_container)
             .finish()
@@ -417,6 +433,7 @@ mod tests {
         let config = Config::from_map(&base_vars(), |_| unreachable!()).unwrap();
         assert_eq!(config.bind, "0.0.0.0:3000".parse().unwrap());
         assert_eq!(config.github_repo, DEFAULT_GITHUB_REPO);
+        assert_eq!(config.github_api_url, "https://api.github.com");
         assert_eq!(config.log_format, LogFormat::Json);
         assert!(config.cookie_secure);
         assert_eq!(config.master_key()[0], 0x11);
@@ -424,6 +441,16 @@ mod tests {
         assert!(rendered.contains("[redacted]"));
         assert!(!rendered.contains("secret"));
         assert!(!rendered.contains("1111"));
+    }
+
+    #[test]
+    fn github_api_url_is_trimmed_and_checked() {
+        let mut vars = base_vars();
+        vars.insert("RUDDER_GITHUB_API_URL".into(), "http://127.0.0.1:9/".into());
+        let config = Config::from_map(&vars, |_| unreachable!()).unwrap();
+        assert_eq!(config.github_api_url, "http://127.0.0.1:9");
+        vars.insert("RUDDER_GITHUB_API_URL".into(), "ftp://github".into());
+        assert!(Config::from_map(&vars, |_| unreachable!()).is_err());
     }
 
     #[test]
