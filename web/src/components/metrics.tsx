@@ -13,7 +13,7 @@ import {
 import { api } from "../api";
 import { formatBytes } from "../format";
 import type { Schemas } from "../types";
-import { Empty, Select } from "./ui";
+import { Empty, Segmented } from "./ui";
 import { msg, useT } from "../i18n";
 
 export const RANGES = ["15m", "1h", "6h", "24h", "7d", "30d"] as const;
@@ -26,9 +26,12 @@ export interface ChartSpec {
   metrics: string[];
   labels?: Record<string, string>;
   unit: Unit;
+  /** One colour per metric; defaults to the shared palette. */
+  colors?: string[];
 }
 
-const COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2"];
+// Series colours follow the theme: pine first, then amber and slate; red is kept for errors.
+const COLORS = ["var(--pine)", "var(--amber)", "#5b7fa6", "var(--danger)"];
 
 // Recharts paints its own white tooltip and grey ticks; route them through the theme tokens
 // so text stays readable in both light and dark mode.
@@ -73,24 +76,6 @@ function tickTime(value: number, range: Range): string {
     : date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-export function RangePicker({ value, onChange }: { value: Range; onChange: (r: Range) => void }) {
-  const t = useT();
-  return (
-    <Select
-      aria-label={t("Time range")}
-      className="w-28"
-      value={value}
-      onChange={(event) => onChange(event.target.value as Range)}
-    >
-      {RANGES.map((range) => (
-        <option key={range} value={range}>
-          {range}
-        </option>
-      ))}
-    </Select>
-  );
-}
-
 function MetricChart({
   spec,
   range,
@@ -120,15 +105,27 @@ function MetricChart({
     }
   }
   const points = [...rows.values()].sort((a, b) => a.t - b.t);
+  const colors = spec.colors ?? COLORS;
+  const latest = points.length ? points[points.length - 1]?.[spec.metrics[0] ?? ""] : undefined;
 
   return (
-    <div className="rounded-lg border border-line p-3">
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">{t(spec.title)}</h3>
-        {data.data ? (
-          <span className="text-xs text-muted">
-            {t("resolution {value}", { value: data.data.resolution })}
-          </span>
+    <div className="min-w-0 rounded-card border border-line bg-surface p-4 sm:p-5">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-ink">{t(spec.title)}</h3>
+          {data.data ? (
+            <p className="mt-0.5 text-xs text-muted">
+              {t("resolution {value}", { value: data.data.resolution })}
+            </p>
+          ) : null}
+        </div>
+        {latest != null ? (
+          <p className="text-right">
+            <span className="block text-lg leading-tight font-semibold text-ink tabular-nums">
+              {formatValue(latest, spec.unit)}
+            </span>
+            <span className="text-xs text-muted">{t("latest")}</span>
+          </p>
         ) : null}
       </div>
       {points.length === 0 ? (
@@ -138,7 +135,7 @@ function MetricChart({
       ) : (
         <ResponsiveContainer width="100%" height={176}>
           <AreaChart data={points} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
             <XAxis
               dataKey="t"
               type="number"
@@ -147,14 +144,14 @@ function MetricChart({
               tickFormatter={(value: number) => tickTime(value, range)}
               tick={TICK}
               axisLine={AXIS_LINE}
-              tickLine={AXIS_LINE}
+              tickLine={false}
               minTickGap={32}
             />
             <YAxis
-              width={64}
+              width={78}
               tick={TICK}
-              axisLine={AXIS_LINE}
-              tickLine={AXIS_LINE}
+              axisLine={false}
+              tickLine={false}
               domain={spec.unit === "percent" ? [0, 100] : [0, "auto"]}
               tickFormatter={(value: number) => formatValue(value, spec.unit)}
             />
@@ -177,10 +174,10 @@ function MetricChart({
                 key={metric}
                 type="monotone"
                 dataKey={metric}
-                stroke={COLORS[index % COLORS.length]}
-                fill={COLORS[index % COLORS.length]}
-                fillOpacity={0.12}
-                strokeWidth={1.5}
+                stroke={colors[index % colors.length]}
+                fill={colors[index % colors.length]}
+                fillOpacity={0.1}
+                strokeWidth={1.75}
                 isAnimationActive={false}
                 connectNulls
               />
@@ -202,11 +199,19 @@ export function MetricsGrid({
   const t = useT();
   const [range, setRange] = useState<Range>("1h");
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-end gap-2 text-sm text-muted">
-        {t("Range")} <RangePicker value={range} onChange={setRange} />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted">{t("Averages over the selected time range.")}</p>
+        <div className="max-w-full overflow-x-auto">
+          <Segmented<Range>
+            label={t("Time range")}
+            value={range}
+            onChange={setRange}
+            options={RANGES.map((value) => [value, value] as const)}
+          />
+        </div>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {charts.map((spec) => (
           <MetricChart key={spec.title} spec={spec} range={range} target={target} />
         ))}
@@ -242,5 +247,6 @@ export const SERVICE_CHARTS: ChartSpec[] = [
     metrics: ["requests", "http_5xx"],
     labels: { requests: msg("requests"), http_5xx: "5xx" },
     unit: "count",
+    colors: ["var(--pine)", "var(--danger)"],
   },
 ];

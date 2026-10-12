@@ -760,11 +760,19 @@ export function CopyButton({ value, label }: { value: string; label?: string }) 
 }
 
 /** Monospace text the user is likely to copy: URLs, keys, commands. */
-export function CodeBlock({ children, copy }: { children: string; copy?: boolean }) {
+export function CodeBlock({
+  children,
+  copy,
+  className = "",
+}: {
+  children: string;
+  copy?: boolean;
+  className?: string;
+}) {
   return (
     <div className="relative rounded-alert border border-line bg-paper">
       <pre
-        className={`overflow-x-auto p-3 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-ink-soft ${copy ? "pr-12" : ""}`}
+        className={`overflow-auto p-3 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-ink-soft ${copy ? "pr-12" : ""} ${className}`}
       >
         {children}
       </pre>
@@ -832,7 +840,7 @@ export function Dialog({
   return (
     <BaseDialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
       <BaseDialog.Portal>
-        <BaseDialog.Backdrop className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-[1px]" />
+        <BaseDialog.Backdrop className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[1px]" />
         <BaseDialog.Popup className={popup}>
           <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
             <div className="min-w-0">

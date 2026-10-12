@@ -7,7 +7,21 @@ import { errorMessage, formatBytes } from "../format";
 import { useT } from "../i18n";
 import { PURGE_PATHS } from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Card, Empty, Field, QuickPick, Select, TextArea } from "./ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  DataTable,
+  Empty,
+  Field,
+  Meter,
+  QuickPick,
+  Select,
+  Td,
+  TextArea,
+  Th,
+} from "./ui";
 
 type ServiceCache = Schemas["ServiceCacheView"];
 type Policy = Schemas["CachePolicyView"];
@@ -24,6 +38,13 @@ export function hitRatio(stats: { hits: number; misses: number; stale: number })
   const served = stats.hits + stats.stale;
   const total = served + stats.misses;
   return total === 0 ? "—" : `${Math.round((served / total) * 100)}%`;
+}
+
+/** The share of requests answered from cache, 0-100, or null before any traffic. */
+function hitPercent(stats: { hits: number; misses: number; stale: number }): number | null {
+  const served = stats.hits + stats.stale;
+  const total = served + stats.misses;
+  return total === 0 ? null : (served / total) * 100;
 }
 
 export function ruleSummary(rule: Rule): string {
@@ -100,50 +121,63 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
 
   return (
     <>
-      <Card title={t("Cached domains")}>
-        <p className="mb-3 text-sm text-muted">
-          {t(
-            "Cached domains go through the server's Rudder cache before reaching the container. Policies decide what is stored and for how long; {link}.",
-            {
-              link: (
-                <Link className="text-accent" to="/cache">
-                  {t("manage policies")}
-                </Link>
-              ),
-            },
-          )}
-        </p>
-        {domains.length === 0 ? <Empty>{t("Add a domain first.")}</Empty> : null}
-        <ul className="divide-y divide-line text-sm">
-          {domains.map((domain) => (
-            <li key={domain.domain_id} className="flex flex-wrap items-center gap-3 py-3">
-              <span className="font-medium">
-                {domain.host}
-                {domain.path_prefix !== "/" ? domain.path_prefix : ""}
-              </span>
-              <Badge value={domain.enabled ? "running" : "stopped"} />
-              <div className="ml-auto flex items-center gap-2">
-                <Select
-                  aria-label={t("Policy for {host}", { host: domain.host })}
-                  className="w-56"
-                  value={domain.policy_id ?? ""}
-                  onChange={(event) =>
-                    toggle.mutate({
-                      domainId: domain.domain_id,
-                      enabled: domain.enabled,
-                      policyId: event.target.value || null,
-                    })
-                  }
-                >
-                  <option value="">{t("Honor origin headers (default)")}</option>
-                  {(policies.data ?? []).map((policy) => (
-                    <option key={policy.id} value={policy.id}>
-                      {policy.name}
-                    </option>
-                  ))}
-                </Select>
+      <Card
+        title={t("Cached domains")}
+        description={t(
+          "Cached domains go through the server's Rudder cache before reaching the container. Policies decide what is stored and for how long; {link}.",
+          {
+            link: (
+              <Link className="text-accent" to="/cache">
+                {t("manage policies")}
+              </Link>
+            ),
+          },
+        )}
+        flush
+      >
+        {domains.length === 0 ? (
+          <Empty icon="globe" title={t("Nothing to cache yet")}>
+            {t("Add a domain first.")}
+          </Empty>
+        ) : (
+          <ul className="divide-y divide-line border-t border-line">
+            {domains.map((domain) => (
+              <li
+                key={domain.domain_id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-3.5 sm:px-6"
+              >
+                <div className="flex min-w-0 flex-1 basis-52 items-center gap-3">
+                  <span className="truncate text-sm font-medium text-ink">
+                    {domain.host}
+                    {domain.path_prefix !== "/" ? domain.path_prefix : ""}
+                  </span>
+                  <Badge value={domain.enabled ? "active" : "disabled"} />
+                </div>
+                <div className="w-72 max-w-full">
+                  <Select
+                    aria-label={t("Policy for {host}", { host: domain.host })}
+                    value={domain.policy_id ?? ""}
+                    onChange={(event) =>
+                      toggle.mutate({
+                        domainId: domain.domain_id,
+                        enabled: domain.enabled,
+                        policyId: event.target.value || null,
+                      })
+                    }
+                  >
+                    <option value="">{t("Honor origin headers (default)")}</option>
+                    {(policies.data ?? []).map((policy) => (
+                      <option key={policy.id} value={policy.id}>
+                        {policy.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
                 <Button
-                  quiet={domain.enabled}
+                  variant={domain.enabled ? "secondary" : "primary"}
+                  size="sm"
+                  className="min-w-20"
+                  disabled={toggle.isPending}
                   onClick={() =>
                     toggle.mutate({
                       domainId: domain.domain_id,
@@ -154,54 +188,70 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
                 >
                   {domain.enabled ? t("Turn off") : t("Turn on")}
                 </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
       {cached.length > 0 ? (
         <>
-          <Card title={t("Hit ratio")}>
+          <Card
+            title={t("Hit ratio")}
+            description={t("How often requests are answered from the cache. Refreshes every 10 seconds.")}
+            flush
+          >
             {cache.data?.stats_error ? (
-              <p className="text-sm text-muted">
-                {t(
-                  "Stats unavailable: {error}. Requests still pass through once the cache server is up.",
-                  { error: cache.data.stats_error },
-                )}
-              </p>
+              <div className="px-5 pb-4 sm:px-6">
+                <Alert tone="warning">
+                  {t(
+                    "Stats unavailable: {error}. Requests still pass through once the cache server is up.",
+                    { error: cache.data.stats_error },
+                  )}
+                </Alert>
+              </div>
             ) : null}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="text-muted">
-                  <tr>
-                    <th className="py-1 pr-4 font-medium">{t("Host")}</th>
-                    <th className="py-1 pr-4 font-medium">{t("Hit ratio")}</th>
-                    <th className="py-1 pr-4 font-medium">{t("Hits")}</th>
-                    <th className="py-1 pr-4 font-medium">{t("Misses")}</th>
-                    <th className="py-1 pr-4 font-medium">{t("Bypass")}</th>
-                    <th className="py-1 pr-4 font-medium">{t("Objects")}</th>
-                    <th className="py-1 pr-4 font-medium">{t("Stored")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(cache.data?.stats ?? []).map((row) => (
-                    <tr key={row.host} className="border-t border-line">
-                      <td className="py-1 pr-4">{row.host}</td>
-                      <td className="py-1 pr-4 font-medium">{hitRatio(row)}</td>
-                      <td className="py-1 pr-4">{row.hits + row.stale}</td>
-                      <td className="py-1 pr-4">{row.misses}</td>
-                      <td className="py-1 pr-4">{row.bypass}</td>
-                      <td className="py-1 pr-4">{row.objects}</td>
-                      <td className="py-1 pr-4">{formatBytes(row.stored_bytes)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              minWidth={720}
+              head={
+                <>
+                  <Th>{t("Host")}</Th>
+                  <Th className="w-44">{t("Hit ratio")}</Th>
+                  <Th>{t("Hits")}</Th>
+                  <Th>{t("Misses")}</Th>
+                  <Th>{t("Bypass")}</Th>
+                  <Th>{t("Objects")}</Th>
+                  <Th>{t("Stored")}</Th>
+                </>
+              }
+            >
+              {(cache.data?.stats ?? []).map((row) => (
+                <tr key={row.host} className="tabular-nums">
+                  <Td className="font-medium text-ink">{row.host}</Td>
+                  <Td>
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-10 font-medium text-ink">{hitRatio(row)}</span>
+                      <Meter
+                        value={hitPercent(row)}
+                        label={t("Hit ratio")}
+                        className="w-24 [&>div]:bg-pine!"
+                      />
+                    </div>
+                  </Td>
+                  <Td>{(row.hits + row.stale).toLocaleString()}</Td>
+                  <Td>{row.misses.toLocaleString()}</Td>
+                  <Td>{row.bypass.toLocaleString()}</Td>
+                  <Td>{row.objects.toLocaleString()}</Td>
+                  <Td>{formatBytes(row.stored_bytes)}</Td>
+                </tr>
+              ))}
+            </DataTable>
           </Card>
-          <Card title={t("Purge")}>
+          <Card
+            title={t("Purge")}
+            description={t("Remove cached objects so visitors get fresh content on the next request.")}
+          >
             <form
-              className="grid gap-3"
+              className="grid gap-4"
               onSubmit={(event) => {
                 event.preventDefault();
                 purge.mutate(false);
@@ -240,13 +290,14 @@ export function ServiceCachePanel({ serviceId }: { serviceId: string }) {
                   onChange={(event) => setPaths(event.target.value)}
                 />
               </Field>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={!paths.trim()}>
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" icon="trash" disabled={!paths.trim() || purge.isPending}>
                   {t("Purge paths")}
                 </Button>
                 <Button
-                  quiet
+                  variant="danger"
                   type="button"
+                  disabled={purge.isPending}
                   onClick={() => {
                     if (window.confirm(t("Remove every cached object for these domains?"))) {
                       purge.mutate(true);

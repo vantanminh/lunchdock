@@ -1,80 +1,115 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useState, type FormEvent } from "react";
-import { useParams } from "react-router-dom";
-import { toast } from "sonner";
-import { api, ApiError } from "../api";
+import { useQuery } from "@tanstack/react-query";
+import { lazy, Suspense, useState, type ReactNode } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { api } from "../api";
 import { BackupJobForm, BackupJobs } from "../components/backups";
 import { ServiceCachePanel } from "../components/cache";
-import { LogViewer } from "../components/logs";
 import { DatabasePanel, ServiceLogs } from "../components/DatabasePanel";
-import { StackLogs, StackOverview, StackSourceEditor, useStack } from "../components/stacks";
+import { Icon } from "../components/icons";
+import { LogViewer } from "../components/logs";
 import { MetricsGrid, SERVICE_CHARTS } from "../components/metrics";
 import {
+  DeploymentsPanel,
+  DeployImageCard,
+  DomainsPanel,
+  EnvironmentPanel,
+  GitSourceCard,
+  type ServiceDetail,
+} from "../components/service-panels";
+import { StackLogs, StackOverview, StackSourceEditor, useStack } from "../components/stacks";
+import {
+  Alert,
   Badge,
   Button,
+  buttonClass,
   Card,
+  Dialog,
   Empty,
-  Field,
-  PickField,
-  QuickPick,
-  Tabs,
-  TextInput,
+  KindTile,
+  SectionNav,
+  Skeleton,
+  StatusDot,
+  toneOf,
+  type NavGroup,
 } from "../components/ui";
-import { errorMessage } from "../format";
+import { formatDate, formatRelative } from "../format";
 import { msg, useT } from "../i18n";
-import { BRANCHES, BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
 
 const TerminalPanel = lazy(() =>
   import("../components/terminal").then((module) => ({ default: module.TerminalPanel })),
 );
 
-const TABS = [
-  ["general", msg("General")],
-  ["source", msg("Source")],
-  ["environment", msg("Environment")],
-  ["domains", msg("Domains & SSL")],
-  ["cache", msg("Cache")],
-  ["deployments", msg("Deployments")],
-  ["metrics", msg("Metrics")],
-  ["logs", msg("Logs")],
-  ["terminal", msg("Terminal")],
-  ["backups", msg("Backups")],
-] as const;
+type Tab =
+  | "general"
+  | "source"
+  | "deployments"
+  | "environment"
+  | "domains"
+  | "cache"
+  | "metrics"
+  | "logs"
+  | "terminal"
+  | "backups";
 
-type Tab = (typeof TABS)[number][0];
+const SECTIONS: readonly NavGroup<Tab>[] = [
+  {
+    label: msg("Deploy"),
+    items: [
+      { key: "general", label: msg("General"), icon: "overview" },
+      { key: "source", label: msg("Source"), icon: "git" },
+      { key: "deployments", label: msg("Deployments"), icon: "rocket" },
+    ],
+  },
+  {
+    label: msg("Configure"),
+    items: [
+      { key: "environment", label: msg("Environment"), icon: "sliders" },
+      { key: "domains", label: msg("Domains & SSL"), icon: "globe" },
+      { key: "cache", label: msg("Cache"), icon: "zap" },
+    ],
+  },
+  {
+    label: msg("Observe"),
+    items: [
+      { key: "metrics", label: msg("Metrics"), icon: "activity" },
+      { key: "logs", label: msg("Logs"), icon: "logs" },
+      { key: "terminal", label: msg("Terminal"), icon: "terminal" },
+    ],
+  },
+  {
+    label: msg("Protect"),
+    items: [{ key: "backups", label: msg("Backups"), icon: "archive" }],
+  },
+];
 
-interface GitSource {
-  repo?: string;
-  branch?: string;
-  strategy?: string;
-  provider_id?: string;
-}
+const TABS = new Set<string>(SECTIONS.flatMap((group) => group.items.map((item) => item.key)));
 
-type Service = Omit<Schemas["ServiceView"], "spec"> & {
-  spec: { image?: string; git?: GitSource } & Record<string, unknown>;
-};
+const isTab = (value: string | null): value is Tab => value !== null && TABS.has(value);
 
+type Server = Schemas["ServerView"];
+type Summary = Schemas["ServiceSummary"];
 type Domain = Schemas["DomainView"];
-
 type Deployment = Schemas["DeploymentView"];
-
-type GitProvider = Schemas["GitProviderView"];
-
-type SavedSource = Schemas["SourceView"];
-
-type Registry = Schemas["RegistryView"];
-
-type Match = Schemas["CertificateView"];
 
 export function ServicePage() {
   const t = useT();
   const { id = "" } = useParams();
-  const queryClient = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const tab: Tab = isTab(params.get("tab")) ? (params.get("tab") as Tab) : "general";
+
   const service = useQuery({
     queryKey: ["service", id],
-    queryFn: () => api<Service>(`/api/v1/services/${id}`),
+    queryFn: () => api<ServiceDetail>(`/api/v1/services/${id}`),
     enabled: Boolean(id),
+  });
+  const summaries = useQuery({
+    queryKey: ["services"],
+    queryFn: () => api<Summary[]>("/api/v1/services"),
+  });
+  const servers = useQuery({
+    queryKey: ["servers"],
+    queryFn: () => api<Server[]>("/api/v1/servers"),
   });
   const domains = useQuery({
     queryKey: ["domains", id],
@@ -87,557 +122,367 @@ export function ServicePage() {
     enabled: Boolean(id),
     refetchInterval: 4000,
   });
-  const registries = useQuery({
-    queryKey: ["registries"],
-    queryFn: () => api<Registry[]>("/api/v1/registries"),
-  });
-  const providers = useQuery({
-    queryKey: ["git-providers"],
-    queryFn: () => api<GitProvider[]>("/api/v1/git-providers"),
-  });
-  const [image, setImage] = useState("");
-  const [registryId, setRegistryId] = useState("");
-  const [host, setHost] = useState("");
-  const [port, setPort] = useState("80");
-  const [sslMode, setSslMode] = useState("letsencrypt");
-  const [matchName, setMatchName] = useState<string | null>(null);
-  const [providerId, setProviderId] = useState("");
-  const [repo, setRepo] = useState("");
-  const [branch, setBranch] = useState("main");
-  const [strategy, setStrategy] = useState("dockerfile");
-  const [tab, setTab] = useState<Tab>("general");
-  const [composeService, setComposeService] = useState("");
-  const isStack = service.data?.kind === "compose";
-  const stack = useStack(id, isStack);
-  const stackServices = isStack ? (stack.data?.services ?? []).map((item) => item.name) : [];
-  const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-
-  const saveSource = useMutation({
-    mutationFn: () =>
-      api<SavedSource>(`/api/v1/services/${id}/source`, {
-        method: "PUT",
-        body: JSON.stringify({
-          provider_id: providerId,
-          repo,
-          branch,
-          strategy,
-        }),
-      }),
-    onSuccess: async (saved) => {
-      setWebhookSecret(saved.webhook_secret ?? null);
-      setPublicKey(saved.public_key ?? null);
-      toast.success(t("Source saved. Copy the webhook secret now."));
-      await queryClient.invalidateQueries({ queryKey: ["service", id] });
-    },
-    onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : t("Could not save source")),
-  });
-
-  const build = useMutation({
-    mutationFn: () => api(`/api/v1/services/${id}/build`, { method: "POST" }),
-    onSuccess: async () => {
-      toast.success(t("Build queued"));
-      await queryClient.invalidateQueries({ queryKey: ["deployments", id] });
-    },
-    onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : t("Could not queue build")),
-  });
-
-  const deploy = useMutation({
-    mutationFn: () =>
-      api(`/api/v1/services/${id}/deploy`, {
-        method: "POST",
-        body: JSON.stringify({
-          image: image || undefined,
-          registry_id: registryId || undefined,
-          health_kind: "none",
-          health_timeout_secs: 30,
-        }),
-      }),
-    onSuccess: async () => {
-      toast.success(t("Deployment finished"));
-      await queryClient.invalidateQueries({ queryKey: ["deployments", id] });
-      await queryClient.invalidateQueries({ queryKey: ["service", id] });
-    },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : t("Deploy failed")),
-  });
-
-  const addDomain = useMutation({
-    mutationFn: () =>
-      api(`/api/v1/services/${id}/domains`, {
-        method: "POST",
-        body: JSON.stringify({
-          host,
-          target_port: Number(port),
-          ssl_mode: sslMode,
-          compose_service: isStack ? composeService || undefined : undefined,
-        }),
-      }),
-    onSuccess: async () => {
-      toast.success(t("Domain routed"));
-      setHost("");
-      await queryClient.invalidateQueries({ queryKey: ["domains", id] });
-    },
-    onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : t("Could not add domain")),
-  });
-
-  const preview = useMutation({
-    mutationFn: () =>
-      api<Domain>(`/api/v1/services/${id}/preview-domain`, {
-        method: "POST",
-        body: JSON.stringify({ target_port: Number(port) }),
-      }),
-    onSuccess: async (domain) => {
-      toast.success(domain.host);
-      await queryClient.invalidateQueries({ queryKey: ["domains", id] });
-    },
-    onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : t("Preview failed")),
-  });
-
-  const rollback = useMutation({
-    mutationFn: (deploymentId: string) =>
-      api(`/api/v1/services/${id}/rollback`, {
-        method: "POST",
-        body: JSON.stringify({ deployment_id: deploymentId }),
-      }),
-    onSuccess: async () => {
-      toast.success(t("Rollback finished"));
-      await queryClient.invalidateQueries({ queryKey: ["deployments", id] });
-    },
-    onError: (error) =>
-      toast.error(error instanceof ApiError ? error.message : t("Rollback failed")),
-  });
-
-  async function lookUp(nextHost: string) {
-    setHost(nextHost);
-    if (!nextHost.includes(".")) {
-      setMatchName(null);
-      return;
-    }
-    try {
-      const match = await api<Match | null>(
-        `/api/v1/certificates/match?host=${encodeURIComponent(nextHost)}`,
-      );
-      setMatchName(match?.name ?? null);
-    } catch {
-      setMatchName(null);
-    }
-  }
-
-  function onDeploy(event: FormEvent) {
-    event.preventDefault();
-    deploy.mutate();
-  }
 
   const current = service.data;
+  const isStack = current?.kind === "compose";
+  const stack = useStack(id, isStack);
+  const stackServices = isStack ? (stack.data?.services ?? []).map((item) => item.name) : [];
+  const context = summaries.data?.find((item) => item.id === id);
+  const server = servers.data?.find((item) => item.id === current?.server_id);
+  const siteDomain =
+    (domains.data ?? []).find((domain) => domain.published && !domain.is_preview) ??
+    (domains.data ?? []).find((domain) => !domain.is_preview);
+
+  function openTab(next: Tab) {
+    setParams(next === "general" ? {} : { tab: next }, { replace: true });
+  }
+
+  if (service.error && !current) {
+    return (
+      <>
+        <Breadcrumb />
+        <Alert tone="error" title={t("Couldn't load this service")}>
+          {service.error instanceof Error ? service.error.message : t("The panel did not answer.")}
+        </Alert>
+      </>
+    );
+  }
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold">{current?.name ?? t("Service")}</h1>
-        {current ? <Badge value={current.status} /> : null}
-      </div>
-      <p className="text-sm text-muted">
-        {current?.kind}
-        {current?.spec?.image ? ` · ${current.spec.image}` : ""}
-      </p>
-      <Tabs tabs={TABS} active={tab} onChange={setTab} />
-      {tab === "general" && current ? (
-        current.kind === "database" ? (
-          <DatabasePanel service={current as unknown as Schemas["ServiceView"]} />
-        ) : current.kind === "compose" ? (
-          <StackOverview serviceId={id} />
-        ) : (
-          <>
-            <Card title={t("Deploy image")}>
-              <form className="grid gap-3 md:grid-cols-2" onSubmit={onDeploy}>
-                <Field
-                  label={t("Image")}
-                  presets={
-                    <QuickPick
-                      label={t("Image suggestions")}
-                      options={IMAGES}
-                      value={image}
-                      onPick={setImage}
-                    />
-                  }
-                >
-                  <TextInput
-                    value={image}
-                    placeholder="ghcr.io/org/app:1"
-                    onChange={(event) => setImage(event.target.value)}
-                  />
-                </Field>
-                <Field label={t("Registry")}>
-                  <select
-                    className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                    value={registryId}
-                    onChange={(event) => setRegistryId(event.target.value)}
-                  >
-                    <option value="">{t("Match by host")}</option>
-                    {(registries.data ?? []).map((registry) => (
-                      <option key={registry.id} value={registry.id}>
-                        {registry.name} ({registry.url})
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Button type="submit" disabled={current?.kind !== "application"}>
-                  {t("Pull and deploy")}
-                </Button>
-              </form>
-            </Card>
-          </>
-        )
-      ) : null}
-      {tab === "source" && isStack ? <StackSourceEditor serviceId={id} /> : null}
-      {tab === "source" && !isStack ? (
-        <>
-          <Card title={t("Git source")}>
-            <form
-              className="grid gap-3 md:grid-cols-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                saveSource.mutate();
-              }}
-            >
-              <Field label={t("Provider")}>
-                <select
-                  className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                  value={providerId}
-                  onChange={(event) => setProviderId(event.target.value)}
-                  required
-                >
-                  <option value="">{t("Choose")}</option>
-                  {(providers.data ?? []).map((provider) => (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.name} ({provider.kind})
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("Repository")}>
-                <TextInput
-                  required
-                  value={repo}
-                  placeholder="https://github.com/org/app.git"
-                  onChange={(event) => setRepo(event.target.value)}
-                />
-              </Field>
-              <Field
-                label={t("Branch")}
-                presets={
-                  <QuickPick
-                    label={t("Branch presets")}
-                    options={BRANCHES}
-                    value={branch}
-                    onPick={setBranch}
-                  />
-                }
-              >
-                <TextInput
-                  required
-                  value={branch}
-                  onChange={(event) => setBranch(event.target.value)}
-                />
-              </Field>
-              <PickField
-                label={t("Build")}
-                options={BUILD_STRATEGIES}
-                value={strategy}
-                onPick={setStrategy}
-              />
-              <div className="flex items-end gap-2">
-                <Button type="submit">{t("Save source")}</Button>
-                <Button quiet type="button" onClick={() => build.mutate()}>
-                  {t("Build")}
-                </Button>
-              </div>
-            </form>
-            {current?.spec?.git?.repo ? (
-              <p className="mt-3 text-sm text-muted">
-                {t("Current:")} {current.spec.git.repo} · {current.spec.git.branch} ·{" "}
-                {current.spec.git.strategy}
-              </p>
-            ) : null}
-            {webhookSecret ? (
-              <p className="mt-2 text-sm">
-                {t("Webhook secret: {secret}", { secret: webhookSecret })}
-              </p>
-            ) : null}
-            {publicKey ? <p className="mt-2 break-all font-mono text-xs">{publicKey}</p> : null}
-          </Card>
-        </>
-      ) : null}
-      {tab === "environment" ? <EnvironmentEditor serviceId={id} /> : null}
-      {tab === "domains" ? (
-        <>
-          <Card title={t("Domains")}>
-            <form
-              className="grid gap-3 md:grid-cols-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                addDomain.mutate();
-              }}
-            >
-              <Field label={t("Host")}>
-                <TextInput
-                  required
-                  value={host}
-                  onChange={(event) => void lookUp(event.target.value)}
-                />
-              </Field>
-              <Field
-                label={t("Port")}
-                hint={t("The port your app listens on inside the container.")}
-                presets={
-                  <QuickPick
-                    label={t("Port presets")}
-                    options={PORTS}
-                    value={port}
-                    onPick={setPort}
-                  />
-                }
-              >
-                <TextInput value={port} onChange={(event) => setPort(event.target.value)} />
-              </Field>
-              {isStack ? (
-                <Field label={t("Compose service")}>
-                  <select
-                    className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
-                    value={composeService}
-                    onChange={(event) => setComposeService(event.target.value)}
-                  >
-                    <option value="">
-                      {stack.data?.main_service
-                        ? t("Main service ({name})", { name: stack.data.main_service })
-                        : t("Main service")}
-                    </option>
-                    {stackServices.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              ) : null}
-              <PickField label={t("SSL")} options={SSL_MODES} value={sslMode} onPick={setSslMode} />
-              <div className="flex items-end gap-2">
-                <Button type="submit">{t("Add domain")}</Button>
-                <Button quiet type="button" onClick={() => preview.mutate()}>
-                  {t("Preview domain")}
-                </Button>
-              </div>
-            </form>
-            <p className="mt-3 text-sm text-muted">
-              {t("Certificate match: {name}", {
-                name: matchName ?? t("none — Let's Encrypt can still issue one"),
-              })}
-            </p>
-            <ul className="mt-4 space-y-2 text-sm">
-              {(domains.data ?? []).map((domain) => (
-                <li key={domain.id}>
-                  {domain.host}
-                  {domain.path_prefix !== "/" ? domain.path_prefix : ""} · {domain.ssl_mode}
-                  {domain.compose_service ? ` · → ${domain.compose_service}` : ""}
-                  {domain.matched_certificate_name
-                    ? ` · ${t("cert {name}", { name: domain.matched_certificate_name })}`
-                    : ""}
-                  {domain.is_preview ? ` · ${t("preview")}` : ""}
-                  {domain.published ? "" : ` · ${t("waiting for agent")}`}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </>
-      ) : null}
-      {tab === "cache" ? <ServiceCachePanel serviceId={id} /> : null}
-      {tab === "deployments" ? (
-        <>
-          <Card title={t("Deployments")}>
-            <ul className="space-y-3 text-sm">
-              {(deployments.data ?? []).map((deployment) => (
-                <li key={deployment.id} className="rounded-md border border-line p-3">
-                  <p>
-                    {deployment.status} · {deployment.trigger} ·{" "}
-                    {deployment.image_ref ?? t("no image")}
-                  </p>
-                  {deployment.error ? <p className="text-muted">{deployment.error}</p> : null}
-                  {deployment.logs ? (
-                    <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-xs text-muted">
-                      {deployment.logs}
-                    </pre>
+      <Breadcrumb context={context} />
+      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <div className="flex min-w-0 items-start gap-3.5">
+          {current ? <KindTile kind={current.kind} size={48} /> : <Skeleton className="size-12" />}
+          <div className="min-w-0">
+            {current ? (
+              <>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <h1 className="truncate text-2xl leading-tight font-semibold tracking-[-0.015em] text-ink">
+                    {current.name}
+                  </h1>
+                  <Badge value={current.status} />
+                </div>
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+                  <Badge value={current.kind} tone="outline" />
+                  {server ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Icon name="server" size={14} className="text-faint" />
+                      {server.name}
+                    </span>
                   ) : null}
-                  {deployment.status === "succeeded" && !isStack ? (
-                    <Button quiet className="mt-2" onClick={() => rollback.mutate(deployment.id)}>
-                      {t("Roll back")}
-                    </Button>
+                  {current.spec?.image ? (
+                    <span className="max-w-full truncate font-mono text-[13px]">
+                      {current.spec.image}
+                    </span>
                   ) : null}
-                </li>
-              ))}
-              {deployments.data?.length === 0 ? (
-                <p className="text-muted">{t("No deployments yet.")}</p>
-              ) : null}
-            </ul>
-          </Card>
-        </>
-      ) : null}
-      {tab === "metrics" ? (
-        <Card title={t("Metrics")}>
-          <MetricsGrid charts={SERVICE_CHARTS} target={{ service_id: id }} />
-        </Card>
-      ) : null}
-      {tab === "logs" ? (
-        <>
-          <Card title={t("Stored logs")}>
-            <LogViewer fixed={{ service_id: id }} sources={["app", "proxy"]} />
-          </Card>
-          {isStack ? <StackLogs serviceId={id} /> : <ServiceLogs serviceId={id} />}
-        </>
-      ) : null}
-      {tab === "terminal" ? (
-        <Card title={t("Terminal")}>
-          <Suspense fallback={<Empty>{t("Loading terminal…")}</Empty>}>
-            <TerminalPanel serviceId={id} containers={stackServices} />
-          </Suspense>
-        </Card>
-      ) : null}
-      {tab === "backups" && current ? (
-        <>
-          <Card title={t("Backup jobs")}>
-            <BackupJobs serviceId={id} />
-          </Card>
-          <Card title={t("New backup job")}>
-            <BackupJobForm
-              target={{
-                serviceId: id,
-                serverId: current.server_id,
-                isDatabase: current?.kind === "database",
-              }}
+                </p>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Skeleton className="h-7 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+            )}
+          </div>
+        </div>
+        {siteDomain ? (
+          <a
+            href={`${siteDomain.ssl_mode === "none" ? "http" : "https"}://${siteDomain.host}${siteDomain.path_prefix}`}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonClass({ variant: "secondary" })}
+          >
+            <Icon name="external" />
+            {siteDomain.host}
+          </a>
+        ) : null}
+      </header>
+
+      {current ? (
+        <SummaryBar
+          service={current}
+          server={server}
+          domains={domains.data ?? []}
+          deployments={deployments.data ?? []}
+          stack={stack.data}
+        />
+      ) : (
+        <Skeleton className="h-24 w-full rounded-card" />
+      )}
+
+      <div className="grid items-start gap-x-8 gap-y-5 lg:grid-cols-[188px_minmax(0,1fr)]">
+        <SectionNav groups={SECTIONS} active={tab} onChange={openTab} label={t("Service sections")} />
+        <div className="min-w-0 space-y-6" aria-live="polite">
+          {current ? (
+            <Panel
+              tab={tab}
+              service={current}
+              isStack={isStack}
+              stackServices={stackServices}
+              mainService={stack.data?.main_service}
             />
-          </Card>
-        </>
-      ) : null}
+          ) : (
+            <>
+              <Skeleton className="h-48 w-full rounded-card" />
+              <Skeleton className="h-32 w-full rounded-card" />
+            </>
+          )}
+        </div>
+      </div>
     </>
   );
 }
 
-function EnvironmentEditor({ serviceId }: { serviceId: string }) {
+function Breadcrumb({ context }: { context?: Summary }) {
   const t = useT();
-  const queryClient = useQueryClient();
-  const vars = useQuery({
-    queryKey: ["env", serviceId],
-    queryFn: () => api<Schemas["EnvVarView"][]>(`/api/v1/services/${serviceId}/env`),
-  });
-  const [key, setKey] = useState("");
-  const [value, setValue] = useState("");
-  const [buildSecret, setBuildSecret] = useState(false);
-  const suggestedValues = ENV_KEYS.find((item) => item.key === key)?.values ?? [];
-  const save = useMutation({
-    mutationFn: () =>
-      api(`/api/v1/services/${serviceId}/env`, {
-        method: "PUT",
-        body: JSON.stringify({ key, value, is_build_secret: buildSecret }),
-      }),
-    onSuccess: async () => {
-      toast.success(t("{key} saved", { key }));
-      setKey("");
-      setValue("");
-      await queryClient.invalidateQueries({ queryKey: ["env", serviceId] });
-    },
-    onError: (error) => toast.error(errorMessage(error, t("Could not save the variable"))),
-  });
-  const remove = useMutation({
-    mutationFn: (name: string) =>
-      api(`/api/v1/services/${serviceId}/env/${encodeURIComponent(name)}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["env", serviceId] }),
-    onError: (error) => toast.error(errorMessage(error, t("Could not delete the variable"))),
-  });
+  const crumb = "rounded-sm hover:text-ink hover:underline underline-offset-4";
   return (
-    <Card title={t("Environment variables")}>
-      <p className="mb-3 text-sm text-muted">
-        {t(
-          "Values are encrypted and write-only. Saving an existing key replaces its value; redeploy to apply.",
-        )}
-      </p>
-      <form
-        className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]"
-        onSubmit={(event) => {
-          event.preventDefault();
-          save.mutate();
-        }}
-      >
-        <Field
-          label={t("Key")}
-          presets={
-            <QuickPick
-              label={t("Common variables")}
-              options={ENV_KEYS.map((item) => ({ label: item.key, value: item.key }))}
-              value={key}
-              onPick={setKey}
-            />
-          }
-        >
-          <TextInput required value={key} onChange={(event) => setKey(event.target.value)} />
-        </Field>
-        <Field
-          label={t("Value")}
-          presets={
-            suggestedValues.length > 0 ? (
-              <QuickPick
-                label={t("Common values")}
-                options={suggestedValues.map((item) => ({ label: item, value: item }))}
-                value={value}
-                onPick={setValue}
-              />
-            ) : undefined
-          }
-        >
-          <TextInput
-            required
-            type="password"
-            autoComplete="off"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-          />
-        </Field>
-        <label className="flex items-end gap-2 pb-2 text-sm">
-          <input
-            type="checkbox"
-            checked={buildSecret}
-            onChange={(event) => setBuildSecret(event.target.checked)}
-          />
-          {t("Build secret")}
-        </label>
-        <div className="flex items-end">
-          <Button type="submit">{t("Save")}</Button>
-        </div>
-      </form>
-      <ul className="mt-4 divide-y divide-line text-sm">
-        {(vars.data ?? []).map((item) => (
-          <li key={item.key} className="flex items-center gap-2 py-2">
-            <span className="font-mono">{item.key}</span>
-            {item.is_build_secret ? (
-              <span className="text-xs text-muted">{t("build secret")}</span>
-            ) : null}
-            <button
-              type="button"
-              className="ml-auto text-accent"
-              onClick={() => {
-                if (window.confirm(t("Delete {key}?", { key: item.key }))) {
-                  remove.mutate(item.key);
-                }
-              }}
-            >
-              {t("Delete")}
-            </button>
-          </li>
-        ))}
-      </ul>
-      {vars.data?.length === 0 ? <Empty>{t("No variables.")}</Empty> : null}
-    </Card>
+    <nav aria-label={t("Breadcrumb")} className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
+      <Link to="/projects" className={crumb}>
+        {t("Projects")}
+      </Link>
+      {context ? (
+        <>
+          <Icon name="chevronRight" size={13} className="text-faint" />
+          <Link to={`/projects?project=${context.project_id}`} className={crumb}>
+            {context.project_name}
+          </Link>
+          <Icon name="chevronRight" size={13} className="text-faint" />
+          <Link
+            to={`/projects?project=${context.project_id}&env=${context.environment_id}`}
+            className={crumb}
+          >
+            {context.environment_name}
+          </Link>
+        </>
+      ) : null}
+    </nav>
   );
+}
+
+interface Fact {
+  label: string;
+  value: ReactNode;
+  caption?: ReactNode;
+}
+
+function SummaryBar({
+  service,
+  server,
+  domains,
+  deployments,
+  stack,
+}: {
+  service: ServiceDetail;
+  server?: Server;
+  domains: Domain[];
+  deployments: Deployment[];
+  stack?: Schemas["StackView"];
+}) {
+  const t = useT();
+  const spec = service.spec as Record<string, unknown>;
+  const latest = deployments[0];
+  const site = domains.find((domain) => !domain.is_preview);
+
+  const facts: Fact[] = [
+    {
+      label: t("Status"),
+      value: (
+        <span className="inline-flex items-center gap-2">
+          <StatusDot status={service.status} />
+          <span className="inline-block first-letter:uppercase">
+            {t(service.status.replace(/_/g, " "))}
+          </span>
+        </span>
+      ),
+      caption: t("Created {time}", { time: formatDate(service.created_at) }),
+    },
+  ];
+
+  if (service.kind === "database") {
+    facts.push(
+      {
+        label: t("Engine"),
+        value: `${String(spec.engine ?? "—")} ${String(spec.version ?? "")}`.trim(),
+        caption: spec.container ? `${String(spec.container)}:${String(spec.port ?? "")}` : undefined,
+      },
+      {
+        label: t("Public port"),
+        value: spec.public_port ? String(spec.public_port) : t("Internal only"),
+        caption: spec.public_port ? t("Reachable from outside") : t("Private to the server"),
+      },
+    );
+  } else if (service.kind === "compose") {
+    const running = stack?.services.filter((item) => item.running).length ?? 0;
+    facts.push(
+      {
+        label: t("Containers"),
+        value: stack ? `${running} / ${stack.services.length}` : "—",
+        caption: stack?.main_service
+          ? t("Main service: {name}", { name: stack.main_service })
+          : undefined,
+      },
+      {
+        label: t("Domains"),
+        value: domains.length,
+        caption: site?.host ?? t("No domains yet"),
+      },
+    );
+  } else {
+    facts.push(
+      {
+        label: t("Last deployment"),
+        value: latest ? (
+          <span className={`inline-block first-letter:uppercase ${deployTone(latest.status)}`}>
+            {t(latest.status.replace(/_/g, " "))}
+          </span>
+        ) : (
+          "—"
+        ),
+        caption: latest
+          ? `${t(latest.trigger)} · ${formatRelative(latest.created_at)}`
+          : t("No deployments yet"),
+      },
+      {
+        label: t("Domains"),
+        value: domains.length,
+        caption: site?.host ?? t("No domains yet"),
+      },
+    );
+  }
+
+  facts.push({
+    label: t("Server"),
+    value: server?.name ?? t("Unknown"),
+    caption: server
+      ? [t(server.status), server.public_ip].filter(Boolean).join(" · ")
+      : undefined,
+  });
+
+  return (
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line shadow-card lg:grid-cols-4">
+      {facts.map((fact) => (
+        <div key={fact.label} className="min-w-0 bg-surface px-4 py-3.5 sm:px-5">
+          <dt className="text-xs font-medium text-muted">{fact.label}</dt>
+          <dd className="mt-1 truncate text-lg font-semibold tracking-[-0.01em] text-ink tabular-nums">
+            {fact.value}
+          </dd>
+          {fact.caption ? (
+            <dd className="mt-0.5 truncate text-[13px] text-muted">{fact.caption}</dd>
+          ) : null}
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function deployTone(status: string): string {
+  const tone = toneOf(status);
+  return tone === "danger"
+    ? "text-danger"
+    : tone === "warning"
+      ? "text-amber"
+      : tone === "success"
+        ? "text-pine"
+        : "text-ink";
+}
+
+function Panel({
+  tab,
+  service,
+  isStack,
+  stackServices,
+  mainService,
+}: {
+  tab: Tab;
+  service: ServiceDetail;
+  isStack: boolean;
+  stackServices: string[];
+  mainService?: string | null;
+}) {
+  const t = useT();
+  const id = service.id;
+  const [creatingJob, setCreatingJob] = useState(false);
+
+  switch (tab) {
+    case "general":
+      return service.kind === "database" ? (
+        <DatabasePanel service={service as unknown as Schemas["ServiceView"]} />
+      ) : service.kind === "compose" ? (
+        <StackOverview serviceId={id} />
+      ) : (
+        <DeployImageCard service={service} />
+      );
+    case "source":
+      return isStack ? <StackSourceEditor serviceId={id} /> : <GitSourceCard service={service} />;
+    case "deployments":
+      return <DeploymentsPanel serviceId={id} isStack={isStack} />;
+    case "environment":
+      return <EnvironmentPanel serviceId={id} />;
+    case "domains":
+      return <DomainsPanel serviceId={id} stackServices={stackServices} mainService={mainService} />;
+    case "cache":
+      return <ServiceCachePanel serviceId={id} />;
+    case "metrics":
+      return <MetricsGrid charts={SERVICE_CHARTS} target={{ service_id: id }} />;
+    case "logs":
+      return (
+        <>
+          <Card
+            title={t("Stored logs")}
+            description={t("Searchable history collected from the app and its proxy.")}
+          >
+            <LogViewer fixed={{ service_id: id }} sources={["app", "proxy"]} />
+          </Card>
+          {isStack ? <StackLogs serviceId={id} /> : <ServiceLogs serviceId={id} />}
+        </>
+      );
+    case "terminal":
+      return (
+        <Card
+          title={t("Terminal")}
+          description={t("An interactive shell inside the running container.")}
+        >
+          <Suspense fallback={<Empty>{t("Loading terminal…")}</Empty>}>
+            <TerminalPanel serviceId={id} containers={stackServices} />
+          </Suspense>
+        </Card>
+      );
+    case "backups":
+      return (
+        <>
+          <Card
+            title={t("Backup jobs")}
+            description={t("Scheduled and on-demand backups of this service's data.")}
+            actions={
+              <Button icon="plus" onClick={() => setCreatingJob(true)}>
+                {t("New backup job")}
+              </Button>
+            }
+          >
+            <BackupJobs serviceId={id} />
+          </Card>
+          {creatingJob ? (
+            <Dialog
+              open
+              variant="drawer"
+              wide
+              onClose={() => setCreatingJob(false)}
+              title={t("New backup job")}
+              description={t("Choose what to back up, when, and where to store it.")}
+            >
+              <BackupJobForm
+                target={{
+                  serviceId: id,
+                  serverId: service.server_id,
+                  isDatabase: service.kind === "database",
+                }}
+                onSaved={() => setCreatingJob(false)}
+              />
+            </Dialog>
+          ) : null}
+        </>
+      );
+  }
 }

@@ -14,16 +14,25 @@ import {
 } from "../presets";
 import type { Schemas } from "../types";
 import {
+  Alert,
   Badge,
   Button,
   Card,
+  CodeBlock,
+  DataTable,
+  DefinitionList,
+  Disclosure,
   Empty,
   Field,
+  LogPre,
   PickField,
   QuickPick,
+  Segmented,
   Select,
+  Td,
   TextArea,
   TextInput,
+  Th,
 } from "./ui";
 
 type StackView = Schemas["StackView"];
@@ -83,30 +92,64 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
   const busy = view.service.status === "deploying" || action.isPending;
   return (
     <>
-      <Card title={t("Stack")}>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted">{t("Project")}</span>
-          <span className="font-mono">{view.project}</span>
-          {view.template ? <Badge value={t("template: {name}", { name: view.template })} /> : null}
-          <span className="text-muted">
-            · {view.source === "git" ? t("Git") : t("pasted YAML")}
-          </span>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button disabled={busy} onClick={() => action.mutate("up")}>
+      {view.missing_variables.length > 0 ? (
+        <Alert tone="warning">
+          {t("Not set under Environment: {names}", { names: view.missing_variables.join(", ") })}
+        </Alert>
+      ) : null}
+      {view.warnings.length > 0 ? (
+        <Alert tone="info">
+          <ul className="list-disc space-y-1 pl-4">
+            {view.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </Alert>
+      ) : null}
+      <Card
+        title={t("Stack")}
+        description={t("A group of containers started together with docker compose.")}
+      >
+        <DefinitionList
+          items={[
+            { label: t("Project"), value: view.project, mono: true },
+            { label: t("Source"), value: view.source === "git" ? t("Git") : t("pasted YAML") },
+            ...(view.template
+              ? [{ label: t("Template"), value: <Badge value={view.template} tone="outline" /> }]
+              : []),
+          ]}
+        />
+        <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+          <Button icon="play" disabled={busy} onClick={() => action.mutate("up")}>
             {t("Deploy (up)")}
           </Button>
-          <Button quiet disabled={busy} onClick={() => action.mutate("restart")}>
+          <Button
+            variant="secondary"
+            icon="refresh"
+            disabled={busy}
+            onClick={() => action.mutate("restart")}
+          >
             {t("Restart")}
           </Button>
-          <Button quiet disabled={busy} onClick={() => action.mutate("pull")}>
+          <Button
+            variant="secondary"
+            icon="download"
+            disabled={busy}
+            onClick={() => action.mutate("pull")}
+          >
             {t("Pull images")}
           </Button>
-          <Button quiet disabled={busy} onClick={() => action.mutate("down")}>
+          <Button
+            variant="secondary"
+            icon="stop"
+            disabled={busy}
+            onClick={() => action.mutate("down")}
+          >
             {t("Stop (down)")}
           </Button>
           <Button
-            quiet
+            variant="danger"
+            icon="trash"
             className="ml-auto"
             disabled={busy}
             onClick={() => {
@@ -128,63 +171,53 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
             {t("Delete stack")}
           </Button>
         </div>
-        {view.missing_variables.length > 0 ? (
-          <p className="mt-4 text-sm text-amber">
-            {t("Not set under Environment: {names}", { names: view.missing_variables.join(", ") })}
-          </p>
-        ) : null}
-        {view.warnings.length > 0 ? (
-          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted">
-            {view.warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
-            ))}
-          </ul>
-        ) : null}
       </Card>
-      <Card title={t("Services")}>
+      <Card title={t("Services")} flush>
         {view.services.length === 0 ? (
           <Empty>{t("The compose file is read from Git on the first deploy.")}</Empty>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-muted">
-                <tr>
-                  <th className="py-2 pr-4 font-medium">{t("Service")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("Image")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("Container")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("State")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {view.services.map((service) => (
-                  <tr key={service.name}>
-                    <td className="py-2 pr-4 font-medium">
-                      {service.name}
-                      {service.routed ? (
-                        <span className="ml-2 text-xs text-muted">{t("routed")}</span>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-4 font-mono text-xs">{service.image ?? t("build")}</td>
-                    <td className="py-2 pr-4 font-mono text-xs">{service.container}</td>
-                    <td className="py-2 pr-4">
-                      <Badge
-                        value={
-                          service.running == null
-                            ? "unreachable"
-                            : service.running
-                              ? "running"
-                              : "stopped"
-                        }
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            minWidth={560}
+            head={
+              <>
+                <Th>{t("Service")}</Th>
+                <Th>{t("Image")}</Th>
+                <Th>{t("Container")}</Th>
+                <Th>{t("State")}</Th>
+              </>
+            }
+          >
+            {view.services.map((service) => (
+              <tr key={service.name}>
+                <Td className="font-medium text-ink">
+                  {service.name}
+                  {service.routed ? (
+                    <span className="ml-2 align-middle">
+                      <Badge value="routed" tone="outline" />
+                    </span>
+                  ) : null}
+                </Td>
+                <Td className="font-mono text-[13px] text-ink-soft">
+                  {service.image ?? t("build")}
+                </Td>
+                <Td className="font-mono text-[13px] text-muted">{service.container}</Td>
+                <Td>
+                  <Badge
+                    value={
+                      service.running == null
+                        ? "unreachable"
+                        : service.running
+                          ? "running"
+                          : "stopped"
+                    }
+                  />
+                </Td>
+              </tr>
+            ))}
+          </DataTable>
         )}
       </Card>
-      <Card title={t("Generated compose file")}>
+      <Disclosure title={t("Generated compose file")}>
         <p className="mb-3 text-sm text-muted">
           {view.compose_path
             ? t(
@@ -195,10 +228,10 @@ export function StackOverview({ serviceId }: { serviceId: string }) {
                 "What Rudder runs: your file with the project name, rudder labels, and the rudder-proxy network for routed services.",
               )}
         </p>
-        <pre className="max-h-[28rem] overflow-auto rounded-md bg-paper p-3 text-xs">
+        <CodeBlock copy className="max-h-[28rem]">
           {view.generated_yaml || t("Not generated yet.")}
-        </pre>
-      </Card>
+        </CodeBlock>
+      </Disclosure>
     </>
   );
 }
@@ -288,15 +321,18 @@ function SourceForm({
     onError: (error) => toast.error(errorMessage(error, t("Could not save the stack"))),
   });
   return (
-    <Card title={t("Compose source")}>
+    <Card
+      title={t("Compose source")}
+      description={t("Where the compose file comes from. Deploy again after changing it.")}
+    >
       <form
-        className="space-y-3"
+        className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
           save.mutate(false);
         }}
       >
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <PickField
             label={t("Source")}
             options={STACK_SOURCES}
@@ -347,7 +383,13 @@ function SourceForm({
           <Button type="submit" disabled={save.isPending}>
             {t("Save")}
           </Button>
-          <Button quiet type="button" disabled={save.isPending} onClick={() => save.mutate(true)}>
+          <Button
+            variant="secondary"
+            icon="rocket"
+            type="button"
+            disabled={save.isPending}
+            onClick={() => save.mutate(true)}
+          >
             {t("Save and deploy")}
           </Button>
         </div>
@@ -367,7 +409,7 @@ function GitFields({
 }) {
   const t = useT();
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2">
       <Field label={t("Provider")}>
         <Select
           required
@@ -433,7 +475,7 @@ export function StackLogs({ serviceId }: { serviceId: string }) {
   const stack = useStack(serviceId);
   const names = stack.data?.services.map((service) => service.name) ?? [];
   const [selected, setSelected] = useState("");
-  const [tail, setTail] = useState(200);
+  const [tail, setTail] = useState("200");
   const service = selected || names[0] || "";
   const logs = useQuery({
     queryKey: ["stack-logs", serviceId, service, tail],
@@ -446,32 +488,43 @@ export function StackLogs({ serviceId }: { serviceId: string }) {
     retry: false,
   });
   return (
-    <Card title={t("Service logs")}>
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-        <div className="w-48">
-          <Select value={service} onChange={(event) => setSelected(event.target.value)}>
-            {names.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <span className="text-muted">{t("Lines")}</span>
-        {[100, 200, 1000].map((count) => (
-          <Button key={count} quiet={tail !== count} onClick={() => setTail(count)}>
-            {count}
-          </Button>
-        ))}
-      </div>
+    <Card
+      title={t("Service logs")}
+      description={t("Live output of one container in the stack. Refreshes every 5 seconds.")}
+      actions={
+        <>
+          <div className="w-44">
+            <Select
+              aria-label={t("Compose service")}
+              value={service}
+              onChange={(event) => setSelected(event.target.value)}
+            >
+              {names.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Segmented
+            label={t("Lines")}
+            value={tail}
+            onChange={setTail}
+            options={[
+              ["100", "100"],
+              ["200", "200"],
+              ["1000", "1000"],
+            ]}
+          />
+        </>
+      }
+    >
       {!service ? (
         <Empty>{t("Deploy the stack to see logs.")}</Empty>
       ) : logs.error ? (
         <Empty>{errorMessage(logs.error, t("No logs available"))}</Empty>
       ) : (
-        <pre className="max-h-[32rem] overflow-auto rounded-md bg-paper p-3 text-xs whitespace-pre-wrap">
-          {logs.data?.logs || t("No output yet.")}
-        </pre>
+        <LogPre empty={t("No output yet.")}>{logs.data?.logs}</LogPre>
       )}
     </Card>
   );

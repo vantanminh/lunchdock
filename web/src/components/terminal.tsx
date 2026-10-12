@@ -3,7 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth";
-import { Button, Empty, Select } from "./ui";
+import { Alert, Button, Empty, Select, StatusDot } from "./ui";
 import { useT } from "../i18n";
 
 type Status = "idle" | "connecting" | "open" | "closed";
@@ -79,55 +79,75 @@ export function TerminalPanel({
   }, [session, serviceId, container]);
 
   if (user?.role !== "admin") {
-    return <Empty>{t("Only admins can open a terminal.")}</Empty>;
+    return (
+      <Empty icon="lock" title={t("Admins only")}>
+        {t("Only admins can open a terminal.")}
+      </Empty>
+    );
   }
   const needsContainer = containers.length > 0 && !container;
+  const live = status === "open" || status === "connecting";
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         {containers.length > 0 ? (
-          <Select
-            className="w-56"
-            value={container}
-            aria-label={t("Compose service")}
-            onChange={(event) => {
-              setContainer(event.target.value);
-              setSession(0);
-              setStatus("idle");
-            }}
-          >
-            <option value="">{t("Choose a service")}</option>
-            {containers.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
+          <div className="w-56 max-w-full">
+            <Select
+              value={container}
+              aria-label={t("Compose service")}
+              onChange={(event) => {
+                setContainer(event.target.value);
+                setSession(0);
+                setStatus("idle");
+              }}
+            >
+              <option value="">{t("Choose a service")}</option>
+              {containers.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </div>
         ) : null}
-        <Button disabled={needsContainer} onClick={() => setSession((value) => value + 1)}>
-          {status === "open" || status === "connecting" ? t("Reconnect") : t("Open shell")}
+        <Button
+          icon="terminal"
+          disabled={needsContainer}
+          onClick={() => setSession((value) => value + 1)}
+        >
+          {live ? t("Reconnect") : t("Open shell")}
         </Button>
         {status === "open" ? (
-          <Button quiet onClick={() => setSession(0)}>
+          <Button variant="secondary" onClick={() => setSession(0)}>
             {t("Disconnect")}
           </Button>
         ) : null}
-        <span className="text-sm text-muted">
+        <span className="ml-auto inline-flex items-center gap-2 text-[13px] text-muted">
+          {status === "open" || status === "connecting" || status === "closed" ? (
+            <StatusDot
+              status={status === "open" ? "running" : status === "connecting" ? "building" : "stopped"}
+            />
+          ) : null}
           {status === "open" ? t("Connected") : status === "connecting" ? t("Connecting…") : ""}
           {status === "closed" ? t("Disconnected") : ""}
         </span>
       </div>
-      {note ? <p className="text-sm text-muted">{note}</p> : null}
+      {note ? <Alert tone="warning">{note}</Alert> : null}
+      {session === 0 ? (
+        <div className="flex h-40 items-center justify-center rounded-alert border border-dashed border-line-strong px-4 text-center text-sm text-muted">
+          {needsContainer ? t("Choose a service, then open a shell.") : t("No shell open yet.")}
+        </div>
+      ) : null}
+      <div
+        ref={host}
+        className={`h-[28rem] overflow-hidden rounded-alert border border-[#2c2a26] bg-[#0b0d10] p-2 ${session === 0 ? "hidden" : ""}`}
+      />
       <p className="text-xs text-muted">
         {t(
           "Sessions run the container's bash or sh as its default user and are recorded in the audit log.",
         )}
       </p>
-      <div
-        ref={host}
-        className={`h-[28rem] overflow-hidden rounded-lg bg-[#0b0d10] p-2 ${session === 0 ? "hidden" : ""}`}
-      />
     </div>
   );
 }

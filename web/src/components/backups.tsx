@@ -19,7 +19,23 @@ import {
   timezoneOptions,
 } from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Empty, Field, QuickPick, Select, TextArea, TextInput } from "./ui";
+import { Icon } from "./icons";
+import {
+  Badge,
+  Button,
+  buttonClass,
+  DataTable,
+  Disclosure,
+  Empty,
+  Field,
+  LogPre,
+  QuickPick,
+  Select,
+  Td,
+  TextArea,
+  TextInput,
+  Th,
+} from "./ui";
 
 type Job = Schemas["BackupJobView"];
 type Run = Schemas["BackupRunView"];
@@ -109,7 +125,6 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
     notify_on_success: false,
   });
   const [chosen, setChosen] = useState<string[]>([]);
-  const [advanced, setAdvanced] = useState(false);
 
   const save = useMutation({
     mutationFn: () => {
@@ -448,14 +463,7 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
           </Field>
         </div>
       </fieldset>
-      <button
-        type="button"
-        className="block text-sm text-accent"
-        onClick={() => setAdvanced(!advanced)}
-      >
-        {advanced ? t("Hide advanced options") : t("Show advanced options")}
-      </button>
-      {advanced ? (
+      <Disclosure title={t("Advanced options")}>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label={t("Path prefix")}>
             <TextInput value={form.path_prefix} onChange={set("path_prefix")} />
@@ -598,7 +606,7 @@ export function BackupJobForm({ target, onSaved }: { target: BackupTarget; onSav
             </label>
           </div>
         </div>
-      ) : null}
+      </Disclosure>
       <Button type="submit" disabled={save.isPending}>
         {t("Save backup job")}
       </Button>
@@ -646,50 +654,69 @@ export function BackupJobs({ serviceId }: { serviceId?: string }) {
   });
 
   if (jobs.data?.length === 0) {
-    return <Empty>{t("No backup jobs yet.")}</Empty>;
+    return (
+      <Empty icon="archive" title={t("No backup jobs yet")}>
+        {t("Create a job to back up on a schedule and keep copies in S3.")}
+      </Empty>
+    );
   }
   return (
     <ul className="space-y-3">
       {(jobs.data ?? []).map((job) => (
-        <li key={job.id} className="rounded-lg border border-line p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="font-medium">
-                {job.name} {job.last_status ? <Badge value={job.last_status} /> : null}
-                {job.enabled ? null : (
-                  <span className="ml-2 text-xs text-muted">{t("paused")}</span>
-                )}
+        <li key={job.id} className="overflow-hidden rounded-alert border border-line bg-surface">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
+            <div className="min-w-0 flex-1 basis-72">
+              <p className="flex flex-wrap items-center gap-2 font-medium text-ink">
+                {job.name}
+                {job.last_status ? <Badge value={job.last_status} /> : null}
+                {job.enabled ? null : <Badge value="paused" tone="outline" />}
               </p>
-              <p className="text-sm text-muted">
+              <p className="mt-1 text-[13px] text-muted">
                 {job.target_kind} · {job.schedule_cron || t("manual")} ({job.timezone}) ·{" "}
                 {t("next {time}", { time: formatTime(job.next_run_at) })} · {job.compression}
                 {job.encrypted ? ` · ${t("encrypted")}` : ""} ·{" "}
                 {t("{count} destination(s)", { count: job.destination_ids.length })}
               </p>
             </div>
-            <Button onClick={() => run.mutate(job.id)} disabled={run.isPending}>
-              {t("Back up now")}
-            </Button>
-            <Button quiet onClick={() => setOpen(open === job.id ? null : job.id)}>
-              {open === job.id ? t("Hide runs") : t("Runs")}
-            </Button>
-            <Button quiet onClick={() => toggle.mutate(job)}>
-              {job.enabled ? t("Pause") : t("Resume")}
-            </Button>
-            <Button
-              quiet
-              onClick={() => {
-                if (
-                  window.confirm(
-                    t("Delete backup job {name}? Stored objects are kept.", { name: job.name }),
-                  )
-                ) {
-                  remove.mutate(job.id);
-                }
-              }}
-            >
-              {t("Delete")}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                icon="play"
+                onClick={() => run.mutate(job.id)}
+                disabled={run.isPending}
+              >
+                {t("Back up now")}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={open === job.id ? "chevronDown" : "chevronRight"}
+                aria-expanded={open === job.id}
+                onClick={() => setOpen(open === job.id ? null : job.id)}
+              >
+                {open === job.id ? t("Hide runs") : t("Runs")}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => toggle.mutate(job)}>
+                {job.enabled ? t("Pause") : t("Resume")}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon="trash"
+                className="text-danger hover:bg-danger-soft hover:text-danger"
+                aria-label={t("Delete backup job {name}", { name: job.name })}
+                title={t("Delete")}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      t("Delete backup job {name}? Stored objects are kept.", { name: job.name }),
+                    )
+                  ) {
+                    remove.mutate(job.id);
+                  }
+                }}
+              />
+            </div>
           </div>
           {open === job.id ? <RunHistory job={job} /> : null}
         </li>
@@ -711,35 +738,41 @@ function RunHistory({ job }: { job: Job }) {
   const [logsFor, setLogsFor] = useState<string | null>(null);
   const [restoreFor, setRestoreFor] = useState<string | null>(null);
 
+  if (runs.data?.length === 0) {
+    return (
+      <div className="border-t border-line">
+        <Empty>{t("No runs yet.")}</Empty>
+      </div>
+    );
+  }
   return (
-    <div className="mt-3 overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="text-xs text-muted uppercase">
-          <tr>
-            <th className="py-1">{t("Started")}</th>
-            <th>{t("Kind")}</th>
-            <th>{t("Status")}</th>
-            <th>{t("Duration")}</th>
-            <th>{t("Size")}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line">
-          {(runs.data ?? []).map((run) => (
-            <RunRow
-              key={run.id}
-              job={job}
-              run={run}
-              showLogs={logsFor === run.id}
-              showRestore={restoreFor === run.id}
-              onLogs={() => setLogsFor(logsFor === run.id ? null : run.id)}
-              onRestore={() => setRestoreFor(restoreFor === run.id ? null : run.id)}
-            />
-          ))}
-        </tbody>
-      </table>
-      {runs.data?.length === 0 ? <Empty>{t("No runs yet.")}</Empty> : null}
-    </div>
+    <DataTable
+      minWidth={640}
+      head={
+        <>
+          <Th>{t("Started")}</Th>
+          <Th>{t("Kind")}</Th>
+          <Th>{t("Status")}</Th>
+          <Th>{t("Duration")}</Th>
+          <Th>{t("Size")}</Th>
+          <Th>
+            <span className="sr-only">{t("Actions")}</span>
+          </Th>
+        </>
+      }
+    >
+      {(runs.data ?? []).map((run) => (
+        <RunRow
+          key={run.id}
+          job={job}
+          run={run}
+          showLogs={logsFor === run.id}
+          showRestore={restoreFor === run.id}
+          onLogs={() => setLogsFor(logsFor === run.id ? null : run.id)}
+          onRestore={() => setRestoreFor(restoreFor === run.id ? null : run.id)}
+        />
+      ))}
+    </DataTable>
   );
 }
 
@@ -764,58 +797,64 @@ function RunRow({
   return (
     <>
       <tr>
-        <td className="py-2">{formatTime(run.started_at)}</td>
-        <td>
+        <Td className="whitespace-nowrap">{formatTime(run.started_at)}</Td>
+        <Td className="text-muted">
           {run.kind} · {run.trigger}
-        </td>
-        <td>
+        </Td>
+        <Td>
           <Badge value={run.status} />
-        </td>
-        <td>{formatDuration(run.duration_ms)}</td>
-        <td>{formatBytes(run.size_bytes)}</td>
-        <td className="space-x-2 text-right whitespace-nowrap">
-          <button type="button" className="text-accent" onClick={onLogs}>
+        </Td>
+        <Td className="tabular-nums">{formatDuration(run.duration_ms)}</Td>
+        <Td className="tabular-nums">{formatBytes(run.size_bytes)}</Td>
+        <Td className="text-right whitespace-nowrap">
+          <Button size="sm" variant="ghost" onClick={onLogs} aria-expanded={showLogs}>
             {t("Logs")}
-          </button>
+          </Button>
           {restorable ? (
             <>
-              <a className="text-accent" href={`/api/v1/backup-runs/${run.id}/download`}>
+              <a
+                className={buttonClass({ variant: "ghost", size: "sm" })}
+                href={`/api/v1/backup-runs/${run.id}/download`}
+              >
+                <Icon name="download" size={14} />
                 {t("Download")}
               </a>
-              <button type="button" className="text-accent" onClick={onRestore}>
+              <Button size="sm" variant="ghost" icon="refresh" onClick={onRestore}>
                 {t("Restore")}
-              </button>
+              </Button>
             </>
           ) : null}
-        </td>
+        </Td>
       </tr>
       {showLogs ? (
         <tr>
-          <td colSpan={6}>
-            {run.error ? <p className="text-sm text-danger">{run.error}</p> : null}
+          <Td colSpan={6} className="bg-paper/60">
+            {run.error ? <p className="mb-2 text-sm text-danger">{run.error}</p> : null}
             {run.checksum ? (
               <p className="font-mono text-xs break-all text-muted">sha256 {run.checksum}</p>
             ) : null}
             {run.object_keys.map((key) => (
-              <p key={key} className="font-mono text-xs text-muted">
+              <p key={key} className="font-mono text-xs break-all text-muted">
                 {key}
               </p>
             ))}
-            <pre className="mt-1 max-h-64 overflow-auto rounded-md bg-paper p-2 text-xs whitespace-pre-wrap">
-              {run.logs || t("No log output yet.")}
-            </pre>
-          </td>
+            <div className="mt-2">
+              <LogPre className="max-h-64" empty={t("No log output yet.")}>
+                {run.logs}
+              </LogPre>
+            </div>
+          </Td>
         </tr>
       ) : null}
       {showRestore ? (
         <tr>
-          <td colSpan={6}>
+          <Td colSpan={6} className="bg-paper/60">
             {job.target_kind.startsWith("panel_") ? (
               <PanelRestoreHint />
             ) : (
               <RestoreForm job={job} run={run} />
             )}
-          </td>
+          </Td>
         </tr>
       ) : null}
     </>
@@ -825,13 +864,13 @@ function RunRow({
 export function PanelRestoreHint() {
   const t = useT();
   return (
-    <div className="my-2 space-y-2 rounded-md border border-line p-3 text-sm">
+    <div className="my-1 space-y-2 rounded-alert border border-line bg-surface p-4 text-sm">
       <p>
         {t(
           "Panel backups are restored on a fresh host before the panel starts. Download the backup, copy it to the new server, and run:",
         )}
       </p>
-      <pre className="overflow-auto rounded-md bg-paper p-2 font-mono text-xs">
+      <pre className="overflow-auto rounded-alert border border-line bg-paper p-3 font-mono text-xs">
         curl -fsSL https://github.com/vantanminh/lunchdock/releases/latest/download/install.sh -o
         install.sh
         {"\n"}sudo sh install.sh --restore rudder-panel-….tar.zst.enc
@@ -872,7 +911,7 @@ function RestoreForm({ job, run }: { job: Job; run: Run }) {
   });
   return (
     <form
-      className="my-2 flex flex-wrap items-end gap-3 rounded-md border border-line p-3"
+      className="my-1 flex flex-wrap items-end gap-3 rounded-alert border border-line bg-surface p-4"
       onSubmit={(event) => {
         event.preventDefault();
         if (window.confirm(t("Restoring overwrites the target data. Continue?"))) {

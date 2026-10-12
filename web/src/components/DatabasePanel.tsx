@@ -7,7 +7,17 @@ import { errorMessage } from "../format";
 import { useT } from "../i18n";
 import { CPU_LIMITS, MEMORY_LIMITS_MIB } from "../presets";
 import type { Schemas } from "../types";
-import { Badge, Button, Card, Field, QuickPick, TextInput } from "./ui";
+import {
+  Button,
+  Card,
+  CodeBlock,
+  DefinitionList,
+  Field,
+  LogPre,
+  QuickPick,
+  Segmented,
+  TextInput,
+} from "./ui";
 
 interface DatabaseSpec {
   engine?: string;
@@ -40,6 +50,7 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
     onSuccess: async (view) => {
       toast.success(t("Database {status}", { status: t(view.status) }));
       await queryClient.invalidateQueries({ queryKey: ["service", service.id] });
+      await queryClient.invalidateQueries({ queryKey: ["services"] });
     },
     onError: (error) => toast.error(errorMessage(error, t("Action failed"))),
   });
@@ -70,67 +81,74 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
 
   return (
     <>
-      <Card title={t("Database")}>
-        <dl className="grid gap-2 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted">{t("Engine")}</dt>
-            <dd>
-              {spec.engine} {spec.version}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted">{t("Status")}</dt>
-            <dd>
-              <Badge value={service.status} />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted">{t("Internal host")}</dt>
-            <dd className="font-mono">
-              {spec.container}:{spec.port}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted">{t("Volume")}</dt>
-            <dd className="font-mono">{spec.volume}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">{t("Database / user")}</dt>
-            <dd>
-              {spec.database || "—"} / {spec.username || "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted">{t("Public port")}</dt>
-            <dd>{spec.public_port ?? t("internal only")}</dd>
-          </div>
-        </dl>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => lifecycle.mutate("start")} disabled={lifecycle.isPending}>
+      <Card
+        title={t("Database")}
+        description={t("Managed container with its own volume and generated credentials.")}
+      >
+        <DefinitionList
+          items={[
+            { label: t("Internal host"), value: `${spec.container}:${spec.port}`, mono: true },
+            { label: t("Volume"), value: spec.volume || "—", mono: true },
+            {
+              label: t("Database / user"),
+              value: `${spec.database || "—"} / ${spec.username || "—"}`,
+            },
+            { label: t("Public port"), value: spec.public_port ?? t("internal only") },
+          ]}
+        />
+        <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+          <Button icon="play" onClick={() => lifecycle.mutate("start")} disabled={lifecycle.isPending}>
             {t("Start")}
           </Button>
-          <Button quiet onClick={() => lifecycle.mutate("stop")} disabled={lifecycle.isPending}>
+          <Button
+            variant="secondary"
+            icon="stop"
+            onClick={() => lifecycle.mutate("stop")}
+            disabled={lifecycle.isPending}
+          >
             {t("Stop")}
           </Button>
-          <Button quiet onClick={() => lifecycle.mutate("restart")} disabled={lifecycle.isPending}>
+          <Button
+            variant="secondary"
+            icon="refresh"
+            onClick={() => lifecycle.mutate("restart")}
+            disabled={lifecycle.isPending}
+          >
             {t("Restart")}
           </Button>
           {user?.role === "admin" ? (
-            <Button quiet onClick={() => (connection ? setConnection(null) : reveal.mutate())}>
+            <Button
+              variant="ghost"
+              icon="lock"
+              className="ml-auto"
+              disabled={reveal.isPending}
+              onClick={() => (connection ? setConnection(null) : reveal.mutate())}
+            >
               {connection ? t("Hide connection string") : t("Show connection string")}
             </Button>
           ) : null}
         </div>
         {connection ? (
-          <div className="mt-3 space-y-1 rounded-md bg-paper p-3 font-mono text-xs break-all">
-            <p>{connection.internal_url}</p>
-            {connection.public_url ? <p>{connection.public_url}</p> : null}
+          <div className="mt-4 space-y-3">
+            <div className="space-y-1.5">
+              <p className="text-[13px] font-medium text-ink-soft">{t("Internal URL")}</p>
+              <CodeBlock copy>{connection.internal_url}</CodeBlock>
+            </div>
+            {connection.public_url ? (
+              <div className="space-y-1.5">
+                <p className="text-[13px] font-medium text-ink-soft">{t("Public URL")}</p>
+                <CodeBlock copy>{connection.public_url}</CodeBlock>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </Card>
-      <Card title={t("Ports and limits")}>
+      <Card
+        title={t("Ports and limits")}
+        description={t("Changes apply the next time the database restarts.")}
+      >
         <form
-          className="grid gap-3 md:grid-cols-4"
+          className="grid gap-4 md:grid-cols-3"
           onSubmit={(event) => {
             event.preventDefault();
             update.mutate();
@@ -185,8 +203,10 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
           >
             <TextInput value={cpus} onChange={(event) => setCpus(event.target.value)} />
           </Field>
-          <div className="flex items-end">
-            <Button type="submit">{t("Save")}</Button>
+          <div className="md:col-span-3">
+            <Button type="submit" disabled={update.isPending}>
+              {t("Save")}
+            </Button>
           </div>
         </form>
       </Card>
@@ -196,7 +216,7 @@ export function DatabasePanel({ service }: { service: Schemas["ServiceView"] }) 
 
 export function ServiceLogs({ serviceId }: { serviceId: string }) {
   const t = useT();
-  const [tail, setTail] = useState(200);
+  const [tail, setTail] = useState("200");
   const logs = useQuery({
     queryKey: ["service-logs", serviceId, tail],
     queryFn: () => api<Schemas["LogsView"]>(`/api/v1/services/${serviceId}/logs?tail=${tail}`),
@@ -204,21 +224,26 @@ export function ServiceLogs({ serviceId }: { serviceId: string }) {
     retry: false,
   });
   return (
-    <Card title={t("Container logs")}>
-      <div className="mb-3 flex items-center gap-2 text-sm">
-        <span className="text-muted">{t("Lines")}</span>
-        {[100, 200, 1000].map((count) => (
-          <Button key={count} quiet={tail !== count} onClick={() => setTail(count)}>
-            {count}
-          </Button>
-        ))}
-      </div>
+    <Card
+      title={t("Container logs")}
+      description={t("Live output of the container. Refreshes every 5 seconds.")}
+      actions={
+        <Segmented
+          label={t("Lines")}
+          value={tail}
+          onChange={setTail}
+          options={[
+            ["100", "100"],
+            ["200", "200"],
+            ["1000", "1000"],
+          ]}
+        />
+      }
+    >
       {logs.error ? (
         <p className="text-sm text-muted">{errorMessage(logs.error, t("No logs available"))}</p>
       ) : (
-        <pre className="max-h-[32rem] overflow-auto rounded-md bg-paper p-3 text-xs whitespace-pre-wrap">
-          {logs.data?.logs || t("No output yet.")}
-        </pre>
+        <LogPre empty={t("No output yet.")}>{logs.data?.logs}</LogPre>
       )}
     </Card>
   );

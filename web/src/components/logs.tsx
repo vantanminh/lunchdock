@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { errorMessage, formatTime } from "../format";
 import type { Schemas } from "../types";
-import { Button, Empty, Select, TextInput } from "./ui";
+import { Icon } from "./icons";
+import { Button, buttonClass, Empty, Select, TextInput } from "./ui";
 import { msg, useT } from "../i18n";
 
 type LogView = Schemas["LogView"];
@@ -29,8 +30,8 @@ export interface LogFilters {
 }
 
 const levelTone: Record<string, string> = {
-  error: "text-danger",
-  warn: "text-amber",
+  error: "font-medium text-danger",
+  warn: "font-medium text-amber",
   info: "text-pine",
   debug: "text-muted",
   trace: "text-muted",
@@ -144,10 +145,10 @@ export function LogViewer({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="grid gap-2 md:grid-cols-6">
+    <div className="@container space-y-3">
+      <div className="grid grid-cols-2 gap-2 @2xl:grid-cols-[2fr_1fr_1fr_1fr_1.3fr]">
         <TextInput
-          className="md:col-span-2"
+          className="col-span-2 @2xl:col-span-1"
           placeholder={t("Search messages")}
           value={filters.q}
           onChange={(event) => set("q", event.target.value)}
@@ -205,22 +206,29 @@ export function LogViewer({
         </Select>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button quiet={!live} onClick={() => setLive((value) => !value)}>
+        <Button
+          variant={live ? "primary" : "secondary"}
+          size="sm"
+          icon={live ? "stop" : "play"}
+          onClick={() => setLive((value) => !value)}
+        >
           {live ? t("Stop live tail") : t("Live tail")}
         </Button>
         <a
-          className="inline-flex h-10 items-center rounded-md border border-line bg-panel px-3 text-sm hover:bg-paper"
+          className={buttonClass({ variant: "secondary", size: "sm" })}
           href={`/api/v1/logs/export?${exportBase.toString()}&format=ndjson`}
         >
+          <Icon name="download" size={14} />
           {t("Export NDJSON")}
         </a>
         <a
-          className="inline-flex h-10 items-center rounded-md border border-line bg-panel px-3 text-sm hover:bg-paper"
+          className={buttonClass({ variant: "secondary", size: "sm" })}
           href={`/api/v1/logs/export?${exportBase.toString()}&format=csv`}
         >
+          <Icon name="download" size={14} />
           {t("Export CSV")}
         </a>
-        <span className="text-sm text-muted">
+        <span className="ml-auto text-[13px] text-muted">
           {live
             ? liveNote && t(liveNote.key, liveNote.values)
             : search.isFetching
@@ -231,7 +239,7 @@ export function LogViewer({
       {search.error && !live ? (
         <p className="text-sm text-danger">{errorMessage(search.error, t("Search failed"))}</p>
       ) : null}
-      <div className="overflow-x-auto rounded-lg border border-line bg-paper">
+      <div className="max-h-[36rem] overflow-auto rounded-alert border border-line bg-surface">
         <table className="w-full font-mono text-xs">
           <tbody>
             {rows.map((row) => (
@@ -267,18 +275,22 @@ function LogRow({ row, open, onToggle }: { row: LogView; open: boolean; onToggle
   return (
     <>
       <tr
-        className="cursor-pointer border-b border-line/60 align-top hover:bg-panel"
-        onClick={onToggle}
+        className={`border-b border-line/70 align-top transition-colors hover:bg-paper ${hasFields ? "cursor-pointer" : ""}`}
+        onClick={hasFields ? onToggle : undefined}
       >
-        <td className="px-2 py-1 whitespace-nowrap text-muted">{formatTime(row.logged_at)}</td>
-        <td className="px-2 py-1 whitespace-nowrap text-muted">{row.source}</td>
-        <td className={`px-2 py-1 whitespace-nowrap ${levelTone[row.level] ?? ""}`}>{row.level}</td>
-        <td className="px-2 py-1 whitespace-nowrap">{row.http_status ?? ""}</td>
-        <td className="w-full px-2 py-1 break-all whitespace-pre-wrap">{row.message}</td>
+        <td className="px-3 py-1.5 whitespace-nowrap text-muted">{formatTime(row.logged_at)}</td>
+        <td className="px-2 py-1.5 whitespace-nowrap text-muted">{row.source}</td>
+        <td className={`px-2 py-1.5 whitespace-nowrap ${levelTone[row.level] ?? ""}`}>
+          {row.level}
+        </td>
+        <td className="px-2 py-1.5 whitespace-nowrap text-ink-soft">{row.http_status ?? ""}</td>
+        <td className="w-full px-2 py-1.5 pr-3 break-all whitespace-pre-wrap text-ink">
+          {row.message}
+        </td>
       </tr>
       {open && hasFields ? (
-        <tr className="border-b border-line/60 bg-panel">
-          <td colSpan={5} className="px-2 py-2">
+        <tr className="border-b border-line/70 bg-paper">
+          <td colSpan={5} className="px-3 py-2">
             <pre className="whitespace-pre-wrap text-muted">{JSON.stringify(fields, null, 2)}</pre>
           </td>
         </tr>
