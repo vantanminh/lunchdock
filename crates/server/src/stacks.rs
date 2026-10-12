@@ -620,8 +620,16 @@ pub async fn start_action(
     let (cancel, guard) = state.stack_runs.begin(id);
     let task_state = state.clone();
     tokio::spawn(async move {
-        let _guard = guard;
-        execute(&task_state, id, deployment_id, action, &previous, cancel).await;
+        execute(
+            &task_state,
+            id,
+            deployment_id,
+            action,
+            &previous,
+            cancel,
+            guard,
+        )
+        .await;
     });
     load_deployment(state, deployment_id).await
 }
@@ -663,6 +671,7 @@ async fn execute(
     action: StackAction,
     previous: &str,
     cancel: CancellationToken,
+    guard: RunGuard,
 ) {
     let log = LiveLog::default();
     let flusher = spawn_flusher(state, deployment_id, &log);
@@ -688,6 +697,9 @@ async fn execute(
         }
     };
     flusher.abort();
+    // The action is over: a Cancel from here on is answered "not running". The service stays
+    // `deploying` until the final status below, so no new action can start in between.
+    drop(guard);
     let (status, error, service_status) = match &ended {
         Ended::Finished => (
             "succeeded",

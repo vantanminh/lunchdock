@@ -43,6 +43,7 @@ use crate::routes::github_app::{
     CompleteGithubApp, GithubAppCreated, GithubAppInstalled, GithubAppManifest, InstallLink,
     StartGithubApp,
 };
+use crate::routes::github_repos::{GithubBranchesView, GithubComposeFilesView, GithubRepoView};
 use crate::routes::health::HealthResponse;
 use crate::routes::logs::{IngestEntry, IngestRequest, IngestResult, LogPage, UpdateRetention};
 use crate::routes::monitoring::{
@@ -123,6 +124,9 @@ use rudder_core::{
         PanelView,
         UpdatePanel,
         GitProviderView,
+        GithubRepoView,
+        GithubBranchesView,
+        GithubComposeFilesView,
         CreateGitProvider,
         StartGithubApp,
         GithubAppManifest,
@@ -678,6 +682,33 @@ const ROUTES: &[Route] = &[
         summary: "A fresh GitHub link to install or reconfigure the app (admin, write)",
         request: None,
         response: Some("InstallLink"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/git-providers/{id}/repositories",
+        method: HttpMethod::Get,
+        tag: "source",
+        summary: "Repositories the GitHub App installation can read",
+        request: None,
+        response: Some("[GithubRepoView]"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/git-providers/{id}/branches",
+        method: HttpMethod::Get,
+        tag: "source",
+        summary: "Branches of a repository the GitHub App can read (?repo=), default branch first",
+        request: None,
+        response: Some("GithubBranchesView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/git-providers/{id}/compose-files",
+        method: HttpMethod::Get,
+        tag: "source",
+        summary: "Compose files found in a repository branch (?repo=&branch=)",
+        request: None,
+        response: Some("GithubComposeFilesView"),
         status: 200,
     },
     Route {

@@ -7,13 +7,12 @@ import { errorMessage } from "../format";
 import { providerLabel, providerReady } from "../git";
 import { useT } from "../i18n";
 import {
-  BRANCHES,
-  COMPOSE_FILES,
   COMPOSE_STARTERS,
   MAIN_SERVICES,
   STACK_SOURCES,
 } from "../presets";
 import type { Schemas } from "../types";
+import { BranchField, ComposeFileField, RepositoryField } from "./git-pickers";
 import {
   Alert,
   Badge,
@@ -560,6 +559,7 @@ function GitFields({
   onChange: (git: StackGit) => void;
 }) {
   const t = useT();
+  const provider = providers.find((item) => item.id === git.provider_id);
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Field label={t("Provider")}>
@@ -576,48 +576,31 @@ function GitFields({
           ))}
         </Select>
       </Field>
-      <Field label={t("Repository")}>
-        <TextInput
-          required
-          value={git.repo}
-          placeholder="https://github.com/org/stack.git"
-          onChange={(event) => onChange({ ...git, repo: event.target.value })}
-        />
-      </Field>
-      <Field
-        label={t("Branch")}
-        presets={
-          <QuickPick
-            label={t("Branch presets")}
-            options={BRANCHES}
-            value={git.branch}
-            onPick={(branch) => onChange({ ...git, branch })}
-          />
+      <RepositoryField
+        provider={provider}
+        value={git.repo}
+        placeholder="https://github.com/org/stack.git"
+        onChange={(repo, defaultBranch) =>
+          onChange({
+            ...git,
+            repo,
+            ...(defaultBranch ? { branch: defaultBranch, compose_file: "" } : {}),
+          })
         }
-      >
-        <TextInput
-          required
-          value={git.branch}
-          onChange={(event) => onChange({ ...git, branch: event.target.value })}
-        />
-      </Field>
-      <Field
-        label={t("Compose file path")}
-        presets={
-          <QuickPick
-            label={t("Compose file presets")}
-            options={COMPOSE_FILES}
-            value={git.compose_file}
-            onPick={(compose_file) => onChange({ ...git, compose_file })}
-          />
-        }
-      >
-        <TextInput
-          required
-          value={git.compose_file}
-          onChange={(event) => onChange({ ...git, compose_file: event.target.value })}
-        />
-      </Field>
+      />
+      <BranchField
+        provider={provider}
+        repo={git.repo}
+        value={git.branch}
+        onChange={(branch) => onChange({ ...git, branch })}
+      />
+      <ComposeFileField
+        provider={provider}
+        repo={git.repo}
+        branch={git.branch}
+        value={git.compose_file}
+        onChange={(compose_file) => onChange({ ...git, compose_file })}
+      />
     </div>
   );
 }

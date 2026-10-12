@@ -251,6 +251,11 @@ async fn create_stack(
     auth.require_write()?;
     validate_name(&body.name).map_err(core_error)?;
     let (compose_yaml, git) = source_parts(&body.source, body.compose_yaml, body.git)?;
+    if let Some(git) = &git {
+        stacks::check_git(git)?;
+        super::github_repos::check_source_access(&state, git.provider_id, &git.repo, &git.branch)
+            .await?;
+    }
     let mut spec = stacks::initial_spec(
         &body.name,
         &body.source,
@@ -369,6 +374,21 @@ async fn update_stack(
     }
     if let Some(push) = body.deploy_on_push {
         stack.spec.deploy_on_push = push;
+    }
+    if let Some(new) = git.as_ref().filter(|_| stack.spec.source == "git") {
+        let moved = stack.spec.git.as_ref().is_none_or(|old| {
+            old.provider_id != new.provider_id || old.repo != new.repo || old.branch != new.branch
+        });
+        if moved {
+            stacks::check_git(new)?;
+            super::github_repos::check_source_access(
+                &state,
+                new.provider_id,
+                &new.repo,
+                &new.branch,
+            )
+            .await?;
+        }
     }
     if stack.spec.source == "git" {
         let changed = switching

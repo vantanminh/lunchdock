@@ -756,7 +756,7 @@ async fn load_private_key(state: &AppState, service_id: Uuid) -> Result<String, 
     String::from_utf8(bytes).map_err(|_| "stored deploy key is not UTF-8".to_string())
 }
 
-async fn installation_token(
+pub(crate) async fn installation_token(
     api_url: &str,
     app_id: &str,
     installation_id: &str,

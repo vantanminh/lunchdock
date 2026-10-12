@@ -20,7 +20,9 @@ GitHub sends you back to, and delivers push events to, the address you used to o
 
 ## Use it
 
-Open an application → Source, choose the GitHub App provider, and enter the repository URL (`https://github.com/owner/name.git`) and branch. A provider that is not installed yet is greyed out as *needs install*.
+Open an application → Source, choose the GitHub App provider, then pick the repository and branch from the lists (or choose *Another repository…* and type `https://github.com/owner/name.git`). A provider that is not installed yet is greyed out as *needs install*.
+
+Both lists come from the installation: *repositories* are the ones you granted the app (private ones are marked), the branch list starts with the repository's default branch, and for a compose stack the *Compose file path* list shows the compose files found on the branch (`compose.yaml`, `docker-compose.prod.yml`, …). Picking a repository fills in its default branch. When the source is saved the panel asks GitHub whether the app can read the repository and the branch, so a typo or a repository outside the installation is refused with a clear message (`repo_not_accessible`, `branch_not_found`) instead of failing at the first deploy. If GitHub cannot be reached when saving, the source is saved anyway and the first build reports the problem; sources with another kind of provider are not checked.
 
 A push to a branch starts a build of every application whose source uses this provider, the same repository (`owner/name`, case-insensitive, HTTPS or SSH URL), and that branch. The Git source card still shows a per-service webhook secret; it is not needed for apps. A compose stack with the same provider, repository and branch is deployed too, but only when *Deploy when I push to the branch* is on in its source settings (see [stacks](stacks.md#deploy-on-push)).
 
@@ -47,6 +49,9 @@ GitHub Enterprise Server is not supported.
 | `POST /api/v1/github-app/complete` | Admin, write. `{code, state}` from GitHub's redirect → `{provider, install_url}` |
 | `POST /api/v1/github-app/installed` | Admin, write. `{installation_id, state?}` from GitHub's redirect → provider. Without `state` the pending app that GitHub confirms owns the installation is used |
 | `POST /api/v1/git-providers/{id}/install-link` | Admin, write. A fresh `install_url` for an existing app |
+| `GET /api/v1/git-providers/{id}/repositories` | Repositories the installation can read (up to 500): `[{full_name, url, private, default_branch}]` |
+| `GET /api/v1/git-providers/{id}/branches?repo=` | `{default_branch, branches}`, default first; `repo` is a URL or `owner/name` |
+| `GET /api/v1/git-providers/{id}/compose-files?repo=&branch=` | `{files}`: compose files in the branch, shallowest first |
 | `POST /api/v1/git-providers/{id}/webhook` | GitHub only. Verified with the app's webhook secret; starts matching builds |
 
 `GET /api/v1/git-providers` reports `status` (`ready` or `pending_install`), `app_slug`, and `account`, never secrets. The design is in decision 0019.

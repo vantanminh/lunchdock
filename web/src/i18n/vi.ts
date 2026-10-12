@@ -1223,4 +1223,11 @@ export const vi: Record<string, string> = {
   "optional": "tuỳ chọn",
   "required": "bắt buộc",
   "needed": "cần thiết",
+  "private": "riêng tư",
+  "Another repository…": "Kho mã khác…",
+  "Could not list the repositories; type the address instead.": "Không liệt kê được các kho mã; hãy nhập địa chỉ.",
+  "Another branch…": "Nhánh khác…",
+  "The GitHub App cannot read this repository.": "GitHub App không đọc được kho mã này.",
+  "Another path…": "Đường dẫn khác…",
+  "No compose file was found on this branch; type its path.": "Không tìm thấy file compose trên nhánh này; hãy nhập đường dẫn.",
 };

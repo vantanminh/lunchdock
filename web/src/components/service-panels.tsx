@@ -5,10 +5,11 @@ import { api, ApiError } from "../api";
 import { errorMessage, formatDuration, formatRelative, formatTime } from "../format";
 import { providerLabel, providerReady } from "../git";
 import { useT } from "../i18n";
-import { BRANCHES, BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
+import { BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
 import { useConfirmSecret } from "../insecure";
 import { useStack } from "./stacks";
+import { BranchField, RepositoryField } from "./git-pickers";
 import { Icon, type IconName } from "./icons";
 import {
   Alert,
@@ -222,27 +223,23 @@ export function GitSourceCard({ service }: { service: ServiceDetail }) {
               ))}
             </Select>
           </Field>
-          <Field label={t("Repository")}>
-            <TextInput
-              required
-              value={repo}
-              placeholder="https://github.com/org/app.git"
-              onChange={(event) => setRepo(event.target.value)}
-            />
-          </Field>
-          <Field
-            label={t("Branch")}
-            presets={
-              <QuickPick
-                label={t("Branch presets")}
-                options={BRANCHES}
-                value={branch}
-                onPick={setBranch}
-              />
-            }
-          >
-            <TextInput required value={branch} onChange={(event) => setBranch(event.target.value)} />
-          </Field>
+          <RepositoryField
+            provider={(providers.data ?? []).find((item) => item.id === providerId)}
+            value={repo}
+            placeholder="https://github.com/org/app.git"
+            onChange={(url, defaultBranch) => {
+              setRepo(url);
+              if (defaultBranch) {
+                setBranch(defaultBranch);
+              }
+            }}
+          />
+          <BranchField
+            provider={(providers.data ?? []).find((item) => item.id === providerId)}
+            repo={repo}
+            value={branch}
+            onChange={setBranch}
+          />
           <PickField
             label={t("Build")}
             options={BUILD_STRATEGIES}

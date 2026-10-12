@@ -82,11 +82,133 @@ async fn installation(
     }
 }
 
+const INSTALLATION_TOKEN: &str = "ghs_faketoken";
+
+async fn access_token(Path(id): Path<String>) -> (StatusCode, Json<Value>) {
+    if id == "424242" {
+        (
+            StatusCode::CREATED,
+            Json(json!({ "token": INSTALLATION_TOKEN })),
+        )
+    } else {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "message": "Not Found" })),
+        )
+    }
+}
+
+fn missing() -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::NOT_FOUND,
+        Json(json!({ "message": "Not Found" })),
+    )
+}
+
+fn has_token(headers: &HeaderMap) -> bool {
+    headers
+        .get("authorization")
+        .and_then(|value| value.to_str().ok())
+        == Some(&format!("Bearer {INSTALLATION_TOKEN}"))
+}
+
+async fn installation_repositories(headers: HeaderMap) -> (StatusCode, Json<Value>) {
+    if !has_token(&headers) {
+        return missing();
+    }
+    let repo = |name: &str, private: bool| {
+        json!({
+            "full_name": name,
+            "clone_url": format!("https://github.com/{name}.git"),
+            "private": private,
+            "default_branch": "main",
+        })
+    };
+    (
+        StatusCode::OK,
+        Json(json!({
+            "total_count": 2,
+            "repositories": [repo("acme/web", true), repo("acme/stack", false)]
+        })),
+    )
+}
+
+async fn repository(
+    Path((owner, name)): Path<(String, String)>,
+    headers: HeaderMap,
+) -> (StatusCode, Json<Value>) {
+    if has_token(&headers) && owner == "acme" && matches!(name.as_str(), "web" | "stack" | "api") {
+        (StatusCode::OK, Json(json!({ "default_branch": "main" })))
+    } else {
+        missing()
+    }
+}
+
+async fn repository_branches(
+    Path((owner, name)): Path<(String, String)>,
+    headers: HeaderMap,
+) -> (StatusCode, Json<Value>) {
+    if has_token(&headers) && owner == "acme" && name == "stack" {
+        (
+            StatusCode::OK,
+            Json(json!([{ "name": "develop" }, { "name": "main" }, { "name": "feature/x" }])),
+        )
+    } else {
+        missing()
+    }
+}
+
+async fn repository_branch(
+    Path((owner, name, branch)): Path<(String, String, String)>,
+    headers: HeaderMap,
+) -> (StatusCode, Json<Value>) {
+    if has_token(&headers)
+        && owner == "acme"
+        && matches!(name.as_str(), "web" | "stack" | "api")
+        && matches!(branch.as_str(), "main" | "dev" | "develop" | "feature/x")
+    {
+        (StatusCode::OK, Json(json!({ "name": branch })))
+    } else {
+        missing()
+    }
+}
+
+async fn repository_tree(
+    Path((owner, name, branch)): Path<(String, String, String)>,
+    headers: HeaderMap,
+) -> (StatusCode, Json<Value>) {
+    if !(has_token(&headers) && owner == "acme" && name == "stack" && branch == "main") {
+        return missing();
+    }
+    (
+        StatusCode::OK,
+        Json(json!({ "tree": [
+            { "path": "README.md", "type": "blob" },
+            { "path": "deploy/docker-compose.prod.yml", "type": "blob" },
+            { "path": "compose.yaml", "type": "blob" },
+            { "path": "deploy", "type": "tree" },
+            { "path": "ci/build.yml", "type": "blob" },
+        ] })),
+    )
+}
+
 async fn fake_github() -> (String, Shared) {
     let seen = Shared::default();
     let router = axum::Router::new()
         .route("/app-manifests/{code}/conversions", post(convert))
         .route("/app/installations/{id}", get(installation))
+        .route("/app/installations/{id}/access_tokens", post(access_token))
+        .route("/installation/repositories", get(installation_repositories))
+        .route("/repos/{owner}/{name}", get(repository))
+        .route("/repos/{owner}/{name}/branches", get(repository_branches))
+        .route(
+            "/repos/{owner}/{name}/branches/{branch}",
+            get(repository_branch),
+        )
+        .route(
+            "/repos/{owner}/{name}/git/trees/{branch}",
+            get(repository_tree),
+        )
         .with_state(seen.clone());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
@@ -876,6 +998,206 @@ async fn app_webhook_builds_the_services_that_use_the_repository(pool: PgPool) {
     .await;
     assert_eq!(ping.status, StatusCode::OK);
     assert_eq!(ping.body["detail"], "ping");
+}
+
+/// An app that is created and installed against the fake GitHub; returns the provider id.
+async fn installed_app(app: &axum::Router, session: Option<(&str, &str)>) -> String {
+    let started = call(
+        app,
+        "POST",
+        "/api/v1/github-app/manifest",
+        session,
+        Some(json!({})),
+    )
+    .await;
+    let manifest_state = state_of(started.body["action_url"].as_str().unwrap());
+    let created = call(
+        app,
+        "POST",
+        "/api/v1/github-app/complete",
+        session,
+        Some(json!({ "code": "goodcode", "state": manifest_state })),
+    )
+    .await;
+    assert_eq!(created.status, StatusCode::CREATED, "{}", created.body);
+    let install_state = state_of(created.body["install_url"].as_str().unwrap());
+    let ready = call(
+        app,
+        "POST",
+        "/api/v1/github-app/installed",
+        session,
+        Some(json!({ "installation_id": "424242", "state": install_state })),
+    )
+    .await;
+    assert_eq!(ready.status, StatusCode::OK, "{}", ready.body);
+    created.body["provider"]["id"].as_str().unwrap().to_owned()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn pickers_list_what_the_app_can_read_and_saving_checks_access(pool: PgPool) {
+    let (github, _seen) = fake_github().await;
+    let app = app(pool, &github, Some("https://panel.example"));
+    let (cookie, csrf) = owner(&app).await;
+    let session = Some((cookie.as_str(), csrf.as_str()));
+    let provider = installed_app(&app, session).await;
+
+    let repos = call(
+        &app,
+        "GET",
+        &format!("/api/v1/git-providers/{provider}/repositories"),
+        session,
+        None,
+    )
+    .await;
+    assert_eq!(repos.status, StatusCode::OK, "{}", repos.body);
+    assert_eq!(repos.body[0]["full_name"], "acme/stack");
+    assert_eq!(repos.body[1]["full_name"], "acme/web");
+    assert_eq!(repos.body[1]["private"], true);
+    assert_eq!(repos.body[1]["url"], "https://github.com/acme/web.git");
+    assert!(!repos.body.to_string().contains(INSTALLATION_TOKEN));
+
+    let branches = call(
+        &app,
+        "GET",
+        &format!(
+            "/api/v1/git-providers/{provider}/branches?repo=https://github.com/acme/stack.git"
+        ),
+        session,
+        None,
+    )
+    .await;
+    assert_eq!(branches.status, StatusCode::OK, "{}", branches.body);
+    assert_eq!(branches.body["default_branch"], "main");
+    assert_eq!(
+        branches.body["branches"],
+        json!(["main", "develop", "feature/x"]),
+        "default first"
+    );
+    let outside = call(
+        &app,
+        "GET",
+        &format!("/api/v1/git-providers/{provider}/branches?repo=acme/secret"),
+        session,
+        None,
+    )
+    .await;
+    assert_eq!(outside.status, StatusCode::BAD_REQUEST);
+    assert_eq!(outside.body["error"]["code"], "repo_not_accessible");
+    let not_github = call(
+        &app,
+        "GET",
+        &format!("/api/v1/git-providers/{provider}/branches?repo=https://gitlab.com/acme/stack"),
+        session,
+        None,
+    )
+    .await;
+    assert_eq!(not_github.status, StatusCode::BAD_REQUEST);
+
+    let files = call(
+        &app,
+        "GET",
+        &format!("/api/v1/git-providers/{provider}/compose-files?repo=acme/stack&branch=main"),
+        session,
+        None,
+    )
+    .await;
+    assert_eq!(files.status, StatusCode::OK, "{}", files.body);
+    assert_eq!(
+        files.body["files"],
+        json!(["compose.yaml", "deploy/docker-compose.prod.yml"])
+    );
+    let no_branch = call(
+        &app,
+        "GET",
+        &format!("/api/v1/git-providers/{provider}/compose-files?repo=acme/stack&branch=gone"),
+        session,
+        None,
+    )
+    .await;
+    assert_eq!(no_branch.status, StatusCode::NOT_FOUND);
+    let bad_branch = call(
+        &app,
+        "GET",
+        &format!("/api/v1/git-providers/{provider}/compose-files?repo=acme/stack&branch=..%2Fx"),
+        session,
+        None,
+    )
+    .await;
+    assert_eq!(bad_branch.status, StatusCode::BAD_REQUEST);
+    let signed_out = call(
+        &app,
+        "GET",
+        &format!("/api/v1/git-providers/{provider}/repositories"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(signed_out.status, StatusCode::UNAUTHORIZED);
+
+    // Saving a source checks that the app can read the repository and the branch.
+    let (server, _, environment) = catalog(&app, session).await;
+    let service = new_service(&app, session, &environment, &server, "web").await;
+    let save = |repo: &str, branch: &str| {
+        let app = app.clone();
+        let cookie = cookie.clone();
+        let csrf = csrf.clone();
+        let path = format!("/api/v1/services/{service}/source");
+        let body = json!({
+            "provider_id": provider, "repo": repo, "branch": branch, "strategy": "dockerfile"
+        });
+        async move { call(&app, "PUT", &path, Some((&cookie, &csrf)), Some(body)).await }
+    };
+    let typo = save("https://github.com/acme/wbe.git", "main").await;
+    assert_eq!(typo.status, StatusCode::BAD_REQUEST, "{}", typo.body);
+    assert_eq!(typo.body["error"]["code"], "repo_not_accessible");
+    let branch = save("https://github.com/acme/web.git", "nope").await;
+    assert_eq!(branch.status, StatusCode::BAD_REQUEST);
+    assert_eq!(branch.body["error"]["code"], "branch_not_found");
+    let fine = save("https://github.com/acme/web.git", "main").await;
+    assert_eq!(fine.status, StatusCode::OK, "{}", fine.body);
+
+    // The same check runs when a stack is created or moved.
+    let stack = |repo: &str| {
+        json!({
+            "name": "stack", "server_id": server, "source": "git",
+            "git": { "provider_id": provider, "repo": repo, "branch": "main",
+                     "compose_file": "compose.yaml" }
+        })
+    };
+    let environment_stacks = format!("/api/v1/environments/{environment}/stacks");
+    let refused = call(
+        &app,
+        "POST",
+        &environment_stacks,
+        session,
+        Some(stack("https://github.com/acme/missing.git")),
+    )
+    .await;
+    assert_eq!(refused.status, StatusCode::BAD_REQUEST, "{}", refused.body);
+    assert_eq!(refused.body["error"]["code"], "repo_not_accessible");
+    let created = call(
+        &app,
+        "POST",
+        &environment_stacks,
+        session,
+        Some(stack("https://github.com/acme/stack.git")),
+    )
+    .await;
+    assert_eq!(created.status, StatusCode::CREATED, "{}", created.body);
+    let stack_id = created.body["service"]["id"].as_str().unwrap();
+    let moved = call(
+        &app,
+        "PUT",
+        &format!("/api/v1/services/{stack_id}/stack"),
+        session,
+        Some(json!({
+            "source": "git",
+            "git": { "provider_id": provider, "repo": "https://github.com/acme/missing.git",
+                     "branch": "main", "compose_file": "compose.yaml" }
+        })),
+    )
+    .await;
+    assert_eq!(moved.status, StatusCode::BAD_REQUEST, "{}", moved.body);
 }
 
 /// A local server, a project, and an environment. Returns their ids.

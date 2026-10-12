@@ -436,15 +436,15 @@ async fn complete(
 }
 
 /// A provider row with its decrypted config.
-struct AppRow {
+pub(crate) struct AppRow {
     id: Uuid,
     name: String,
     kind: String,
     created_at: chrono::DateTime<Utc>,
-    config: Value,
+    pub(crate) config: Value,
 }
 
-async fn load_app(state: &AppState, id: Uuid) -> Result<AppRow, ApiError> {
+pub(crate) async fn load_app(state: &AppState, id: Uuid) -> Result<AppRow, ApiError> {
     let row = sqlx::query!(
         r#"SELECT id, name, kind, config_enc, created_at FROM git_providers WHERE id = $1"#,
         id
@@ -479,7 +479,7 @@ async fn load_app(state: &AppState, id: Uuid) -> Result<AppRow, ApiError> {
     })
 }
 
-fn config_text<'a>(config: &'a Value, key: &str) -> &'a str {
+pub(crate) fn config_text<'a>(config: &'a Value, key: &str) -> &'a str {
     config.get(key).and_then(Value::as_str).unwrap_or("")
 }
 

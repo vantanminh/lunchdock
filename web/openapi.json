@@ -1067,6 +1067,48 @@
         }
       }
     },
+    "/api/v1/git-providers/{id}/branches": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Branches of a repository the GitHub App can read (?repo=), default branch first",
+        "operationId": "get_v1_git-providers__id__branches",
+        "responses": {
+          "200": {
+            "description": "Branches of a repository the GitHub App can read (?repo=), default branch first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubBranchesView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/git-providers/{id}/compose-files": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Compose files found in a repository branch (?repo=&branch=)",
+        "operationId": "get_v1_git-providers__id__compose-files",
+        "responses": {
+          "200": {
+            "description": "Compose files found in a repository branch (?repo=&branch=)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubComposeFilesView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/git-providers/{id}/install-link": {
       "post": {
         "tags": [
@@ -1081,6 +1123,30 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InstallLink"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/git-providers/{id}/repositories": {
+      "get": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Repositories the GitHub App installation can read",
+        "operationId": "get_v1_git-providers__id__repositories",
+        "responses": {
+          "200": {
+            "description": "Repositories the GitHub App installation can read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GithubRepoView"
+                  }
                 }
               }
             }
@@ -5405,6 +5471,64 @@
           "webhook": {
             "type": "boolean",
             "description": "False when the panel's address is private, so GitHub cannot deliver pushes."
+          }
+        }
+      },
+      "GithubBranchesView": {
+        "type": "object",
+        "required": [
+          "default_branch",
+          "branches"
+        ],
+        "properties": {
+          "branches": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default_branch": {
+            "type": "string"
+          }
+        }
+      },
+      "GithubComposeFilesView": {
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Paths of compose files in the repository, shortest first."
+          }
+        }
+      },
+      "GithubRepoView": {
+        "type": "object",
+        "required": [
+          "full_name",
+          "url",
+          "private",
+          "default_branch"
+        ],
+        "properties": {
+          "default_branch": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "`owner/name`."
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string",
+            "description": "HTTPS clone address to use as the repository."
           }
         }
       },

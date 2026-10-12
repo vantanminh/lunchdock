@@ -7,6 +7,7 @@ pub mod databases;
 pub mod edge;
 pub mod git;
 pub mod github_app;
+pub mod github_repos;
 pub mod health;
 pub mod logs;
 pub mod monitoring;

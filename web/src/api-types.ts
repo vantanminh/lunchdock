@@ -562,6 +562,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/git-providers/{id}/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Branches of a repository the GitHub App can read (?repo=), default branch first */
+        get: operations["get_v1_git-providers__id__branches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/git-providers/{id}/compose-files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compose files found in a repository branch (?repo=&branch=) */
+        get: operations["get_v1_git-providers__id__compose-files"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/git-providers/{id}/install-link": {
         parameters: {
             query?: never;
@@ -573,6 +607,23 @@ export interface paths {
         put?: never;
         /** A fresh GitHub link to install or reconfigure the app (admin, write) */
         post: operations["post_v1_git-providers__id__install-link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/git-providers/{id}/repositories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Repositories the GitHub App installation can read */
+        get: operations["get_v1_git-providers__id__repositories"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2587,6 +2638,22 @@ export interface components {
             /** @description False when the panel's address is private, so GitHub cannot deliver pushes. */
             webhook: boolean;
         };
+        GithubBranchesView: {
+            branches: string[];
+            default_branch: string;
+        };
+        GithubComposeFilesView: {
+            /** @description Paths of compose files in the repository, shortest first. */
+            files: string[];
+        };
+        GithubRepoView: {
+            default_branch: string;
+            /** @description `owner/name`. */
+            full_name: string;
+            private: boolean;
+            /** @description HTTPS clone address to use as the repository. */
+            url: string;
+        };
         HealthResponse: {
             product: string;
             status: string;
@@ -4378,6 +4445,46 @@ export interface operations {
             };
         };
     };
+    "get_v1_git-providers__id__branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Branches of a repository the GitHub App can read (?repo=), default branch first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubBranchesView"];
+                };
+            };
+        };
+    };
+    "get_v1_git-providers__id__compose-files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Compose files found in a repository branch (?repo=&branch=) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubComposeFilesView"];
+                };
+            };
+        };
+    };
     "post_v1_git-providers__id__install-link": {
         parameters: {
             query?: never;
@@ -4394,6 +4501,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstallLink"];
+                };
+            };
+        };
+    };
+    "get_v1_git-providers__id__repositories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Repositories the GitHub App installation can read */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubRepoView"][];
                 };
             };
         };
