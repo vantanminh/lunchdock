@@ -798,14 +798,14 @@ function RunRow({
     <>
       <tr>
         <Td className="whitespace-nowrap">{formatTime(run.started_at)}</Td>
-        <Td className="text-muted">
+        <Td className="whitespace-nowrap text-muted">
           {run.kind} · {run.trigger}
         </Td>
         <Td>
           <Badge value={run.status} />
         </Td>
         <Td className="tabular-nums">{formatDuration(run.duration_ms)}</Td>
-        <Td className="tabular-nums">{formatBytes(run.size_bytes)}</Td>
+        <Td className="whitespace-nowrap tabular-nums">{formatBytes(run.size_bytes)}</Td>
         <Td className="text-right whitespace-nowrap">
           <Button size="sm" variant="ghost" onClick={onLogs} aria-expanded={showLogs}>
             {t("Logs")}

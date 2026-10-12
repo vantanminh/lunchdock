@@ -1,7 +1,7 @@
 import { Button as BaseButton } from "@base-ui/react/button";
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { Input as BaseInput } from "@base-ui/react/input";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -888,6 +888,13 @@ export function SectionNav<T extends string>({
   label: string;
 }) {
   const t = useT();
+  const strip = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    // The row scrolls sideways on phones; bring the open section into view.
+    strip.current
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [active]);
   return (
     <>
       <nav aria-label={label} className="hidden lg:block">
@@ -924,7 +931,7 @@ export function SectionNav<T extends string>({
         </div>
       </nav>
       <nav aria-label={label} className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:hidden">
-        <ul className="flex w-max gap-1.5 pb-1">
+        <ul ref={strip} className="flex w-max gap-1.5 pb-1">
           {groups
             .flatMap((group) => group.items)
             .map((item) => (
