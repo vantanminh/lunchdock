@@ -7,6 +7,7 @@ import { errorMessage, formatTime } from "../format";
 import { useT } from "../i18n";
 import { S3_PROVIDERS, S3_REGIONS } from "../presets";
 import type { Schemas } from "../types";
+import { useConfirmSecret } from "../insecure";
 
 type Destination = Schemas["DestinationView"];
 
@@ -24,6 +25,7 @@ const slug = (label: string) => label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
 export function S3DestinationsPage() {
   const t = useT();
+  const confirmSecret = useConfirmSecret();
   const queryClient = useQueryClient();
   const destinations = useQuery({
     queryKey: ["s3-destinations"],
@@ -116,7 +118,9 @@ export function S3DestinationsPage() {
           className="grid gap-3 md:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
-            save.mutate();
+            if (confirmSecret()) {
+              save.mutate();
+            }
           }}
         >
           <div className="md:col-span-2">

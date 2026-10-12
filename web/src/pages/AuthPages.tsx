@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { rememberSession, useAuth } from "../auth";
 import { Icon, KnotreeMark } from "../components/icons";
+import { InsecureBanner } from "../components/insecure-banner";
 import { Button, Field, TextInput } from "../components/ui";
 import { LANGUAGES, useLanguage, useT } from "../i18n";
 import type { SessionResponse } from "../types";
@@ -172,6 +173,7 @@ function AuthFrame({
   const { language, setLanguage } = useLanguage();
   return (
     <div className="flex min-h-screen flex-col">
+      <InsecureBanner link={false} />
       <header className="flex items-center gap-2.5 px-5 py-5 sm:px-8">
         <KnotreeMark size={26} />
         <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Knotree</span>

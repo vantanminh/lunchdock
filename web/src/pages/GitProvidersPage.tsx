@@ -20,6 +20,7 @@ import {
 import { errorMessage } from "../format";
 import { msg, useT } from "../i18n";
 import type { Schemas } from "../types";
+import { useConfirmSecret } from "../insecure";
 
 type GitProvider = Schemas["GitProviderView"];
 type Manifest = Schemas["GithubAppManifest"];
@@ -260,6 +261,7 @@ function ConnectGitHubCard() {
 
 function ManualProviderForm() {
   const t = useT();
+  const confirmSecret = useConfirmSecret();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [kind, setKind] = useState("github_pat");
@@ -292,7 +294,9 @@ function ManualProviderForm() {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    create.mutate();
+    if (confirmSecret()) {
+      create.mutate();
+    }
   }
 
   return (

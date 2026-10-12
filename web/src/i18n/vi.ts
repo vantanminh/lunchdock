@@ -1200,4 +1200,10 @@ export const vi: Record<string, string> = {
   "new": "mới",
   "changed": "thay đổi",
   "unchanged": "không đổi",
+  "This panel is not using HTTPS.": "Bảng điều khiển này không dùng HTTPS.",
+  "Your password, session and every secret you type here can be read by anyone on the network path.": "Mật khẩu, phiên đăng nhập và mọi bí mật bạn nhập ở đây có thể bị đọc bởi bất kỳ ai trên đường truyền.",
+  "Give the panel a domain with a certificate": "Gán tên miền kèm chứng chỉ cho bảng điều khiển",
+  "You are reaching the panel over plain HTTP": "Bạn đang truy cập bảng điều khiển qua HTTP thường",
+  "Point a domain at this server, enter it below with an SSL mode, and open the panel through https:// so passwords and secrets are encrypted in transit.": "Trỏ một tên miền về máy chủ này, nhập vào bên dưới cùng chế độ SSL, rồi mở bảng điều khiển qua https:// để mật khẩu và bí mật được mã hoá khi truyền.",
+  "This panel is not using HTTPS, so this secret would travel unencrypted and could be read on the network. Save it anyway?": "Bảng điều khiển này không dùng HTTPS nên bí mật này sẽ được gửi không mã hoá và có thể bị đọc trên đường truyền. Vẫn lưu?",
 };

@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { api, setCsrf } from "../api";
 import { useAuth } from "../auth";
 import { Icon, KnotreeMark, type IconName } from "../components/icons";
+import { InsecureBanner } from "../components/insecure-banner";
 import { Avatar, Skeleton } from "../components/ui";
 import { msg, useT } from "../i18n";
 import { setDarkTheme, useDarkTheme } from "../theme";
@@ -117,6 +118,7 @@ export function Shell() {
       ) : null}
 
       <div className="flex min-h-screen min-w-0 flex-col">
+        <InsecureBanner />
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-paper/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
           <button
             type="button"

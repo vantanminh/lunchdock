@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
-import { Button, Card, Field, PickField, TextArea, TextInput } from "../components/ui";
+import { Alert, Button, Card, Field, PickField, TextArea, TextInput } from "../components/ui";
+import { isInsecurePanel } from "../insecure";
 import { SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
 import { formatTime } from "../format";
@@ -121,6 +122,15 @@ export function CertificatesPage() {
         </ul>
       </Card>
       <Card title={t("Panel domain")}>
+        {isInsecurePanel() ? (
+          <div className="mb-4">
+            <Alert tone="warning" title={t("You are reaching the panel over plain HTTP")}>
+              {t(
+                "Point a domain at this server, enter it below with an SSL mode, and open the panel through https:// so passwords and secrets are encrypted in transit.",
+              )}
+            </Alert>
+          </div>
+        ) : null}
         <form
           className="grid gap-3 md:grid-cols-2"
           onSubmit={(event) => {

@@ -18,6 +18,7 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 - **Connect GitHub with one button.** Git providers has a "Connect with GitHub" card that creates and installs a private GitHub App for you; there is no app id, installation id or private key to copy any more. Pushes to the repositories you pick build the matching services when the panel can be reached from the internet.
 - **Import many environment variables at once.** *Import .env* on the Environment tab takes a pasted `.env` block or a file, previews every key as new, changed or unchanged, and saves them all in one step; if any line is wrong nothing is saved.
 - **See that a variable was saved correctly.** The Environment list shows when each key was last changed and how many characters its value has, and *Check value* tells you whether a value you type matches the saved one. The saved value is still never shown.
+- **Warning when the panel is opened over plain HTTP.** A banner stays on every page (and on the sign-in screen) while the address is `http://` and not this computer, saying that passwords and secrets can be read on the network, with a link to the Certificates page where the panel can get its own domain and certificate. Saving an environment variable, registry, S3 or Git credential over HTTP now asks you to confirm first (once per browser tab).
 - **Release notes for everything an update brings in.** System → Updates now lists the notes of every release between the installed version and the newest one, and shows them before you press Update.
 
 ### Changed

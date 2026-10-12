@@ -6,11 +6,13 @@ import { Button, Card, Field, PickField, TextInput } from "../components/ui";
 import { useT } from "../i18n";
 import { REGISTRIES } from "../presets";
 import type { Schemas } from "../types";
+import { useConfirmSecret } from "../insecure";
 
 type Registry = Schemas["RegistryView"];
 
 export function RegistriesPage() {
   const t = useT();
+  const confirmSecret = useConfirmSecret();
   const queryClient = useQueryClient();
   const registries = useQuery({
     queryKey: ["registries"],
@@ -38,7 +40,9 @@ export function RegistriesPage() {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    create.mutate();
+    if (confirmSecret()) {
+      create.mutate();
+    }
   }
 
   return (

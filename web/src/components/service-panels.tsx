@@ -7,6 +7,7 @@ import { providerLabel, providerReady } from "../git";
 import { useT } from "../i18n";
 import { BRANCHES, BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
+import { useConfirmSecret } from "../insecure";
 import { Icon, type IconName } from "./icons";
 import {
   Alert,
@@ -766,6 +767,7 @@ export function DeploymentsPanel({ serviceId, isStack }: { serviceId: string; is
 /** Encrypted, write-only environment variables for the service. */
 export function EnvironmentPanel({ serviceId }: { serviceId: string }) {
   const t = useT();
+  const confirmSecret = useConfirmSecret();
   const queryClient = useQueryClient();
   const vars = useQuery({
     queryKey: ["env", serviceId],
@@ -810,7 +812,9 @@ export function EnvironmentPanel({ serviceId }: { serviceId: string }) {
           className="grid gap-4 px-5 pb-5 sm:px-6 md:grid-cols-[1fr_2fr_auto]"
           onSubmit={(event: FormEvent) => {
             event.preventDefault();
-            save.mutate();
+            if (confirmSecret()) {
+              save.mutate();
+            }
           }}
         >
           <Field
@@ -951,6 +955,7 @@ type ImportPreview = Schemas["ImportEnvResult"];
 /** Paste or upload a `.env` file, see what would change, then save every key at once. */
 function ImportEnvCard({ serviceId }: { serviceId: string }) {
   const t = useT();
+  const confirmSecret = useConfirmSecret();
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [buildSecret, setBuildSecret] = useState(false);
@@ -1033,7 +1038,11 @@ function ImportEnvCard({ serviceId }: { serviceId: string }) {
             </Button>
             <Button
               disabled={!preview || preview.errors.length > 0 || changes === 0 || run.isPending}
-              onClick={() => run.mutate(false)}
+              onClick={() => {
+                if (confirmSecret()) {
+                  run.mutate(false);
+                }
+              }}
             >
               {t("Apply")}
             </Button>
@@ -1097,6 +1106,7 @@ function CheckValueDialog({
   onClose: () => void;
 }) {
   const t = useT();
+  const confirmSecret = useConfirmSecret();
   const [value, setValue] = useState("");
   const verify = useMutation({
     mutationFn: () =>
@@ -1122,7 +1132,9 @@ function CheckValueDialog({
         className="grid gap-4"
         onSubmit={(event: FormEvent) => {
           event.preventDefault();
-          verify.mutate();
+          if (confirmSecret()) {
+            verify.mutate();
+          }
         }}
       >
         <Field label={t("Value")}>
