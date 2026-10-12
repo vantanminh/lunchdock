@@ -137,3 +137,32 @@ run `harness upgrade` to update the harness block in this AGENTS.md.
 Only the harness-managed section (markers HARNESS:BEGIN through HARNESS:END)
 is modified — all other content is preserved.
 <!-- HARNESS:END -->
+
+## Changelog (mandatory)
+
+Always write the changelog. `CHANGELOG.md` is what people read in the panel's
+**System → Updates** before they press Update: it lists every release the update
+brings in, so they can see what is about to be installed. Treat it as part of the
+feature, not as paperwork.
+
+- In the **same pull request** as the change, add a line under `## [Unreleased]`
+  in the right section (**Added**, **Changed**, **Fixed**, **Security**,
+  **Removed**). One line per thing a person can notice or that changes how
+  Rudder behaves: new screens and actions, new or changed settings and
+  environment variables, behavior that differs from before, fixes for bugs users
+  could hit, security changes, and anything that needs action on upgrade
+  (migrations, new required variables, removed options).
+- Write for the person running Rudder, in plain words: what they can now do or
+  what changed for them, in bold lead-in plus a sentence. Not file names, not
+  commit titles, not "refactor". Mention a breaking or manual step explicitly.
+- Commit the changelog line with the slice it describes (small commits), so
+  `git log -p CHANGELOG.md` follows the feature.
+- Pure internal work (tests, CI, refactors without visible effect) needs no line;
+  docs-only changes need none either. When unsure, add the line.
+- Cutting a release: rename `[Unreleased]` to `[x.y.z] - YYYY-MM-DD`, add a new
+  empty `[Unreleased]` above it, bump the workspace version, merge, then tag
+  `vx.y.z`. The Release workflow publishes that section as the release notes
+  (`deploy/release/changelog.sh`) and **fails when it is empty**; CI fails a
+  pull request that changes `crates/`, `web/src/`, `deploy/` or `templates/`
+  without touching `CHANGELOG.md`.
+- Also record user-visible behavior in the matching guide under `docs/`.
