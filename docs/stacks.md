@@ -23,19 +23,35 @@ Traefik routes are written by the panel's file provider (see decision 0011), not
 
 ## Environment
 
-Reference values as `${NAME}` (or `${NAME:-default}`) in the compose file and set them on the Environment tab. They are stored encrypted and written to a mode 0600 `.env` next to the generated file each time the stack is deployed; values are quoted so compose does not expand `$` inside them. The stack page lists referenced variables that have no value yet. Use `$$` for a literal dollar sign in the compose file. Container and compose output is masked with these values before it is stored or shown.
+Reference values as `${NAME}` (or `${NAME:-default}`) in the compose file and set them on the Environment tab. They are stored encrypted and written to a mode 0600 `.env` next to the generated file each time the stack is deployed; values are quoted so compose does not expand `$` inside them. The stack page lists referenced variables that have no value yet; a variable with a fallback (`${NAME:-x}`) is not reported. Use `$$` for a literal dollar sign in the compose file. Container and compose output is masked with these values before it is stored or shown.
 
 ## Actions
 
 | Action | Command |
 | --- | --- |
-| Deploy | `docker compose -p <project> -f rudder-compose.yml up -d --remove-orphans` |
+| Deploy | `docker compose -p <project> -f rudder-compose.yml up -d --remove-orphans` (with `--build` when *Build images on every deploy* is on) |
+| Rebuild and deploy | `… up -d --build --remove-orphans`: rebuilds services that have a `build:` section from the current checkout |
+| Pull and deploy | `… up -d --pull always --remove-orphans`: fetches newer versions of every image first |
 | Restart | `… restart` |
 | Pull images | `… pull` |
 | Stop | `… down` |
 | Delete | `… down` (or `down --volumes --remove-orphans` when you also delete volumes), then the `.env` is emptied and the service removed |
 
-Actions run in the background and appear under Deployments. Only one runs per stack at a time. Logs for each compose service are on the Logs tab.
+A plain *Deploy* never builds on its own: compose reuses an image it already has, so a stack built from source keeps running old code until you use *Rebuild and deploy*, switch on *Build images on every deploy*, or let a push do it (below).
+
+### Following and stopping an action
+
+Actions run in the background and appear under Deployments. Only one runs per stack at a time. The output of `docker compose` (image pulls, build steps, container start-up) is written to the deployment while the command runs, so the Deployments tab shows it live, opens the running deployment's log by itself and follows the newest line. Environment values are masked in it. Each deployment keeps the last 1 MiB of its output; the list shows the last 200 000 characters and `GET /api/v1/services/{id}/deployments/{deployment}/logs` returns all of it. Logs for each compose service are on the Logs tab.
+
+**Cancel** (or `POST /api/v1/services/{id}/stack/cancel`) stops the `docker compose` process; the deployment ends as `cancelled`. Containers that had already been replaced stay as they are, and the stack goes back to `running` when it was running before. An action that runs longer than `RUDDER_STACK_TIMEOUT_SECS` (default 3600, `0` for no limit) is stopped the same way and recorded as `failed`. Stacks on remote servers show their output when the agent finishes the command, not line by line, and cancelling them stops waiting rather than killing the remote process. If the panel restarts during an action, the deployment is marked `failed` ("interrupted by process restart").
+
+### Deploy on push
+
+Turn on *Deploy when I push to the branch* for a Git stack whose provider was connected with **Connect with GitHub**. The provider's webhook then runs a deploy (a rebuild when *Build images on every deploy* is on) for every push to the stack's branch. A push that arrives while another action runs is skipped.
+
+### Registry logins
+
+Logins saved under **Registries** apply to the images in a stack too. Before a deploy, pull or rebuild the panel writes a temporary Docker config with the logins of the registries the stack's `image:` entries come from (for example `ghcr.io`), points `DOCKER_CONFIG` at it for that one command and deletes it afterwards. A pull refused for lack of credentials ends with a hint naming the registries the stack uses. Images that a `Dockerfile` pulls with `FROM` are not covered, and agents older than this release ignore the logins: run `docker login` on that server or update the agent.
 
 ## Templates
 

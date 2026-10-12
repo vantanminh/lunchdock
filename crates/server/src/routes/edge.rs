@@ -228,6 +228,10 @@ pub fn router() -> axum::Router<AppState> {
             axum::routing::post(rollback),
         )
         .route("/api/v1/services/{id}/deployments", get(list_deployments))
+        .route(
+            "/api/v1/services/{id}/deployments/{deployment}/logs",
+            get(deployment_logs),
+        )
         .route("/api/v1/panel", get(get_panel).patch(update_panel))
 }
 
@@ -761,6 +765,23 @@ async fn list_deployments(
 ) -> Result<Json<Vec<DeploymentView>>, ApiError> {
     let _server = service_server(&state, id).await?;
     Ok(Json(deploy::list_deployments(&state, id).await?))
+}
+
+/// The whole log of a deployment as plain text, for the ones the list cuts short.
+async fn deployment_logs(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    Path((id, deployment)): Path<(Uuid, Uuid)>,
+) -> Result<impl axum::response::IntoResponse, ApiError> {
+    let _server = service_server(&state, id).await?;
+    let logs = deploy::deployment_log(&state, id, deployment).await?;
+    Ok((
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; charset=utf-8",
+        )],
+        logs,
+    ))
 }
 
 async fn get_panel(

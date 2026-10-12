@@ -22,7 +22,7 @@ GitHub sends you back to, and delivers push events to, the address you used to o
 
 Open an application → Source, choose the GitHub App provider, and enter the repository URL (`https://github.com/owner/name.git`) and branch. A provider that is not installed yet is greyed out as *needs install*.
 
-A push to a branch starts a build of every application whose source uses this provider, the same repository (`owner/name`, case-insensitive, HTTPS or SSH URL), and that branch. The Git source card still shows a per-service webhook secret; it is not needed for apps.
+A push to a branch starts a build of every application whose source uses this provider, the same repository (`owner/name`, case-insensitive, HTTPS or SSH URL), and that branch. The Git source card still shows a per-service webhook secret; it is not needed for apps. A compose stack with the same provider, repository and branch is deployed too, but only when *Deploy when I push to the branch* is on in its source settings (see [stacks](stacks.md#deploy-on-push)).
 
 ## Manage
 

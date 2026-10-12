@@ -36,7 +36,11 @@ pub struct DeploymentView {
     pub trigger: String,
     pub image_ref: Option<String>,
     pub error: Option<String>,
+    /// The end of the log (at most 200 000 characters); see `logs_truncated`.
     pub logs: String,
+    /// The log is longer than `logs`; the whole text is at
+    /// `/api/v1/services/{id}/deployments/{deployment}/logs`.
+    pub logs_truncated: bool,
     pub started_at: Option<DateTime<Utc>>,
     pub finished_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -61,6 +65,7 @@ struct DeploymentRow {
     image_ref: Option<String>,
     error: Option<String>,
     logs: String,
+    logs_truncated: bool,
     started_at: Option<DateTime<Utc>>,
     finished_at: Option<DateTime<Utc>>,
     created_at: DateTime<Utc>,
@@ -571,8 +576,9 @@ pub async fn list_deployments(
     let rows = sqlx::query_as!(
         DeploymentRow,
         r#"
-        SELECT id, service_id, status, trigger, image_ref, error, logs, started_at, finished_at,
-               created_at
+        SELECT id, service_id, status, trigger, image_ref, error,
+               right(logs, 200000) AS "logs!", length(logs) > 200000 AS "logs_truncated!",
+               started_at, finished_at, created_at
         FROM deployments
         WHERE service_id = $1
         ORDER BY created_at DESC
@@ -584,6 +590,23 @@ pub async fn list_deployments(
     .await
     .map_err(ApiError::database)?;
     Ok(rows.into_iter().map(deployment_view).collect())
+}
+
+/// The whole log of one deployment of a service.
+pub async fn deployment_log(
+    state: &AppState,
+    service_id: Uuid,
+    deployment_id: Uuid,
+) -> Result<String, ApiError> {
+    sqlx::query_scalar!(
+        r#"SELECT logs FROM deployments WHERE id = $1 AND service_id = $2"#,
+        deployment_id,
+        service_id
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?
+    .ok_or_else(|| not_found("deployment not found"))
 }
 
 pub async fn rollback_image(
@@ -798,7 +821,7 @@ async fn insert_deployment(
     .map_err(ApiError::database)
 }
 
-async fn registry_auth(
+pub(crate) async fn registry_auth(
     state: &AppState,
     image: &str,
     registry_id: Option<Uuid>,
@@ -1209,8 +1232,9 @@ pub(crate) async fn load_deployment(
     let row = sqlx::query_as!(
         DeploymentRow,
         r#"
-        SELECT id, service_id, status, trigger, image_ref, error, logs, started_at, finished_at,
-               created_at
+        SELECT id, service_id, status, trigger, image_ref, error,
+               right(logs, 200000) AS "logs!", length(logs) > 200000 AS "logs_truncated!",
+               started_at, finished_at, created_at
         FROM deployments
         WHERE id = $1
         "#,
@@ -1231,6 +1255,7 @@ fn deployment_view(row: DeploymentRow) -> DeploymentView {
         image_ref: row.image_ref,
         error: row.error,
         logs: row.logs,
+        logs_truncated: row.logs_truncated,
         started_at: row.started_at,
         finished_at: row.finished_at,
         created_at: row.created_at,

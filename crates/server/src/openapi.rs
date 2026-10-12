@@ -49,8 +49,9 @@ use crate::routes::monitoring::{
     PruneResult, SaveAlert, SaveChannel, ServerUsage, ServiceUsage,
 };
 use crate::routes::stacks::{
-    CreateStack, DeployTemplate, GeneratedValue, StackLogsView, StackServiceView, StackView,
-    TemplateDeployed, TemplateDetail, TemplateVariableView, TemplateView, UpdateStack,
+    CreateStack, DeployTemplate, GeneratedValue, StackLogsView, StackServiceView,
+    StackVariableView, StackView, TemplateDeployed, TemplateDetail, TemplateVariableView,
+    TemplateView, UpdateStack,
 };
 use crate::routes::system::{PanelBackupRequest, SystemInfo};
 use crate::routes::updates::{ComponentsStarted, UpdateOverview, UpdateSettings, UpdateStarted};
@@ -145,6 +146,7 @@ use rudder_core::{
         CreateStack,
         UpdateStack,
         StackServiceView,
+        StackVariableView,
         StackView,
         StackLogsView,
         TemplateVariableView,
@@ -981,9 +983,27 @@ const ROUTES: &[Route] = &[
         path: "/api/v1/services/{id}/stack/{action}",
         method: HttpMethod::Post,
         tag: "stacks",
-        summary: "Run up, down, restart, or pull in the background",
+        summary: "Run up, rebuild, update, down, restart, or pull in the background",
         request: None,
         response: Some("DeploymentView"),
+        status: 202,
+    },
+    Route {
+        path: "/api/v1/services/{id}/deployments/{deployment}/logs",
+        method: HttpMethod::Get,
+        tag: "edge",
+        summary: "The whole log of a deployment as plain text",
+        request: None,
+        response: None,
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/services/{id}/stack/cancel",
+        method: HttpMethod::Post,
+        tag: "stacks",
+        summary: "Stop the stack action that is running",
+        request: None,
+        response: None,
         status: 202,
     },
     Route {

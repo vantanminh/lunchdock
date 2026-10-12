@@ -40,6 +40,7 @@ use crate::error::ApiError;
 use crate::routes::agents::panel_url;
 use crate::routes::catalog::{bad, conflict, core_error, is_unique, not_found};
 use crate::routes::git::{provider_view, record_delivery, unauthorized, GitProviderView};
+use crate::stacks;
 use crate::state::AppState;
 
 /// GitHub will not accept a manifest code or an install redirect after an hour.
@@ -699,9 +700,9 @@ async fn webhook(
     };
     let services = sqlx::query!(
         r#"
-        SELECT id, spec
+        SELECT id, kind, spec
         FROM services
-        WHERE kind = 'application' AND spec -> 'git' ->> 'provider_id' = $1
+        WHERE kind IN ('application', 'compose') AND spec -> 'git' ->> 'provider_id' = $1
         "#,
         id.to_string()
     )
@@ -732,6 +733,34 @@ async fn webhook(
             branch,
         });
         match outcome {
+            HookOutcome::Deploy { .. } if service.kind == "compose" => {
+                // Stacks deploy on a push only when they opted in.
+                match stacks::push_deploy(&state, service.id).await {
+                    Ok(Some(deployment)) => {
+                        record_delivery(&state, service.id, "github", &body, true, "queued").await;
+                        queued.push(json!({
+                            "service_id": service.id,
+                            "deployment_id": deployment.id,
+                        }));
+                    }
+                    Ok(None) => {
+                        record_delivery(
+                            &state,
+                            service.id,
+                            "github",
+                            &body,
+                            true,
+                            "push deploy is off",
+                        )
+                        .await;
+                    }
+                    Err(error) => {
+                        tracing::warn!(service = %service.id, error = %error.public_message(), "stack webhook could not deploy");
+                        record_delivery(&state, service.id, "github", &body, false, "not queued")
+                            .await;
+                    }
+                }
+            }
             HookOutcome::Deploy { git_sha } => {
                 match build_queue::enqueue(&state, service.id, "webhook", git_sha).await {
                     Ok(ticket) => {

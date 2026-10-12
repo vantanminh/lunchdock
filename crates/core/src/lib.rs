@@ -92,8 +92,8 @@ pub use rollout::{
 };
 pub use schedule::{is_due, next_after, parse_timezone, validate_schedule, PRESETS};
 pub use stack::{
-    compose_variables, render_env_file, transform_compose, validate_compose_service, StackPlan,
-    StackService, MAX_COMPOSE_BYTES,
+    compose_variable_refs, compose_variables, render_env_file, transform_compose,
+    validate_compose_service, StackPlan, StackService, VariableRef, MAX_COMPOSE_BYTES,
 };
 pub use template::{ResolvedTemplate, Template, TemplateVariable, VariableKind};
 pub use traefik::{

@@ -6,7 +6,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::Json;
-use rudder_core::{compose_variables, validate_host, validate_name, Template, VariableKind};
+use rudder_core::{compose_variable_refs, validate_host, validate_name, Template, VariableKind};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use utoipa::ToSchema;
@@ -36,6 +36,10 @@ pub struct CreateStack {
     pub main_service: Option<String>,
     /// Run `docker compose up` right away. Defaults to false.
     pub start: Option<bool>,
+    /// Deploy also builds images that have a `build:` section. Defaults to false.
+    pub build_on_deploy: Option<bool>,
+    /// A push to the Git branch deploys the stack. Defaults to false.
+    pub deploy_on_push: Option<bool>,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -44,6 +48,10 @@ pub struct UpdateStack {
     pub compose_yaml: Option<String>,
     pub git: Option<StackGit>,
     pub main_service: Option<String>,
+    /// Deploy also builds images that have a `build:` section. Unchanged when omitted.
+    pub build_on_deploy: Option<bool>,
+    /// A push to the Git branch deploys the stack. Unchanged when omitted.
+    pub deploy_on_push: Option<bool>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -51,6 +59,8 @@ pub struct StackServiceView {
     pub name: String,
     pub container: String,
     pub image: Option<String>,
+    /// Built from a `build:` section, so a plain deploy does not pick up new code.
+    pub build: bool,
     pub routed: bool,
     /// Null when the server cannot be reached.
     pub running: Option<bool>,
@@ -72,8 +82,25 @@ pub struct StackView {
     pub warnings: Vec<String>,
     /// `${NAME}` references in the compose file.
     pub variables: Vec<String>,
-    /// Referenced variables with no value under Environment.
+    /// Referenced variables with no value under Environment and no fallback in the file.
     pub missing_variables: Vec<String>,
+    /// Every variable the file reads, and whether it is set or has a fallback.
+    pub variable_details: Vec<StackVariableView>,
+    /// Deploy also builds images that have a `build:` section.
+    pub build_on_deploy: bool,
+    /// A push to the Git branch deploys the stack.
+    pub deploy_on_push: bool,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct StackVariableView {
+    pub name: String,
+    /// A value is saved under Environment.
+    pub set: bool,
+    /// The file gives a fallback (`${NAME:-x}`) everywhere it reads the variable.
+    pub has_default: bool,
+    /// The file refuses to start without it (`${NAME:?error}`).
+    pub required: bool,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -160,6 +187,7 @@ pub fn router() -> axum::Router<AppState> {
             get(get_stack).put(update_stack).delete(delete_stack),
         )
         .route("/api/v1/services/{id}/stack/logs", get(stack_logs))
+        .route("/api/v1/services/{id}/stack/cancel", post(cancel_stack))
         .route("/api/v1/services/{id}/stack/{action}", post(stack_action))
         .route("/api/v1/templates", get(list_templates))
         .route("/api/v1/templates/{slug}", get(get_template))
@@ -222,7 +250,7 @@ async fn create_stack(
     auth.require_write()?;
     validate_name(&body.name).map_err(core_error)?;
     let (compose_yaml, git) = source_parts(&body.source, body.compose_yaml, body.git)?;
-    let spec = stacks::initial_spec(
+    let mut spec = stacks::initial_spec(
         &body.name,
         &body.source,
         compose_yaml,
@@ -230,6 +258,8 @@ async fn create_stack(
         body.main_service,
         None,
     )?;
+    spec.build_on_deploy = body.build_on_deploy.unwrap_or(false);
+    spec.deploy_on_push = body.deploy_on_push.unwrap_or(false);
     let mut tx = state.pool.begin().await.map_err(ApiError::database)?;
     let id = insert_stack(environment_id, body.server_id, &body.name, &spec, &mut tx).await?;
     tx.commit().await.map_err(ApiError::database)?;
@@ -254,11 +284,21 @@ async fn stack_view(state: &AppState, id: Uuid) -> Result<StackView, ApiError> {
     let service = load_service_view(state, id).await?;
     let running = stacks::running_states(state, &stack).await;
     let keys = stacks::env_keys(state, id).await?;
-    let variables = compose_variables(&stack.spec.compose_yaml);
-    let missing_variables = variables
+    let refs = compose_variable_refs(&stack.spec.compose_yaml);
+    let variables: Vec<String> = refs.iter().map(|variable| variable.name.clone()).collect();
+    let missing_variables = refs
         .iter()
-        .filter(|name| !keys.contains(name))
-        .cloned()
+        .filter(|variable| !variable.has_default && !keys.contains(&variable.name))
+        .map(|variable| variable.name.clone())
+        .collect();
+    let variable_details = refs
+        .into_iter()
+        .map(|variable| StackVariableView {
+            set: keys.contains(&variable.name),
+            name: variable.name,
+            has_default: variable.has_default,
+            required: variable.required,
+        })
         .collect();
     let spec = stack.spec;
     Ok(StackView {
@@ -279,6 +319,7 @@ async fn stack_view(state: &AppState, id: Uuid) -> Result<StackView, ApiError> {
                 name: service.name,
                 container: service.container,
                 image: service.image,
+                build: service.build,
                 routed: service.routed,
                 running,
             })
@@ -286,6 +327,9 @@ async fn stack_view(state: &AppState, id: Uuid) -> Result<StackView, ApiError> {
         warnings: spec.warnings,
         variables,
         missing_variables,
+        variable_details,
+        build_on_deploy: spec.build_on_deploy,
+        deploy_on_push: spec.deploy_on_push,
     })
 }
 
@@ -319,6 +363,12 @@ async fn update_stack(
     let switching = stack.spec.source != body.source;
     stack.spec.source = body.source;
     stack.spec.main_service = body.main_service;
+    if let Some(build) = body.build_on_deploy {
+        stack.spec.build_on_deploy = build;
+    }
+    if let Some(push) = body.deploy_on_push {
+        stack.spec.deploy_on_push = push;
+    }
     if stack.spec.source == "git" {
         let changed = switching
             || stack.spec.git.as_ref().is_none_or(|old| {
@@ -381,6 +431,26 @@ async fn stack_action(
     )
     .await;
     Ok((StatusCode::ACCEPTED, Json(deployment)))
+}
+
+async fn cancel_stack(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    auth.require_write()?;
+    stacks::cancel(&state, id).await?;
+    audit::record(
+        &state.pool,
+        Some(auth.id),
+        "stack.cancel",
+        "service",
+        Some(&id.to_string()),
+        json!({}),
+        None,
+    )
+    .await;
+    Ok(StatusCode::ACCEPTED)
 }
 
 async fn stack_logs(

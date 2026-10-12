@@ -1359,6 +1359,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/deployments/{deployment}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The whole log of a deployment as plain text */
+        get: operations["get_v1_services__id__deployments__deployment__logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/domains": {
         parameters: {
             query?: never;
@@ -1517,6 +1534,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/services/{id}/stack/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop the stack action that is running */
+        post: operations["post_v1_services__id__stack_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/services/{id}/stack/logs": {
         parameters: {
             query?: never;
@@ -1543,7 +1577,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Run up, down, restart, or pull in the background */
+        /** Run up, rebuild, update, down, restart, or pull in the background */
         post: operations["post_v1_services__id__stack__action_"];
         delete?: never;
         options?: never;
@@ -2273,7 +2307,11 @@ export interface components {
             spec?: unknown;
         };
         CreateStack: {
+            /** @description Deploy also builds images that have a `build:` section. Defaults to false. */
+            build_on_deploy?: boolean | null;
             compose_yaml?: string | null;
+            /** @description A push to the Git branch deploys the stack. Defaults to false. */
+            deploy_on_push?: boolean | null;
             git?: components["schemas"]["StackGit"] | null;
             /** @description Compose service new domains point at by default. */
             main_service?: string | null;
@@ -2347,7 +2385,13 @@ export interface components {
             /** Format: uuid */
             id: string;
             image_ref?: string | null;
+            /** @description The end of the log (at most 200 000 characters); see `logs_truncated`. */
             logs: string;
+            /**
+             * @description The log is longer than `logs`; the whole text is at
+             *     `/api/v1/services/{id}/deployments/{deployment}/logs`.
+             */
+            logs_truncated: boolean;
             /** Format: uuid */
             service_id: string;
             /** Format: date-time */
@@ -2986,6 +3030,8 @@ export interface components {
             service: string;
         };
         StackServiceView: {
+            /** @description Built from a `build:` section, so a plain deploy does not pick up new code. */
+            build: boolean;
             container: string;
             image?: string | null;
             name: string;
@@ -2993,20 +3039,35 @@ export interface components {
             /** @description Null when the server cannot be reached. */
             running?: boolean | null;
         };
+        StackVariableView: {
+            /** @description The file gives a fallback (`${NAME:-x}`) everywhere it reads the variable. */
+            has_default: boolean;
+            name: string;
+            /** @description The file refuses to start without it (`${NAME:?error}`). */
+            required: boolean;
+            /** @description A value is saved under Environment. */
+            set: boolean;
+        };
         StackView: {
+            /** @description Deploy also builds images that have a `build:` section. */
+            build_on_deploy: boolean;
             compose_path: string;
             compose_yaml: string;
+            /** @description A push to the Git branch deploys the stack. */
+            deploy_on_push: boolean;
             /** @description The file Rudder runs: project name, labels, and proxy network applied. */
             generated_yaml: string;
             git?: components["schemas"]["StackGit"] | null;
             main_service?: string | null;
-            /** @description Referenced variables with no value under Environment. */
+            /** @description Referenced variables with no value under Environment and no fallback in the file. */
             missing_variables: string[];
             project: string;
             service: components["schemas"]["ServiceView"];
             services: components["schemas"]["StackServiceView"][];
             source: string;
             template?: string | null;
+            /** @description Every variable the file reads, and whether it is set or has a fallback. */
+            variable_details: components["schemas"]["StackVariableView"][];
             /** @description `${NAME}` references in the compose file. */
             variables: string[];
             warnings: string[];
@@ -3100,8 +3161,10 @@ export interface components {
             current: string;
             error?: string | null;
             latest?: components["schemas"]["ReleaseInfo"] | null;
-            /** @description Every release between the installed version and `latest`, oldest first,
-             *     `latest` included: what an update installs, with each release's notes. */
+            /**
+             * @description Every release between the installed version and `latest`, oldest first,
+             *     `latest` included: what an update installs, with each release's notes.
+             */
             pending?: components["schemas"]["ReleaseInfo"][];
             /** @description The latest release's signature and checksums were verified. */
             verified: boolean;
@@ -3214,7 +3277,11 @@ export interface components {
             strategy: string;
         };
         UpdateStack: {
+            /** @description Deploy also builds images that have a `build:` section. Unchanged when omitted. */
+            build_on_deploy?: boolean | null;
             compose_yaml?: string | null;
+            /** @description A push to the Git branch deploys the stack. Unchanged when omitted. */
+            deploy_on_push?: boolean | null;
             git?: components["schemas"]["StackGit"] | null;
             main_service?: string | null;
             source: string;
@@ -5501,6 +5568,24 @@ export interface operations {
             };
         };
     };
+    get_v1_services__id__deployments__deployment__logs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The whole log of a deployment as plain text */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_v1_services__id__domains: {
         parameters: {
             query?: never;
@@ -5799,6 +5884,24 @@ export interface operations {
             };
         };
     };
+    post_v1_services__id__stack_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stop the stack action that is running */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_v1_services__id__stack_logs: {
         parameters: {
             query?: never;
@@ -5828,7 +5931,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Run up, down, restart, or pull in the background */
+            /** @description Run up, rebuild, update, down, restart, or pull in the background */
             202: {
                 headers: {
                     [name: string]: unknown;

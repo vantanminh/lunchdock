@@ -9,8 +9,18 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 ## [Unreleased]
 
 ### Added
+- **Watch a stack deploy while it happens.** The Deployments tab shows the output of `docker compose` (image pulls, build steps, container start-up) as it is produced, opens the running deployment's log by itself, follows the newest line, and shows the current step on the row. Before, the log appeared only when the action had finished, so a long build looked frozen.
+- **Cancel a running stack action.** A Cancel button stops a deploy, build or pull that is taking too long or went wrong; the deployment ends as *cancelled* and the stack accepts new actions again.
+- **Time limit for stack actions.** An action that runs longer than `RUDDER_STACK_TIMEOUT_SECS` (default one hour, `0` for none) is stopped and recorded as failed, instead of blocking the stack forever.
+- **Rebuild and deploy, Pull and deploy.** Two new actions: rebuild stacks that build from source (`up --build`), or fetch newer versions of every image first (`up --pull always`). *Build images on every deploy* makes the normal Deploy rebuild too. A plain Deploy still reuses images built earlier; the stack page now says which services build from source.
+- **Deploy a Git stack when you push.** *Deploy when I push to the branch* (stack source settings) lets the GitHub App webhook deploy the stack on every push to its branch.
+- **Saved registry logins work for stacks.** Logins from the Registries page, such as GitHub's `ghcr.io`, are now used when a stack pulls its images, so private images no longer need `docker login` on the server by hand. A refused pull tells you which registries the stack uses.
 - **Connect GitHub with one button.** Git providers has a "Connect with GitHub" card that creates and installs a private GitHub App for you; there is no app id, installation id or private key to copy any more. Pushes to the repositories you pick build the matching services when the panel can be reached from the internet.
 - **Release notes for everything an update brings in.** System → Updates now lists the notes of every release between the installed version and the newest one, and shows them before you press Update.
+
+### Changed
+- **Variables with a fallback are no longer reported as missing.** A stack that reads `${NAME:-default}` only lists `NAME` under *Not set* when the file has no fallback.
+- **Long deployment logs are cut in the list.** Each deployment keeps the last 1 MiB of output; the Deployments tab shows the last 200 000 characters with a link to the whole log.
 
 ## [0.1.5] - 2026-10-12
 

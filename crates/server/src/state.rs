@@ -34,6 +34,8 @@ pub struct AppState {
     pub backup_slots: Arc<BackupSlots>,
     pub logs: Arc<LogHub>,
     pub updates: Arc<crate::update::Updates>,
+    /// Running compose stack actions, so one can be cancelled.
+    pub stack_runs: Arc<crate::stacks::StackRuns>,
 }
 
 impl AppState {
@@ -56,6 +58,7 @@ impl AppState {
             backup_slots: Arc::new(Mutex::new(HashMap::new())),
             logs: Arc::new(LogHub::default()),
             updates: Arc::default(),
+            stack_runs: Arc::default(),
         }
     }
 }

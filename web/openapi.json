@@ -2454,6 +2454,20 @@
         }
       }
     },
+    "/api/v1/services/{id}/deployments/{deployment}/logs": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "The whole log of a deployment as plain text",
+        "operationId": "get_v1_services__id__deployments__deployment__logs",
+        "responses": {
+          "200": {
+            "description": "The whole log of a deployment as plain text"
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/domains": {
       "get": {
         "tags": [
@@ -2777,6 +2791,20 @@
         }
       }
     },
+    "/api/v1/services/{id}/stack/cancel": {
+      "post": {
+        "tags": [
+          "stacks"
+        ],
+        "summary": "Stop the stack action that is running",
+        "operationId": "post_v1_services__id__stack_cancel",
+        "responses": {
+          "202": {
+            "description": "Stop the stack action that is running"
+          }
+        }
+      }
+    },
     "/api/v1/services/{id}/stack/logs": {
       "get": {
         "tags": [
@@ -2803,11 +2831,11 @@
         "tags": [
           "stacks"
         ],
-        "summary": "Run up, down, restart, or pull in the background",
+        "summary": "Run up, rebuild, update, down, restart, or pull in the background",
         "operationId": "post_v1_services__id__stack__action_",
         "responses": {
           "202": {
-            "description": "Run up, down, restart, or pull in the background",
+            "description": "Run up, rebuild, update, down, restart, or pull in the background",
             "content": {
               "application/json": {
                 "schema": {
@@ -4524,11 +4552,25 @@
           "source"
         ],
         "properties": {
+          "build_on_deploy": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Deploy also builds images that have a `build:` section. Defaults to false."
+          },
           "compose_yaml": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "deploy_on_push": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "A push to the Git branch deploys the stack. Defaults to false."
           },
           "git": {
             "oneOf": [
@@ -4791,6 +4833,7 @@
           "status",
           "trigger",
           "logs",
+          "logs_truncated",
           "created_at"
         ],
         "properties": {
@@ -4822,7 +4865,12 @@
             ]
           },
           "logs": {
-            "type": "string"
+            "type": "string",
+            "description": "The end of the log (at most 200 000 characters); see `logs_truncated`."
+          },
+          "logs_truncated": {
+            "type": "boolean",
+            "description": "The log is longer than `logs`; the whole text is at\n`/api/v1/services/{id}/deployments/{deployment}/logs`."
           },
           "service_id": {
             "type": "string",
@@ -6865,9 +6913,14 @@
         "required": [
           "name",
           "container",
+          "build",
           "routed"
         ],
         "properties": {
+          "build": {
+            "type": "boolean",
+            "description": "Built from a `build:` section, so a plain deploy does not pick up new code."
+          },
           "container": {
             "type": "string"
           },
@@ -6892,6 +6945,32 @@
           }
         }
       },
+      "StackVariableView": {
+        "type": "object",
+        "required": [
+          "name",
+          "set",
+          "has_default",
+          "required"
+        ],
+        "properties": {
+          "has_default": {
+            "type": "boolean",
+            "description": "The file gives a fallback (`${NAME:-x}`) everywhere it reads the variable."
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "The file refuses to start without it (`${NAME:?error}`)."
+          },
+          "set": {
+            "type": "boolean",
+            "description": "A value is saved under Environment."
+          }
+        }
+      },
       "StackView": {
         "type": "object",
         "required": [
@@ -6904,14 +6983,25 @@
           "services",
           "warnings",
           "variables",
-          "missing_variables"
+          "missing_variables",
+          "variable_details",
+          "build_on_deploy",
+          "deploy_on_push"
         ],
         "properties": {
+          "build_on_deploy": {
+            "type": "boolean",
+            "description": "Deploy also builds images that have a `build:` section."
+          },
           "compose_path": {
             "type": "string"
           },
           "compose_yaml": {
             "type": "string"
+          },
+          "deploy_on_push": {
+            "type": "boolean",
+            "description": "A push to the Git branch deploys the stack."
           },
           "generated_yaml": {
             "type": "string",
@@ -6938,7 +7028,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Referenced variables with no value under Environment."
+            "description": "Referenced variables with no value under Environment and no fallback in the file."
           },
           "project": {
             "type": "string"
@@ -6960,6 +7050,13 @@
               "string",
               "null"
             ]
+          },
+          "variable_details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackVariableView"
+            },
+            "description": "Every variable the file reads, and whether it is set or has a fallback."
           },
           "variables": {
             "type": "array",
@@ -7314,6 +7411,13 @@
                 "type": "null"
               }
             ]
+          },
+          "pending": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseInfo"
+            },
+            "description": "Every release between the installed version and `latest`, oldest first,\n`latest` included: what an update installs, with each release's notes."
           },
           "verified": {
             "type": "boolean",
@@ -7744,11 +7848,25 @@
           "source"
         ],
         "properties": {
+          "build_on_deploy": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Deploy also builds images that have a `build:` section. Unchanged when omitted."
+          },
           "compose_yaml": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "deploy_on_push": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "A push to the Git branch deploys the stack. Unchanged when omitted."
           },
           "git": {
             "oneOf": [
