@@ -25,6 +25,9 @@ const CachePoliciesPage = lazy(() =>
 const CertificatesPage = lazy(() =>
   import("./pages/CertificatesPage").then((m) => ({ default: m.CertificatesPage })),
 );
+const GitHubCallbackPage = lazy(() =>
+  import("./pages/GitHubCallbackPage").then((m) => ({ default: m.GitHubCallbackPage })),
+);
 const GitProvidersPage = lazy(() =>
   import("./pages/GitProvidersPage").then((m) => ({ default: m.GitProvidersPage })),
 );
@@ -99,6 +102,7 @@ function AppRoutes() {
         <Route path="certificates" element={<CertificatesPage />} />
         <Route path="registries" element={<RegistriesPage />} />
         <Route path="git" element={<GitProvidersPage />} />
+        <Route path="git/github" element={<GitHubCallbackPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="audit" element={<AuditPage />} />

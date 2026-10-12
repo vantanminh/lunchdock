@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT kind FROM git_providers WHERE id = $1",
+  "query": "SELECT id FROM git_providers WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "kind",
-        "type_info": "Text"
+        "name": "id",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
@@ -18,5 +18,5 @@
       false
     ]
   },
-  "hash": "4cd9ddc2a862cf7188635ecce41bd553689f00ff009e2028cc9ec3895216703b"
+  "hash": "029ad9bf8f5cbdcbe60f3b768cedced30365f6cf639c8adaca78a5d37a4d14fe"
 }

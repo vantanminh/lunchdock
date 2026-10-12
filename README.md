@@ -4,7 +4,7 @@ Rudder is a lightweight, self-hosted deployment platform, an alternative to Dokp
 
 What you get:
 
-- **Apps** from container images (including private registries such as GHCR) or from Git with Dockerfile, Nixpacks, or static builds, push webhooks, health-checked deploys, and rollback.
+- **Apps** from container images (including private registries such as GHCR) or from Git with Dockerfile, Nixpacks, or static builds, push webhooks (one-click GitHub App setup), health-checked deploys, and rollback.
 - **Domains and TLS** through Traefik v3 (Let's Encrypt or uploaded certificates), plus an optional Pingora-based HTTP cache per server.
 - **Databases**: Postgres, MySQL, MariaDB, MongoDB, and Redis, with streaming encrypted backups to any S3-compatible storage.
 - **Docker Compose stacks** and 11 one-click templates (n8n, Uptime Kuma, Gitea, Vaultwarden, Ghost, WordPress, and more).
@@ -72,6 +72,7 @@ The table does not include Postgres, Traefik, or your apps.
 | Remote servers and the agent protocol | [docs/agent.md](docs/agent.md) |
 | Databases and backups | [docs/backups.md](docs/backups.md) |
 | Compose stacks and templates | [docs/stacks.md](docs/stacks.md) |
+| GitHub App and push-to-deploy | [docs/github-app.md](docs/github-app.md) |
 | HTTP cache | [docs/cache.md](docs/cache.md) |
 | Central logs and terminal | [docs/logs.md](docs/logs.md) |
 | Monitoring and alerts | [docs/monitoring.md](docs/monitoring.md) |

@@ -11,7 +11,7 @@ use axum::Json;
 use chrono::{DateTime, Utc};
 use rudder_core::{
     evaluate_hook, validate_branch, validate_git_url, validate_name, validate_rel_path,
-    BuildStrategy, HookInput, HookKind, HookOutcome,
+    BuildStrategy, Cipher, HookInput, HookKind, HookOutcome,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -33,6 +33,45 @@ pub struct GitProviderView {
     pub name: String,
     pub kind: String,
     pub created_at: DateTime<Utc>,
+    /// `ready`, or `pending_install` for a GitHub App that is not installed yet.
+    pub status: String,
+    /// Slug of a GitHub App created from the panel.
+    pub app_slug: Option<String>,
+    /// GitHub account that installed the app.
+    pub account: Option<String>,
+}
+
+/// The view of a stored provider. Only GitHub Apps need their config read.
+pub(crate) fn provider_view(
+    cipher: &Cipher,
+    id: Uuid,
+    name: String,
+    kind: String,
+    created_at: DateTime<Utc>,
+    config_enc: &[u8],
+) -> GitProviderView {
+    let config = (kind == "github_app")
+        .then(|| cipher.decrypt(config_enc).ok())
+        .flatten()
+        .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok());
+    let field = |key: &str| {
+        config
+            .as_ref()
+            .and_then(|config| config.get(key))
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned)
+    };
+    let pending = config.is_some() && field("installation_id").is_none();
+    GitProviderView {
+        id,
+        name,
+        kind,
+        created_at,
+        status: if pending { "pending_install" } else { "ready" }.into(),
+        app_slug: field("slug"),
+        account: field("account"),
+    }
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -118,18 +157,23 @@ async fn list_providers(
     State(state): State<AppState>,
     _auth: AuthUser,
 ) -> Result<Json<Vec<GitProviderView>>, ApiError> {
-    let rows =
-        sqlx::query!(r#"SELECT id, name, kind, created_at FROM git_providers ORDER BY name"#)
-            .fetch_all(&state.pool)
-            .await
-            .map_err(ApiError::database)?;
+    let rows = sqlx::query!(
+        r#"SELECT id, name, kind, config_enc, created_at FROM git_providers ORDER BY name"#
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
     Ok(Json(
         rows.into_iter()
-            .map(|row| GitProviderView {
-                id: row.id,
-                name: row.name,
-                kind: row.kind,
-                created_at: row.created_at,
+            .map(|row| {
+                provider_view(
+                    &state.cipher,
+                    row.id,
+                    row.name,
+                    row.kind,
+                    row.created_at,
+                    &row.config_enc,
+                )
             })
             .collect(),
     ))
@@ -182,12 +226,14 @@ async fn create_provider(
     .await;
     Ok((
         StatusCode::CREATED,
-        Json(GitProviderView {
-            id: row.id,
-            name: row.name,
-            kind: row.kind,
-            created_at: row.created_at,
-        }),
+        Json(provider_view(
+            &state.cipher,
+            row.id,
+            row.name,
+            row.kind,
+            row.created_at,
+            &encrypted,
+        )),
     ))
 }
 
@@ -292,14 +338,29 @@ async fn put_source(
     validate_rel_path(&context).map_err(core_error)?;
     validate_rel_path(&publish_dir).map_err(core_error)?;
     let ssh = body.repo.starts_with("git@") || body.repo.starts_with("ssh://");
-    let provider_kind = sqlx::query_scalar!(
-        r#"SELECT kind FROM git_providers WHERE id = $1"#,
+    let provider = sqlx::query!(
+        r#"SELECT id, name, kind, config_enc, created_at FROM git_providers WHERE id = $1"#,
         body.provider_id
     )
     .fetch_optional(&state.pool)
     .await
     .map_err(ApiError::database)?
     .ok_or_else(|| not_found("git provider not found"))?;
+    let provider = provider_view(
+        &state.cipher,
+        provider.id,
+        provider.name,
+        provider.kind,
+        provider.created_at,
+        &provider.config_enc,
+    );
+    if provider.status == "pending_install" {
+        return Err(bad(
+            "invalid",
+            "install the GitHub App on GitHub before using it as a source",
+        ));
+    }
+    let provider_kind = provider.kind;
     if provider_kind == "generic_ssh" && !ssh {
         return Err(bad(
             "invalid",
@@ -527,7 +588,7 @@ async fn webhook(
     }
 }
 
-fn unauthorized() -> ApiError {
+pub(crate) fn unauthorized() -> ApiError {
     ApiError::new(
         StatusCode::UNAUTHORIZED,
         "invalid_signature",
@@ -539,7 +600,7 @@ fn header_str<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     headers.get(name).and_then(|value| value.to_str().ok())
 }
 
-async fn record_delivery(
+pub(crate) async fn record_delivery(
     state: &AppState,
     service_id: Uuid,
     provider: &str,

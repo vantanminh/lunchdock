@@ -1067,6 +1067,131 @@
         }
       }
     },
+    "/api/v1/git-providers/{id}/install-link": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "A fresh GitHub link to install or reconfigure the app (admin, write)",
+        "operationId": "post_v1_git-providers__id__install-link",
+        "responses": {
+          "200": {
+            "description": "A fresh GitHub link to install or reconfigure the app (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallLink"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/git-providers/{id}/webhook": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Accept push events from a GitHub App and build the services that use the repository",
+        "operationId": "post_v1_git-providers__id__webhook",
+        "responses": {
+          "202": {
+            "description": "Accept push events from a GitHub App and build the services that use the repository"
+          }
+        }
+      }
+    },
+    "/api/v1/github-app/complete": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Exchange the code GitHub returned for the new app and save it as a provider (admin, write)",
+        "operationId": "post_v1_github-app_complete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteGithubApp"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Exchange the code GitHub returned for the new app and save it as a provider (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubAppCreated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/github-app/installed": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Record the installation GitHub reported for an app created here (admin, write)",
+        "operationId": "post_v1_github-app_installed",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GithubAppInstalled"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Record the installation GitHub reported for an app created here (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitProviderView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/github-app/manifest": {
+      "post": {
+        "tags": [
+          "source"
+        ],
+        "summary": "Start creating a GitHub App: the manifest and the github.com form address (admin, write)",
+        "operationId": "post_v1_github-app_manifest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartGithubApp"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Start creating a GitHub App: the manifest and the github.com form address (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubAppManifest"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/login": {
       "post": {
         "tags": [
@@ -4002,6 +4127,21 @@
           }
         }
       },
+      "CompleteGithubApp": {
+        "type": "object",
+        "required": [
+          "code",
+          "state"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
       "ComponentStatus": {
         "type": "object",
         "description": "Agent and cache versions per server.",
@@ -5033,9 +5173,24 @@
           "id",
           "name",
           "kind",
-          "created_at"
+          "created_at",
+          "status"
         ],
         "properties": {
+          "account": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "GitHub account that installed the app."
+          },
+          "app_slug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Slug of a GitHub App created from the panel."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -5049,6 +5204,66 @@
           },
           "name": {
             "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "`ready`, or `pending_install` for a GitHub App that is not installed yet."
+          }
+        }
+      },
+      "GithubAppCreated": {
+        "type": "object",
+        "required": [
+          "provider",
+          "install_url"
+        ],
+        "properties": {
+          "install_url": {
+            "type": "string",
+            "description": "Send the browser here to install the new app."
+          },
+          "provider": {
+            "$ref": "#/components/schemas/GitProviderView"
+          }
+        }
+      },
+      "GithubAppInstalled": {
+        "type": "object",
+        "required": [
+          "installation_id"
+        ],
+        "properties": {
+          "installation_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "From the install link. Without it, the panel looks for the pending app the installation belongs to."
+          }
+        }
+      },
+      "GithubAppManifest": {
+        "type": "object",
+        "required": [
+          "action_url",
+          "manifest",
+          "webhook"
+        ],
+        "properties": {
+          "action_url": {
+            "type": "string",
+            "description": "Where the browser POSTs the manifest. It already carries the `state`."
+          },
+          "manifest": {
+            "type": "string",
+            "description": "The manifest as JSON text, for a form field named `manifest`."
+          },
+          "webhook": {
+            "type": "boolean",
+            "description": "False when the panel's address is private, so GitHub cannot deliver pushes."
           }
         }
       },
@@ -5152,6 +5367,17 @@
           "accepted": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "InstallLink": {
+        "type": "object",
+        "required": [
+          "install_url"
+        ],
+        "properties": {
+          "install_url": {
+            "type": "string"
           }
         }
       },
@@ -6747,6 +6973,25 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "StartGithubApp": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Name of the app. Defaults to `Rudder-` and four random characters."
+          },
+          "organization": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Create the app under this organization instead of your own account."
           }
         }
       },

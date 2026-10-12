@@ -40,7 +40,7 @@ pub fn evaluate_hook(input: &HookInput<'_>) -> HookOutcome {
     let authorized = match input.kind {
         HookKind::Github => input
             .github_signature
-            .is_some_and(|header| verify_github(input.secret, input.body, header)),
+            .is_some_and(|header| verify_github_signature(input.secret, input.body, header)),
         HookKind::Gitlab => input
             .gitlab_token
             .is_some_and(|token| token.as_bytes().ct_eq(input.secret).unwrap_u8() == 1),
@@ -100,7 +100,8 @@ fn is_git_sha(sha: &str) -> bool {
     (7..=64).contains(&sha.len()) && sha.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
-fn verify_github(secret: &[u8], body: &[u8], header: &str) -> bool {
+/// Checks the `X-Hub-Signature-256` header GitHub sends against the raw body.
+pub fn verify_github_signature(secret: &[u8], body: &[u8], header: &str) -> bool {
     let Some(encoded) = header.trim().strip_prefix("sha256=") else {
         return false;
     };

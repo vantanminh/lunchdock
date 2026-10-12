@@ -59,7 +59,10 @@ pub use driver::{
 };
 pub use envelope::{Decryptor, Encryptor, MAGIC as ENVELOPE_MAGIC};
 pub use error::Error;
-pub use github_app::github_app_jwt;
+pub use github_app::{
+    github_app_jwt, github_app_manifest, github_repo_full_name, is_private_host, validate_app_name,
+    validate_github_login, AppManifest,
+};
 pub use image_ref::{
     container_name, image_registry, normalize_registry, select_registry, validate_registry_url,
     RegistryRecord,
@@ -96,7 +99,7 @@ pub use traefik::{
     TlsMaterial, TlsMode, PROXY_NETWORK, TRAEFIK_CERT_DIR, TRAEFIK_CONTAINER,
 };
 pub use validate::{validate_env_key, validate_image_ref, validate_name};
-pub use webhook::{evaluate_hook, HookInput, HookKind, HookOutcome};
+pub use webhook::{evaluate_hook, verify_github_signature, HookInput, HookKind, HookOutcome};
 
 /// Fill `N` bytes from the process CSPRNG.
 pub fn random_bytes<const N: usize>() -> [u8; N] {

@@ -38,6 +38,10 @@ use crate::routes::edge::{
 use crate::routes::git::{
     BuildAccepted, BuildQueueView, CreateGitProvider, GitProviderView, SourceView, UpdateSource,
 };
+use crate::routes::github_app::{
+    CompleteGithubApp, GithubAppCreated, GithubAppInstalled, GithubAppManifest, InstallLink,
+    StartGithubApp,
+};
 use crate::routes::health::HealthResponse;
 use crate::routes::logs::{IngestEntry, IngestRequest, IngestResult, LogPage, UpdateRetention};
 use crate::routes::monitoring::{
@@ -112,6 +116,12 @@ use rudder_core::{
         UpdatePanel,
         GitProviderView,
         CreateGitProvider,
+        StartGithubApp,
+        GithubAppManifest,
+        CompleteGithubApp,
+        GithubAppCreated,
+        GithubAppInstalled,
+        InstallLink,
         SourceView,
         UpdateSource,
         BuildAccepted,
@@ -624,6 +634,51 @@ const ROUTES: &[Route] = &[
         request: Some("CreateGitProvider"),
         response: Some("GitProviderView"),
         status: 201,
+    },
+    Route {
+        path: "/api/v1/github-app/manifest",
+        method: HttpMethod::Post,
+        tag: "source",
+        summary: "Start creating a GitHub App: the manifest and the github.com form address (admin, write)",
+        request: Some("StartGithubApp"),
+        response: Some("GithubAppManifest"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/github-app/complete",
+        method: HttpMethod::Post,
+        tag: "source",
+        summary: "Exchange the code GitHub returned for the new app and save it as a provider (admin, write)",
+        request: Some("CompleteGithubApp"),
+        response: Some("GithubAppCreated"),
+        status: 201,
+    },
+    Route {
+        path: "/api/v1/github-app/installed",
+        method: HttpMethod::Post,
+        tag: "source",
+        summary: "Record the installation GitHub reported for an app created here (admin, write)",
+        request: Some("GithubAppInstalled"),
+        response: Some("GitProviderView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/git-providers/{id}/install-link",
+        method: HttpMethod::Post,
+        tag: "source",
+        summary: "A fresh GitHub link to install or reconfigure the app (admin, write)",
+        request: None,
+        response: Some("InstallLink"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/git-providers/{id}/webhook",
+        method: HttpMethod::Post,
+        tag: "source",
+        summary: "Accept push events from a GitHub App and build the services that use the repository",
+        request: None,
+        response: None,
+        status: 202,
     },
     Route {
         path: "/api/v1/services/{id}/source",

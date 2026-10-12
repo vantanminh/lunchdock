@@ -562,6 +562,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/git-providers/{id}/install-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A fresh GitHub link to install or reconfigure the app (admin, write) */
+        post: operations["post_v1_git-providers__id__install-link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/git-providers/{id}/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept push events from a GitHub App and build the services that use the repository */
+        post: operations["post_v1_git-providers__id__webhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/github-app/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exchange the code GitHub returned for the new app and save it as a provider (admin, write) */
+        post: operations["post_v1_github-app_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/github-app/installed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record the installation GitHub reported for an app created here (admin, write) */
+        post: operations["post_v1_github-app_installed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/github-app/manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start creating a GitHub App: the manifest and the github.com form address (admin, write) */
+        post: operations["post_v1_github-app_manifest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/login": {
         parameters: {
             query?: never;
@@ -2086,6 +2171,10 @@ export interface components {
             /** @description Non-secret description such as the chat id or webhook host. */
             summary: string;
         };
+        CompleteGithubApp: {
+            code: string;
+            state: string;
+        };
         /** @description Agent and cache versions per server. */
         ComponentStatus: {
             agent_outdated: boolean;
@@ -2362,12 +2451,36 @@ export interface components {
             value: string;
         };
         GitProviderView: {
+            /** @description GitHub account that installed the app. */
+            account?: string | null;
+            /** @description Slug of a GitHub App created from the panel. */
+            app_slug?: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: uuid */
             id: string;
             kind: string;
             name: string;
+            /** @description `ready`, or `pending_install` for a GitHub App that is not installed yet. */
+            status: string;
+        };
+        GithubAppCreated: {
+            /** @description Send the browser here to install the new app. */
+            install_url: string;
+            provider: components["schemas"]["GitProviderView"];
+        };
+        GithubAppInstalled: {
+            installation_id: string;
+            /** @description From the install link. Without it, the panel looks for the pending app the installation belongs to. */
+            state?: string | null;
+        };
+        GithubAppManifest: {
+            /** @description Where the browser POSTs the manifest. It already carries the `state`. */
+            action_url: string;
+            /** @description The manifest as JSON text, for a form field named `manifest`. */
+            manifest: string;
+            /** @description False when the panel's address is private, so GitHub cannot deliver pushes. */
+            webhook: boolean;
         };
         HealthResponse: {
             product: string;
@@ -2400,6 +2513,9 @@ export interface components {
         };
         IngestResult: {
             accepted: number;
+        };
+        InstallLink: {
+            install_url: string;
         };
         JoinToken: {
             /** Format: date-time */
@@ -2894,6 +3010,12 @@ export interface components {
             /** @description `${NAME}` references in the compose file. */
             variables: string[];
             warnings: string[];
+        };
+        StartGithubApp: {
+            /** @description Name of the app. Defaults to `Rudder-` and four random characters. */
+            name?: string | null;
+            /** @description Create the app under this organization instead of your own account. */
+            organization?: string | null;
         };
         SystemInfo: {
             /**
@@ -4089,6 +4211,116 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    "post_v1_git-providers__id__install-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A fresh GitHub link to install or reconfigure the app (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstallLink"];
+                };
+            };
+        };
+    };
+    "post_v1_git-providers__id__webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accept push events from a GitHub App and build the services that use the repository */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "post_v1_github-app_complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CompleteGithubApp"];
+            };
+        };
+        responses: {
+            /** @description Exchange the code GitHub returned for the new app and save it as a provider (admin, write) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubAppCreated"];
+                };
+            };
+        };
+    };
+    "post_v1_github-app_installed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["GithubAppInstalled"];
+            };
+        };
+        responses: {
+            /** @description Record the installation GitHub reported for an app created here (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GitProviderView"];
+                };
+            };
+        };
+    };
+    "post_v1_github-app_manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["StartGithubApp"];
+            };
+        };
+        responses: {
+            /** @description Start creating a GitHub App: the manifest and the github.com form address (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubAppManifest"];
+                };
             };
         };
     };

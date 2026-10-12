@@ -697,6 +697,7 @@ async fn prepare_auth(
             .ok_or_else(|| "git provider token is missing".to_string())?,
         "github_app" => {
             installation_token(
+                &state.config.github_api_url,
                 provider.app_id.as_deref().unwrap_or(""),
                 provider.installation_id.as_deref().unwrap_or(""),
                 provider.private_key_pem.as_deref().unwrap_or(""),
@@ -756,14 +757,17 @@ async fn load_private_key(state: &AppState, service_id: Uuid) -> Result<String, 
 }
 
 async fn installation_token(
+    api_url: &str,
     app_id: &str,
     installation_id: &str,
     private_key_pem: &str,
 ) -> Result<String, String> {
-    if installation_id.is_empty()
-        || installation_id.len() > 20
-        || !installation_id.bytes().all(|byte| byte.is_ascii_digit())
-    {
+    if installation_id.is_empty() {
+        return Err(
+            "the GitHub App is not installed yet; finish installing it from Git providers".into(),
+        );
+    }
+    if installation_id.len() > 20 || !installation_id.bytes().all(|byte| byte.is_ascii_digit()) {
         return Err("github installation id must be numeric".into());
     }
     let jwt = github_app_jwt(app_id, private_key_pem, chrono::Utc::now().timestamp())
@@ -773,7 +777,7 @@ async fn installation_token(
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|_| "could not start the github client".to_string())?;
-    let url = format!("https://api.github.com/app/installations/{installation_id}/access_tokens");
+    let url = format!("{api_url}/app/installations/{installation_id}/access_tokens");
     let response = client
         .post(url)
         .header("authorization", format!("Bearer {jwt}"))
