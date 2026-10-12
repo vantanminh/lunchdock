@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { errorMessage, formatDuration, formatRelative, formatTime } from "../format";
+import { providerLabel, providerReady } from "../git";
 import { useT } from "../i18n";
 import { BRANCHES, BUILD_STRATEGIES, ENV_KEYS, IMAGES, PORTS, SSL_MODES } from "../presets";
 import type { Schemas } from "../types";
@@ -213,8 +214,8 @@ export function GitSourceCard({ service }: { service: ServiceDetail }) {
             >
               <option value="">{t("Choose")}</option>
               {(providers.data ?? []).map((provider) => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.name} ({provider.kind})
+                <option key={provider.id} value={provider.id} disabled={!providerReady(provider)}>
+                  {providerLabel(provider, t)}
                 </option>
               ))}
             </Select>

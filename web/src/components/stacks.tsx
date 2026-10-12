@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../api";
 import { errorMessage } from "../format";
+import { providerLabel, providerReady } from "../git";
 import { useT } from "../i18n";
 import {
   BRANCHES,
@@ -418,8 +419,8 @@ function GitFields({
         >
           <option value="">{t("Choose")}</option>
           {providers.map((provider) => (
-            <option key={provider.id} value={provider.id}>
-              {provider.name} ({provider.kind})
+            <option key={provider.id} value={provider.id} disabled={!providerReady(provider)}>
+              {providerLabel(provider, t)}
             </option>
           ))}
         </Select>
