@@ -396,24 +396,32 @@ pub async fn run(state: AppState) {
     }
 }
 
+/// A percentage without a trailing `.0`: `7.5`, `15`.
+fn pct(value: f64) -> String {
+    let text = format!("{value:.1}");
+    text.strip_suffix(".0").map(str::to_owned).unwrap_or(text)
+}
+
 /// Plain-language reasons for events and logs.
 pub fn describe(reasons: &[GuardReason]) -> String {
     reasons
         .iter()
         .map(|reason| match reason.code.as_str() {
             "memory_low" => format!(
-                "free memory {:.0}% is below the {:.0}% reserve",
-                reason.value, reason.limit
+                "free memory {:.0}% is below the {}% reserve",
+                reason.value,
+                pct(reason.limit)
             ),
             "memory_critical" => format!(
-                "free memory {:.0}% is below {:.0}%",
-                reason.value, reason.limit
+                "free memory {:.0}% is below {}%",
+                reason.value,
+                pct(reason.limit)
             ),
             "memory_stall" => format!(
                 "processes waited for memory {:.0}% of the time",
                 reason.value
             ),
-            "cpu_high" => format!("CPU at {:.0}% (limit {:.0}%)", reason.value, reason.limit),
+            "cpu_high" => format!("CPU at {:.0}% (limit {}%)", reason.value, pct(reason.limit)),
             _ => "waiting for the server to settle".to_owned(),
         })
         .collect::<Vec<_>>()
@@ -630,5 +638,11 @@ mod tests {
             describe(&reasons),
             "free memory 10% is below the 15% reserve; CPU at 97% (limit 90%)"
         );
+        let critical = [GuardReason {
+            code: "memory_critical".into(),
+            value: 5.0,
+            limit: 7.5,
+        }];
+        assert_eq!(describe(&critical), "free memory 5% is below 7.5%");
     }
 }
