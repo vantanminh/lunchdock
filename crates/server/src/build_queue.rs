@@ -501,6 +501,8 @@ async fn execute_local(
     .execute(&state.pool)
     .await
     .map_err(|error| error.to_string())?;
+    // The guard may have asked to stop it after the build step; it finished anyway.
+    state.guard.take_stop_reason(queue_id);
     Ok(())
 }
 
@@ -974,6 +976,7 @@ async fn fail_job(
     had_container: bool,
     message: &str,
 ) -> Result<(), ApiError> {
+    state.guard.take_stop_reason(queue_id);
     let safe = redact(message, &[]);
     let existing = sqlx::query_scalar!(
         r#"SELECT logs FROM deployments WHERE id = $1"#,
