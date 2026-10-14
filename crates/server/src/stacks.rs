@@ -144,7 +144,15 @@ impl StackAction {
 /// Compose actions that are running now, so one can be cancelled.
 #[derive(Default)]
 pub struct StackRuns {
-    running: Mutex<HashMap<Uuid, CancellationToken>>,
+    running: Mutex<HashMap<Uuid, StackRun>>,
+}
+
+struct StackRun {
+    token: CancellationToken,
+    /// Builds images on the panel host, so the load guard may stop it.
+    local_build: bool,
+    /// Why the action was stopped, when something other than a person stopped it.
+    reason: Option<String>,
 }
 
 /// Removes a stack from [`StackRuns`] when its action ends, however it ends.
@@ -162,10 +170,17 @@ impl Drop for RunGuard {
 }
 
 impl StackRuns {
-    fn begin(self: &Arc<Self>, id: Uuid) -> (CancellationToken, RunGuard) {
+    fn begin(self: &Arc<Self>, id: Uuid, local_build: bool) -> (CancellationToken, RunGuard) {
         let token = CancellationToken::new();
         if let Ok(mut running) = self.running.lock() {
-            running.insert(id, token.clone());
+            running.insert(
+                id,
+                StackRun {
+                    token: token.clone(),
+                    local_build,
+                    reason: None,
+                },
+            );
         }
         (
             token,
@@ -182,7 +197,7 @@ impl StackRuns {
             .running
             .lock()
             .ok()
-            .and_then(|running| running.get(&id).cloned());
+            .and_then(|running| running.get(&id).map(|run| run.token.clone()));
         match token {
             Some(token) => {
                 token.cancel();
@@ -190,6 +205,40 @@ impl StackRuns {
             }
             None => false,
         }
+    }
+
+    /// Stop every running action that builds images on the panel host, recording
+    /// `reason` as the error of its deployment. Returns how many were stopped.
+    pub fn stop_local_builds(&self, reason: &str) -> usize {
+        let Ok(mut running) = self.running.lock() else {
+            return 0;
+        };
+        let mut stopped = 0;
+        for run in running.values_mut() {
+            if run.local_build && !run.token.is_cancelled() {
+                run.reason = Some(reason.to_owned());
+                run.token.cancel();
+                stopped += 1;
+            }
+        }
+        stopped
+    }
+
+    /// `(running actions, of which build on the panel host)`.
+    pub fn counts(&self) -> (usize, usize) {
+        self.running.lock().map_or((0, 0), |running| {
+            (
+                running.len(),
+                running.values().filter(|run| run.local_build).count(),
+            )
+        })
+    }
+
+    fn reason(&self, id: Uuid) -> Option<String> {
+        self.running
+            .lock()
+            .ok()
+            .and_then(|running| running.get(&id).and_then(|run| run.reason.clone()))
     }
 }
 
@@ -617,7 +666,12 @@ pub async fn start_action(
             return Err(ApiError::database(error));
         }
     };
-    let (cancel, guard) = state.stack_runs.begin(id);
+    let local = server_kind(state, stack.server_id).await? == "local";
+    let builds = matches!(
+        action.compose(stack.spec.build_on_deploy),
+        ComposeAction::UpBuild
+    ) || (action.starts() && stack.spec.services.iter().any(|service| service.build));
+    let (cancel, guard) = state.stack_runs.begin(id, local && builds);
     let task_state = state.clone();
     tokio::spawn(async move {
         execute(
@@ -634,17 +688,52 @@ pub async fn start_action(
     load_deployment(state, deployment_id).await
 }
 
+/// What a push to a stack's Git branch did.
+pub enum PushDeploy {
+    Started(DeploymentView),
+    /// Push deploys are off for this stack.
+    Off,
+    /// The stack builds on the panel host, which is busy; it deploys once there is room.
+    Waiting,
+}
+
+/// How long a push deploy waits for the load guard before it gives up.
+const PUSH_WAIT: Duration = Duration::from_secs(30 * 60);
+
 /// A push reached the Git branch of a stack: deploy it when the stack asked for that.
-/// `None` when push deploys are off. A stack that builds on deploy rebuilds, because
-/// `build_on_deploy` turns the plain deploy into `up --build`.
-pub async fn push_deploy(state: &AppState, id: Uuid) -> Result<Option<DeploymentView>, ApiError> {
+/// A stack that builds on deploy rebuilds, because `build_on_deploy` turns the plain
+/// deploy into `up --build`. Stacks that build wait while the load guard holds builds.
+pub async fn push_deploy(state: &AppState, id: Uuid) -> Result<PushDeploy, ApiError> {
     let stack = load(state, id).await?;
     if !stack.spec.deploy_on_push || stack.spec.source != "git" {
-        return Ok(None);
+        return Ok(PushDeploy::Off);
+    }
+    let builds = stack.spec.build_on_deploy || stack.spec.services.iter().any(|s| s.build);
+    if builds && state.guard.hold(Duration::ZERO).is_some() {
+        let task_state = state.clone();
+        tokio::spawn(async move {
+            if task_state.guard.wait_for_room(PUSH_WAIT).await {
+                if let Err(error) = start_action(&task_state, id, StackAction::Up, "push").await {
+                    tracing::warn!(stack = %id, error = %error.public_message(), "held push deploy could not start");
+                }
+            } else {
+                crate::events::record(
+                    &task_state.pool,
+                    crate::events::Event::warning(
+                        "stack.push_skipped",
+                        "Push deploy skipped: the server stayed busy",
+                    )
+                    .message("The load guard held this build for 30 minutes. Deploy the stack by hand when the server has room.")
+                    .service(id),
+                )
+                .await;
+            }
+        });
+        return Ok(PushDeploy::Waiting);
     }
     start_action(state, id, StackAction::Up, "push")
         .await
-        .map(Some)
+        .map(PushDeploy::Started)
 }
 
 /// Stop the running action of a stack. The action ends as `cancelled`.
@@ -697,6 +786,7 @@ async fn execute(
         }
     };
     flusher.abort();
+    let stop_reason = state.stack_runs.reason(id);
     // The action is over: a Cancel from here on is answered "not running". The service stays
     // `deploying` until the final status below, so no new action can start in between.
     drop(guard);
@@ -725,7 +815,7 @@ async fn execute(
         ),
         Ended::Cancelled => (
             "cancelled",
-            Some("cancelled".to_owned()),
+            Some(stop_reason.unwrap_or_else(|| "cancelled".to_owned())),
             // The old containers keep running when the build never got that far.
             if !action.starts() {
                 previous

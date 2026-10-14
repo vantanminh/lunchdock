@@ -1,56 +1,22 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { api, setCsrf } from "../api";
 import { useAuth } from "../auth";
-import { Icon, KnotreeMark, type IconName } from "../components/icons";
+import { Icon, KnotreeMark } from "../components/icons";
+import {
+  CommandPalette,
+  ConnectionStatus,
+  PaletteButton,
+  usePaletteShortcut,
+} from "../components/command-palette";
 import { InsecureBanner } from "../components/insecure-banner";
+import { LoadBanner } from "../components/load";
 import { Avatar, Skeleton } from "../components/ui";
 import { msg, useT } from "../i18n";
 import { setDarkTheme, useDarkTheme } from "../theme";
+import { NAV_GROUPS } from "./nav";
 
-type NavItem = readonly [to: string, label: string, icon: IconName];
-
-const groups: readonly { label: string; items: readonly NavItem[] }[] = [
-  {
-    label: msg("Deploy"),
-    items: [
-      ["/", msg("Overview"), "overview"],
-      ["/projects", msg("Projects"), "folder"],
-      ["/templates", msg("Templates"), "layers"],
-      ["/servers", msg("Servers"), "server"],
-    ],
-  },
-  {
-    label: msg("Operate"),
-    items: [
-      ["/monitoring", msg("Monitoring"), "activity"],
-      ["/alerts", msg("Alerts"), "bell"],
-      ["/logs", msg("Logs"), "logs"],
-      ["/backups", msg("Backups"), "archive"],
-      ["/cache", msg("Cache"), "zap"],
-    ],
-  },
-  {
-    label: msg("Connections"),
-    items: [
-      ["/s3-destinations", msg("S3 destinations"), "bucket"],
-      ["/certificates", msg("Certificates"), "shield"],
-      ["/registries", msg("Registries"), "box"],
-      ["/git", msg("Git providers"), "git"],
-    ],
-  },
-  {
-    label: msg("Admin"),
-    items: [
-      ["/users", msg("Users"), "users"],
-      ["/tokens", msg("API tokens"), "key"],
-      ["/audit", msg("Audit log"), "history"],
-      ["/system", msg("System"), "settings"],
-    ],
-  },
-];
-
-const allItems = [...groups.flatMap((group) => group.items.map((item) => ({ group, item })))];
+const allItems = [...NAV_GROUPS.flatMap((group) => group.items.map((item) => ({ group, item })))];
 
 function currentPage(pathname: string) {
   if (pathname.startsWith("/services/")) {
@@ -69,7 +35,11 @@ export function Shell() {
   const t = useT();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [palette, setPalette] = useState(false);
   const page = currentPage(pathname);
+  const openPalette = useCallback(() => setPalette(true), []);
+  const closePalette = useCallback(() => setPalette(false), []);
+  usePaletteShortcut(openPalette);
 
   useEffect(() => {
     setOpen(false);
@@ -119,6 +89,7 @@ export function Shell() {
 
       <div className="flex min-h-screen min-w-0 flex-col">
         <InsecureBanner />
+        <LoadBanner />
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-paper/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
           <button
             type="button"
@@ -147,10 +118,13 @@ export function Shell() {
               <span className="font-medium text-ink">{t(page.label)}</span>
             </nav>
           ) : null}
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-1.5">
+            <PaletteButton onOpen={openPalette} />
+            <ConnectionStatus />
             <ThemeToggle />
           </div>
         </header>
+        <CommandPalette open={palette} onClose={closePalette} />
         <main
           id="main"
           className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
@@ -186,7 +160,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         ) : null}
       </div>
       <nav aria-label={t("Main")} className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
-        {groups.map((group) => (
+        {NAV_GROUPS.map((group) => (
           <div key={group.label}>
             <p className="px-2.5 pb-1.5 text-xs font-medium text-faint">{t(group.label)}</p>
             <ul className="space-y-0.5">

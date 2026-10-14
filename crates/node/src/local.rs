@@ -238,6 +238,8 @@ impl NodeDriver for LocalDriver {
             host_config: Some(HostConfig {
                 memory: spec.memory_bytes,
                 nano_cpus: spec.nano_cpus,
+                // Under memory pressure the kernel kills workloads before the panel.
+                oom_score_adj: Some(rudder_core::WORKLOAD_OOM_SCORE_ADJ),
                 binds: if binds.is_empty() { None } else { Some(binds) },
                 port_bindings: if bindings.is_empty() {
                     None

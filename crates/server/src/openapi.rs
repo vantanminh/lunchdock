@@ -7,6 +7,7 @@ use utoipa::{Modify, OpenApi as OpenApiDerive};
 
 use crate::backup::RestoreRequest;
 use crate::deploy::DeploymentView;
+use crate::guard::{GuardSettings, GuardView, ProtectionView};
 use crate::logs::retention::{MetricsRetention, RetentionSettings};
 use crate::logs::LogView;
 use crate::routes::account::{
@@ -45,6 +46,7 @@ use crate::routes::github_app::{
 };
 use crate::routes::github_repos::{GithubBranchesView, GithubComposeFilesView, GithubRepoView};
 use crate::routes::health::HealthResponse;
+use crate::routes::load::{BuildLoad, BuildsCancelled, LoadView, PauseBuilds, UpdateGuard};
 use crate::routes::logs::{IngestEntry, IngestRequest, IngestResult, LogPage, UpdateRetention};
 use crate::routes::monitoring::{
     AlertKindView, AlertView, ChannelView, MetricPoint, MetricSeries, MetricsOverview, MetricsView,
@@ -60,7 +62,8 @@ use crate::routes::updates::{ComponentsStarted, UpdateOverview, UpdateSettings, 
 use crate::stacks::StackGit;
 use crate::update::{ComponentStatus, ReleaseInfo, UpdateCheck, UpdateHistoryEntry};
 use rudder_core::{
-    CacheHostStats, CachePurgeResult, CacheRule, CacheStats, RuleAction, RuleMatch, RuleMode,
+    CacheHostStats, CachePurgeResult, CacheRule, CacheStats, GuardLevel, GuardReason, HostPressure,
+    RuleAction, RuleMatch, RuleMode,
 };
 
 #[derive(OpenApiDerive)]
@@ -209,7 +212,18 @@ use rudder_core::{
         ReleaseInfo,
         ComponentStatus,
         UpdateHistoryEntry,
-        PanelBackupRequest
+        PanelBackupRequest,
+        HostPressure,
+        GuardLevel,
+        GuardReason,
+        GuardSettings,
+        GuardView,
+        ProtectionView,
+        BuildLoad,
+        LoadView,
+        UpdateGuard,
+        PauseBuilds,
+        BuildsCancelled
     )),
     modifiers(&SecurityAddon),
     tags(
@@ -332,6 +346,42 @@ const ROUTES: &[Route] = &[
         request: None,
         response: Some("ComponentsStarted"),
         status: 202,
+    },
+    Route {
+        path: "/api/v1/load",
+        method: HttpMethod::Get,
+        tag: "system",
+        summary: "Load of the panel host, held and running builds, and how the panel is protected",
+        request: None,
+        response: Some("LoadView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/load/settings",
+        method: HttpMethod::Put,
+        tag: "system",
+        summary: "Set the load guard thresholds and builds at the same time (admin, write)",
+        request: Some("UpdateGuard"),
+        response: Some("LoadView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/load/pause",
+        method: HttpMethod::Post,
+        tag: "system",
+        summary: "Pause or resume every new build (admin, write)",
+        request: Some("PauseBuilds"),
+        response: Some("LoadView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/load/cancel-builds",
+        method: HttpMethod::Post,
+        tag: "system",
+        summary: "Cancel queued builds and stop running builds on the panel host (admin, write)",
+        request: None,
+        response: Some("BuildsCancelled"),
+        status: 200,
     },
     Route {
         path: "/api/v1/system/settings-export",

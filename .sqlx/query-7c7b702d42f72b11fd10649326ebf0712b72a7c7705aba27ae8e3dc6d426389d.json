@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            COUNT(*) FILTER (WHERE status = 'queued' AND NOT cancel_requested) AS \"queued!\",\n            COUNT(*) FILTER (WHERE status = 'running') AS \"running!\",\n            MIN(created_at) FILTER (WHERE status = 'queued' AND NOT cancel_requested) AS oldest,\n            (SELECT build_concurrency_default FROM panel_settings WHERE id = TRUE) AS \"concurrency!\"\n        FROM build_queue\n        WHERE status IN ('queued', 'running')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "queued!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "running!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "oldest",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "concurrency!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "7c7b702d42f72b11fd10649326ebf0712b72a7c7705aba27ae8e3dc6d426389d"
+}

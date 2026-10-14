@@ -16,6 +16,18 @@ Service metrics come from the Docker stats API for containers labelled `rudder.m
 
 The panel measures its own server. Remote servers send theirs through the agent.
 
+## The overview
+
+The overview page (**Deploy → Overview**) puts what needs a person first:
+
+- A health summary that says whether everything runs normally, and otherwise lists each problem as a row with the button that fixes it: services that failed (**Show them** filters the service list), servers that went offline, alerts that fire, the panel server being busy or out of memory, and paused builds (**Resume builds**).
+- Four tiles: servers online, services running, builds running and waiting, and alerts firing. Each opens its page.
+- **Heaviest services**: the services that use the most CPU or memory right now, with a **Stop** button for admins. A compose stack is stopped with `docker compose down` (volumes are kept).
+- **Panel server load**: memory and CPU of the server the panel runs on, the load guard's level and why, and buttons to pause or cancel builds. See [the load guard](load-guard.md).
+- The servers with their CPU, memory and disk, and the recent activity.
+
+Every page has a search box in the header (**Ctrl K**, **⌘K**, or **/**) that jumps to any page or service and runs common actions such as switching the theme. Next to it a dot says how the panel answers: **Live**, **Slow** when a read took longer than 2.5 seconds, **Busy** when the panel asked to retry, or **Reconnecting…** when it did not answer. Pages keep retrying with growing pauses, so an overloaded panel is not flooded by open tabs.
+
 ## Charts and resolutions
 
 Open **Monitoring** for the server overview, per-server charts, and a table of services sorted by CPU use. Each service also has a **Metrics** tab.

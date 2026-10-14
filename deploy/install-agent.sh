@@ -170,6 +170,7 @@ if [ "$edge" -eq 1 ]; then
 		docker pull -q "$TRAEFIK_IMAGE" >/dev/null
 		docker run -d --name rudder-traefik --restart unless-stopped \
 			--network rudder-proxy -p 80:80 -p 443:443 \
+			--oom-score-adj -900 --cpu-shares 2048 --memory-reservation 64m \
 			-v "$NODE_DATA/traefik:/etc/rudder/traefik" \
 			"$TRAEFIK_IMAGE" --configFile=/etc/rudder/traefik/traefik.yml >/dev/null
 	fi
@@ -199,6 +200,10 @@ ExecStart=/usr/local/bin/rudder-agent run --data-dir /var/lib/rudder-agent --nod
 Restart=always
 RestartSec=5
 Environment=RUST_LOG=info
+# Keep the agent answering when apps use up the server, so the panel can still stop them.
+OOMScoreAdjust=-900
+CPUWeight=1000
+MemoryLow=32M
 
 [Install]
 WantedBy=multi-user.target

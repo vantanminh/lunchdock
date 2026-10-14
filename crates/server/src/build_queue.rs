@@ -172,6 +172,13 @@ pub async fn cancel(state: &AppState, queue_id: Uuid) -> Result<(), ApiError> {
 }
 
 async fn claim(state: &AppState) -> Result<Option<(Uuid, Uuid)>, ApiError> {
+    // Builds run on the panel host: they wait while it is busy or builds are paused.
+    if let Some(waited) = oldest_queued_wait(state).await? {
+        if let Some(reason) = state.guard.hold(waited) {
+            tracing::debug!(reason, "build queue held by the load guard");
+            return Ok(None);
+        }
+    }
     let limit = sqlx::query_scalar!(
         r#"
         SELECT build_concurrency_default AS "limit!"
@@ -494,6 +501,8 @@ async fn execute_local(
     .execute(&state.pool)
     .await
     .map_err(|error| error.to_string())?;
+    // The guard may have asked to stop it after the build step; it finished anyway.
+    state.guard.take_stop_reason(queue_id);
     Ok(())
 }
 
@@ -967,6 +976,7 @@ async fn fail_job(
     had_container: bool,
     message: &str,
 ) -> Result<(), ApiError> {
+    state.guard.take_stop_reason(queue_id);
     let safe = redact(message, &[]);
     let existing = sqlx::query_scalar!(
         r#"SELECT logs FROM deployments WHERE id = $1"#,
@@ -1037,14 +1047,20 @@ async fn cancel_running(
     had_container: bool,
     logs: &str,
 ) -> Result<(), ApiError> {
+    let error = state
+        .guard
+        .take_stop_reason(queue_id)
+        .unwrap_or_else(|| "build cancelled".to_owned());
+    let logs = format!("{logs}{error}\n");
     sqlx::query!(
         r#"
         UPDATE deployments
-        SET status = 'cancelled', error = 'build cancelled', logs = $2, finished_at = now()
+        SET status = 'cancelled', error = $3, logs = $2, finished_at = now()
         WHERE id = $1
         "#,
         deployment_id,
-        logs
+        logs,
+        error
     )
     .execute(&state.pool)
     .await
@@ -1078,6 +1094,17 @@ async fn cancel_running(
     .await
     .map_err(ApiError::database)?;
     Ok(())
+}
+
+/// How long the oldest queued build has waited, or `None` when nothing is queued.
+async fn oldest_queued_wait(state: &AppState) -> Result<Option<Duration>, ApiError> {
+    let oldest = sqlx::query_scalar!(
+        r#"SELECT MIN(created_at) FROM build_queue WHERE status = 'queued' AND NOT cancel_requested"#
+    )
+    .fetch_one(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    Ok(oldest.map(|at| (chrono::Utc::now() - at).to_std().unwrap_or(Duration::ZERO)))
 }
 
 struct CleanDir(PathBuf);

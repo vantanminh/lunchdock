@@ -8,7 +8,7 @@ What you get:
 - **Domains and TLS** through Traefik v3 (Let's Encrypt or uploaded certificates), plus an optional Pingora-based HTTP cache per server.
 - **Databases**: Postgres, MySQL, MariaDB, MongoDB, and Redis, with streaming encrypted backups to any S3-compatible storage.
 - **Docker Compose stacks** and 11 one-click templates (n8n, Uptime Kuma, Gitea, Vaultwarden, Ghost, WordPress, and more).
-- **Operations**: central logs with live tail, a web terminal, metrics and alerts (Telegram, Discord, Slack, webhooks, email), panel backup and disaster recovery, and signed self-updates with rollback.
+- **Operations**: central logs with live tail, a web terminal, metrics and alerts (Telegram, Discord, Slack, webhooks, email), a load guard that keeps the panel reachable when builds or traffic overload the server, panel backup and disaster recovery, and signed self-updates with rollback.
 - **Access**: users with admin and viewer roles, TOTP, scoped API tokens, an audit log, an OpenAPI document at `/api/docs`, and the `rudder` CLI.
 
 ## Quick start
@@ -76,6 +76,7 @@ The table does not include Postgres, Traefik, or your apps.
 | HTTP cache | [docs/cache.md](docs/cache.md) |
 | Central logs and terminal | [docs/logs.md](docs/logs.md) |
 | Monitoring and alerts | [docs/monitoring.md](docs/monitoring.md) |
+| Load guard and overload protection | [docs/load-guard.md](docs/load-guard.md) |
 | Panel backup and disaster recovery | [docs/disaster-recovery.md](docs/disaster-recovery.md) |
 | Self-update and releases | [docs/updates.md](docs/updates.md) |
 | Command line client | [docs/cli.md](docs/cli.md) |

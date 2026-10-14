@@ -736,14 +736,14 @@ async fn webhook(
             HookOutcome::Deploy { .. } if service.kind == "compose" => {
                 // Stacks deploy on a push only when they opted in.
                 match stacks::push_deploy(&state, service.id).await {
-                    Ok(Some(deployment)) => {
+                    Ok(stacks::PushDeploy::Started(deployment)) => {
                         record_delivery(&state, service.id, "github", &body, true, "queued").await;
                         queued.push(json!({
                             "service_id": service.id,
                             "deployment_id": deployment.id,
                         }));
                     }
-                    Ok(None) => {
+                    Ok(stacks::PushDeploy::Off) => {
                         record_delivery(
                             &state,
                             service.id,
@@ -751,6 +751,17 @@ async fn webhook(
                             &body,
                             true,
                             "push deploy is off",
+                        )
+                        .await;
+                    }
+                    Ok(stacks::PushDeploy::Waiting) => {
+                        record_delivery(
+                            &state,
+                            service.id,
+                            "github",
+                            &body,
+                            true,
+                            "waiting for the server to have room",
                         )
                         .await;
                     }

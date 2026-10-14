@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE build_queue\n        SET status = 'cancelled', cancel_requested = TRUE, finished_at = now()\n        WHERE status = 'queued'\n        RETURNING deployment_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "deployment_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "11c8da7978496dc99a7f6347d812dc3b4d3618945811f5e1f797605c76046b42"
+}

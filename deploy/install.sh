@@ -201,6 +201,7 @@ if ! docker inspect rudder-postgres >/dev/null 2>&1; then
 	info "starting rudder-postgres"
 	docker run -d --name rudder-postgres --restart unless-stopped \
 		--network rudder-internal \
+		--oom-score-adj -900 --cpu-shares 8192 --memory-reservation 256m \
 		-e POSTGRES_USER=rudder -e POSTGRES_DB=rudder \
 		-e POSTGRES_PASSWORD_FILE=/run/secrets/postgres.password \
 		-v "$ETC/postgres.password:/run/secrets/postgres.password:ro" \
@@ -255,6 +256,7 @@ if ! docker inspect rudder-traefik >/dev/null 2>&1; then
 	info "starting rudder-traefik"
 	docker run -d --name rudder-traefik --restart unless-stopped \
 		--network rudder-proxy -p 80:80 -p 443:443 \
+		--oom-score-adj -900 --cpu-shares 2048 --memory-reservation 64m \
 		-v "$DATA/traefik:/etc/rudder/traefik" \
 		"$TRAEFIK_IMAGE" --configFile=/etc/rudder/traefik/traefik.yml >/dev/null
 fi
@@ -284,10 +286,14 @@ else
 	agent_url="https://$address:7443"
 fi
 
+# The panel, its database and Traefik stay ahead of apps: the kernel kills apps
+# first when memory runs out, and they get the CPU they need while apps or builds
+# are busy. The panel re-applies the CPU weight on start for older installs.
 info "starting the panel ($PANEL_IMAGE)"
 docker rm -f "$PANEL" >/dev/null 2>&1 || true
 DATABASE_URL="$(database_url)" docker run -d --name "$PANEL" --restart unless-stopped \
 	--network rudder-internal \
+	--oom-score-adj -900 --cpu-shares 8192 --memory-reservation 128m \
 	-p 3000:3000 -p 7443:7443 \
 	-e DATABASE_URL \
 	-e RUDDER_MASTER_KEY_FILE=/etc/rudder/master.key \

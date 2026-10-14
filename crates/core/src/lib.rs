@@ -15,6 +15,7 @@ mod envelope;
 mod envfile;
 mod error;
 mod github_app;
+mod guard;
 mod image_ref;
 mod logs;
 mod metrics;
@@ -68,6 +69,12 @@ pub use error::Error;
 pub use github_app::{
     github_app_jwt, github_app_manifest, github_repo_full_name, is_private_host, validate_app_name,
     validate_github_login, AppManifest,
+};
+pub use guard::{
+    parse_load_averages, parse_pressure, parse_swap, read_host_pressure, Assessment, GuardLevel,
+    GuardLimits, GuardReason, GuardTracker, HostPressure, CONTROL_PLANE_CPU_SHARES,
+    CONTROL_PLANE_OOM_SCORE_ADJ, DEFAULT_GUARD_CPU_PERCENT, DEFAULT_MEMORY_RESERVE_PERCENT,
+    GUARD_INTERVAL_SECS, PROXY_CPU_SHARES, WORKLOAD_OOM_SCORE_ADJ,
 };
 pub use image_ref::{
     container_name, image_registry, normalize_registry, select_registry, validate_registry_url,

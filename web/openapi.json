@@ -1258,6 +1258,108 @@
         }
       }
     },
+    "/api/v1/load": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Load of the panel host, held and running builds, and how the panel is protected",
+        "operationId": "get_v1_load",
+        "responses": {
+          "200": {
+            "description": "Load of the panel host, held and running builds, and how the panel is protected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/load/cancel-builds": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Cancel queued builds and stop running builds on the panel host (admin, write)",
+        "operationId": "post_v1_load_cancel-builds",
+        "responses": {
+          "200": {
+            "description": "Cancel queued builds and stop running builds on the panel host (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsCancelled"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/load/pause": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Pause or resume every new build (admin, write)",
+        "operationId": "post_v1_load_pause",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseBuilds"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pause or resume every new build (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/load/settings": {
+      "put": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Set the load guard thresholds and builds at the same time (admin, write)",
+        "operationId": "put_v1_load_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGuard"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set the load guard thresholds and builds at the same time (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/login": {
       "post": {
         "tags": [
@@ -3962,6 +4064,55 @@
           }
         }
       },
+      "BuildLoad": {
+        "type": "object",
+        "required": [
+          "queued",
+          "running",
+          "stack_actions",
+          "stack_builds",
+          "concurrency"
+        ],
+        "properties": {
+          "concurrency": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Builds that may run at the same time on one server."
+          },
+          "hold": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why queued builds wait: `paused`, `busy`, or `critical`; `None` when they may start."
+          },
+          "oldest_queued_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "queued": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "running": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "stack_actions": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Compose stack actions running now."
+          },
+          "stack_builds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Of those, the ones that build images on the panel host."
+          }
+        }
+      },
       "BuildQueueView": {
         "type": "object",
         "required": [
@@ -3989,6 +4140,25 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "BuildsCancelled": {
+        "type": "object",
+        "required": [
+          "queued",
+          "running"
+        ],
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Queued builds that will not run."
+          },
+          "running": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Running builds and stack builds that were asked to stop."
           }
         }
       },
@@ -5539,6 +5709,152 @@
           }
         }
       },
+      "GuardLevel": {
+        "type": "string",
+        "description": "How loaded the host is.",
+        "enum": [
+          "ok",
+          "busy",
+          "critical"
+        ]
+      },
+      "GuardReason": {
+        "type": "object",
+        "description": "Why the guard is not at `ok`. `code` is one of `memory_low`,\n`memory_critical`, `memory_stall`, `cpu_high`, or `settling` (the host is\nback under the limits but not yet by the safety margin).",
+        "required": [
+          "code",
+          "value",
+          "limit"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number",
+            "format": "double",
+            "description": "The threshold it crossed, in percent."
+          },
+          "value": {
+            "type": "number",
+            "format": "double",
+            "description": "The measured value, in percent."
+          }
+        }
+      },
+      "GuardSettings": {
+        "type": "object",
+        "description": "Load guard settings, stored in `panel_settings`.",
+        "required": [
+          "enabled",
+          "builds_paused",
+          "memory_reserve_percent",
+          "cpu_percent"
+        ],
+        "properties": {
+          "builds_paused": {
+            "type": "boolean",
+            "description": "An admin paused every new build."
+          },
+          "cpu_percent": {
+            "type": "integer",
+            "format": "int32",
+            "description": "New builds wait while CPU stays above this share.",
+            "minimum": 0
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Hold and stop builds when the host is overloaded."
+          },
+          "memory_reserve_percent": {
+            "type": "integer",
+            "format": "int32",
+            "description": "New builds wait while free memory is below this share; running builds\nstop below half of it.",
+            "minimum": 0
+          }
+        }
+      },
+      "GuardView": {
+        "type": "object",
+        "description": "What the guard sees now.",
+        "required": [
+          "level",
+          "reasons",
+          "settings",
+          "critical_memory_percent",
+          "holding",
+          "stopped_builds"
+        ],
+        "properties": {
+          "critical_memory_percent": {
+            "type": "number",
+            "format": "double",
+            "description": "Available memory below which running builds are stopped, in percent."
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the host could not be read, when it could not."
+          },
+          "holding": {
+            "type": "boolean",
+            "description": "New builds wait now: paused, or the guard holds them."
+          },
+          "last_stopped_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "level": {
+            "$ref": "#/components/schemas/GuardLevel"
+          },
+          "pressure": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HostPressure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GuardReason"
+            },
+            "description": "Why the level is not `ok`; empty when it is."
+          },
+          "sampled_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/GuardSettings"
+          },
+          "since": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the level last changed."
+          },
+          "stopped_builds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Builds and stack actions the guard stopped since the panel started.",
+            "minimum": 0
+          }
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "required": [
@@ -5555,6 +5871,98 @@
           },
           "version": {
             "type": "string"
+          }
+        }
+      },
+      "HostPressure": {
+        "type": "object",
+        "description": "Memory, CPU and pressure of one host at one instant.",
+        "required": [
+          "cpu_percent",
+          "cpu_count",
+          "memory_total_bytes",
+          "memory_available_bytes",
+          "swap_total_bytes",
+          "swap_free_bytes",
+          "load1",
+          "load5",
+          "load15"
+        ],
+        "properties": {
+          "cpu_count": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "cpu_percent": {
+            "type": "number",
+            "format": "double",
+            "description": "Busy CPU time since the previous sample, 0–100 for the whole machine."
+          },
+          "cpu_pressure": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Share of the last 10 s some task waited for CPU (PSI), when the kernel reports it."
+          },
+          "io_pressure": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Share of the last 10 s some task waited for disk or network I/O (PSI)."
+          },
+          "load1": {
+            "type": "number",
+            "format": "double"
+          },
+          "load15": {
+            "type": "number",
+            "format": "double"
+          },
+          "load5": {
+            "type": "number",
+            "format": "double"
+          },
+          "memory_available_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Memory the kernel can hand out without swapping (`MemAvailable`).",
+            "minimum": 0
+          },
+          "memory_pressure": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Share of the last 10 s some task waited for memory (PSI)."
+          },
+          "memory_stall": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Share of the last 10 s every task waited for memory (PSI `full`): the host was thrashing."
+          },
+          "memory_total_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "swap_free_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "swap_total_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           }
         }
       },
@@ -5769,6 +6177,30 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "LoadView": {
+        "type": "object",
+        "description": "Load of the panel host and what the guard does about it.",
+        "required": [
+          "guard",
+          "builds",
+          "protection"
+        ],
+        "properties": {
+          "builds": {
+            "$ref": "#/components/schemas/BuildLoad"
+          },
+          "guard": {
+            "$ref": "#/components/schemas/GuardView"
+          },
+          "protection": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProtectionView"
+            },
+            "description": "How the panel, its database and Traefik are protected from apps."
           }
         }
       },
@@ -6085,6 +6517,17 @@
           }
         }
       },
+      "PauseBuilds": {
+        "type": "object",
+        "required": [
+          "paused"
+        ],
+        "properties": {
+          "paused": {
+            "type": "boolean"
+          }
+        }
+      },
       "PreviewDomain": {
         "type": "object",
         "properties": {
@@ -6119,6 +6562,48 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "ProtectionView": {
+        "type": "object",
+        "description": "How one control-plane container is protected.",
+        "required": [
+          "name",
+          "role",
+          "present",
+          "oom_score_adj",
+          "cpu_shares",
+          "memory_reservation_bytes",
+          "protected"
+        ],
+        "properties": {
+          "cpu_shares": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "memory_reservation_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "oom_score_adj": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "present": {
+            "type": "boolean",
+            "description": "The container exists on this host."
+          },
+          "protected": {
+            "type": "boolean",
+            "description": "Kept away from the OOM killer and ahead of apps for CPU."
+          },
+          "role": {
+            "type": "string",
+            "description": "`panel`, `database`, or `proxy`."
           }
         }
       },
@@ -7841,6 +8326,40 @@
             ],
             "format": "uuid",
             "description": "Null uses the built-in \"Honor origin headers\" policy."
+          }
+        }
+      },
+      "UpdateGuard": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "memory_reserve_percent",
+          "cpu_percent"
+        ],
+        "properties": {
+          "build_concurrency": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "1 to 8 builds at the same time on one server."
+          },
+          "cpu_percent": {
+            "type": "integer",
+            "format": "int32",
+            "description": "50 to 100: new builds wait while CPU stays above this.",
+            "minimum": 0
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Hold and stop builds when the panel host is overloaded."
+          },
+          "memory_reserve_percent": {
+            "type": "integer",
+            "format": "int32",
+            "description": "5 to 50: new builds wait while less memory than this is free.",
+            "minimum": 0
           }
         }
       },
