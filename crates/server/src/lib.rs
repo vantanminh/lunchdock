@@ -17,6 +17,7 @@ mod embed;
 mod error;
 mod events;
 mod gitkey;
+mod guard;
 mod logs;
 mod monitor;
 mod nodes;
@@ -25,6 +26,7 @@ mod panel;
 mod publish;
 mod routes;
 mod s3;
+mod shed;
 mod stacks;
 mod state;
 pub mod telemetry;
@@ -100,6 +102,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         }
     });
     start_monitoring(&state);
+    tokio::spawn(guard::run(state.clone()));
     let publish_state = state.clone();
     tokio::spawn(async move {
         let local = sqlx::query_scalar!(r#"SELECT id FROM servers WHERE kind = 'local' LIMIT 1"#)
@@ -288,11 +291,16 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::monitoring::router())
         .merge(routes::agents::router())
         .merge(routes::system::router())
+        .merge(routes::load::router())
         .merge(routes::updates::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),
         )
+        .layer(axum::middleware::from_fn_with_state(
+            shed::slots(),
+            shed::middleware,
+        ))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
         .fallback(embed::spa)

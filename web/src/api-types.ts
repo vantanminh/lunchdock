@@ -698,6 +698,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/load": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Load of the panel host, held and running builds, and how the panel is protected */
+        get: operations["get_v1_load"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/load/cancel-builds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel queued builds and stop running builds on the panel host (admin, write) */
+        post: operations["post_v1_load_cancel-builds"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/load/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause or resume every new build (admin, write) */
+        post: operations["post_v1_load_pause"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/load/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the load guard thresholds and builds at the same time (admin, write) */
+        put: operations["put_v1_load_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/login": {
         parameters: {
             query?: never;
@@ -2198,6 +2266,31 @@ export interface components {
             /** Format: uuid */
             queue_id: string;
         };
+        BuildLoad: {
+            /**
+             * Format: int32
+             * @description Builds that may run at the same time on one server.
+             */
+            concurrency: number;
+            /** @description Why queued builds wait: `paused`, `busy`, or `critical`; `None` when they may start. */
+            hold?: string | null;
+            /** Format: date-time */
+            oldest_queued_at?: string | null;
+            /** Format: int64 */
+            queued: number;
+            /** Format: int64 */
+            running: number;
+            /**
+             * Format: int64
+             * @description Compose stack actions running now.
+             */
+            stack_actions: number;
+            /**
+             * Format: int64
+             * @description Of those, the ones that build images on the panel host.
+             */
+            stack_builds: number;
+        };
         BuildQueueView: {
             cancel_requested: boolean;
             /** Format: date-time */
@@ -2207,6 +2300,18 @@ export interface components {
             /** Format: uuid */
             id: string;
             status: string;
+        };
+        BuildsCancelled: {
+            /**
+             * Format: int64
+             * @description Queued builds that will not run.
+             */
+            queued: number;
+            /**
+             * Format: int64
+             * @description Running builds and stack builds that were asked to stop.
+             */
+            running: number;
         };
         CacheHostStats: {
             /** Format: int64 */
@@ -2660,10 +2765,129 @@ export interface components {
             /** @description HTTPS clone address to use as the repository. */
             url: string;
         };
+        /**
+         * @description How loaded the host is.
+         * @enum {string}
+         */
+        GuardLevel: "ok" | "busy" | "critical";
+        /**
+         * @description Why the guard is not at `ok`. `code` is one of `memory_low`,
+         *     `memory_critical`, `memory_stall`, `cpu_high`, or `settling` (the host is
+         *     back under the limits but not yet by the safety margin).
+         */
+        GuardReason: {
+            code: string;
+            /**
+             * Format: double
+             * @description The threshold it crossed, in percent.
+             */
+            limit: number;
+            /**
+             * Format: double
+             * @description The measured value, in percent.
+             */
+            value: number;
+        };
+        /** @description Load guard settings, stored in `panel_settings`. */
+        GuardSettings: {
+            /** @description An admin paused every new build. */
+            builds_paused: boolean;
+            /**
+             * Format: int32
+             * @description New builds wait while CPU stays above this share.
+             */
+            cpu_percent: number;
+            /** @description Hold and stop builds when the host is overloaded. */
+            enabled: boolean;
+            /**
+             * Format: int32
+             * @description New builds wait while free memory is below this share; running builds
+             *     stop below half of it.
+             */
+            memory_reserve_percent: number;
+        };
+        /** @description What the guard sees now. */
+        GuardView: {
+            /**
+             * Format: double
+             * @description Available memory below which running builds are stopped, in percent.
+             */
+            critical_memory_percent: number;
+            /** @description Why the host could not be read, when it could not. */
+            error?: string | null;
+            /** @description New builds wait now: paused, or the guard holds them. */
+            holding: boolean;
+            /** Format: date-time */
+            last_stopped_at?: string | null;
+            level: components["schemas"]["GuardLevel"];
+            pressure?: components["schemas"]["HostPressure"] | null;
+            /** @description Why the level is not `ok`; empty when it is. */
+            reasons: components["schemas"]["GuardReason"][];
+            /** Format: date-time */
+            sampled_at?: string | null;
+            settings: components["schemas"]["GuardSettings"];
+            /**
+             * Format: date-time
+             * @description When the level last changed.
+             */
+            since?: string | null;
+            /**
+             * Format: int64
+             * @description Builds and stack actions the guard stopped since the panel started.
+             */
+            stopped_builds: number;
+        };
         HealthResponse: {
             product: string;
             status: string;
             version: string;
+        };
+        /** @description Memory, CPU and pressure of one host at one instant. */
+        HostPressure: {
+            /** Format: int32 */
+            cpu_count: number;
+            /**
+             * Format: double
+             * @description Busy CPU time since the previous sample, 0–100 for the whole machine.
+             */
+            cpu_percent: number;
+            /**
+             * Format: double
+             * @description Share of the last 10 s some task waited for CPU (PSI), when the kernel reports it.
+             */
+            cpu_pressure?: number | null;
+            /**
+             * Format: double
+             * @description Share of the last 10 s some task waited for disk or network I/O (PSI).
+             */
+            io_pressure?: number | null;
+            /** Format: double */
+            load1: number;
+            /** Format: double */
+            load15: number;
+            /** Format: double */
+            load5: number;
+            /**
+             * Format: int64
+             * @description Memory the kernel can hand out without swapping (`MemAvailable`).
+             */
+            memory_available_bytes: number;
+            /**
+             * Format: double
+             * @description Share of the last 10 s some task waited for memory (PSI).
+             */
+            memory_pressure?: number | null;
+            /**
+             * Format: double
+             * @description Share of the last 10 s every task waited for memory (PSI `full`): the host was thrashing.
+             */
+            memory_stall?: number | null;
+            /** Format: int64 */
+            memory_total_bytes: number;
+            /** Format: int64 */
+            swap_free_bytes: number;
+            /** Format: int64 */
+            swap_total_bytes: number;
         };
         ImportEnv: {
             /** @description Only report what would change; save nothing. */
@@ -2729,6 +2953,13 @@ export interface components {
         LifecycleView: {
             container_id?: string | null;
             status: string;
+        };
+        /** @description Load of the panel host and what the guard does about it. */
+        LoadView: {
+            builds: components["schemas"]["BuildLoad"];
+            guard: components["schemas"]["GuardView"];
+            /** @description How the panel, its database and Traefik are protected from apps. */
+            protection: components["schemas"]["ProtectionView"][];
         };
         LogPage: {
             /** @description Newest first. */
@@ -2826,6 +3057,9 @@ export interface components {
             current_password: string;
             new_password: string;
         };
+        PauseBuilds: {
+            paused: boolean;
+        };
         PreviewDomain: {
             /** Format: int32 */
             target_port?: number | null;
@@ -2837,6 +3071,22 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+        };
+        /** @description How one control-plane container is protected. */
+        ProtectionView: {
+            /** Format: int64 */
+            cpu_shares: number;
+            /** Format: int64 */
+            memory_reservation_bytes: number;
+            name: string;
+            /** Format: int64 */
+            oom_score_adj: number;
+            /** @description The container exists on this host. */
+            present: boolean;
+            /** @description Kept away from the OOM killer and ahead of apps for CPU. */
+            protected: boolean;
+            /** @description `panel`, `database`, or `proxy`. */
+            role: string;
         };
         PruneResult: {
             /** Format: int64 */
@@ -3357,6 +3607,25 @@ export interface components {
              * @description Null uses the built-in "Honor origin headers" policy.
              */
             policy_id?: string | null;
+        };
+        UpdateGuard: {
+            /**
+             * Format: int32
+             * @description 1 to 8 builds at the same time on one server.
+             */
+            build_concurrency?: number | null;
+            /**
+             * Format: int32
+             * @description 50 to 100: new builds wait while CPU stays above this.
+             */
+            cpu_percent: number;
+            /** @description Hold and stop builds when the panel host is overloaded. */
+            enabled: boolean;
+            /**
+             * Format: int32
+             * @description 5 to 50: new builds wait while less memory than this is free.
+             */
+            memory_reserve_percent: number;
         };
         UpdateHistoryEntry: {
             component: string;
@@ -4619,6 +4888,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GithubAppManifest"];
+                };
+            };
+        };
+    };
+    get_v1_load: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Load of the panel host, held and running builds, and how the panel is protected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoadView"];
+                };
+            };
+        };
+    };
+    "post_v1_load_cancel-builds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cancel queued builds and stop running builds on the panel host (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildsCancelled"];
+                };
+            };
+        };
+    };
+    post_v1_load_pause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PauseBuilds"];
+            };
+        };
+        responses: {
+            /** @description Pause or resume every new build (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoadView"];
+                };
+            };
+        };
+    };
+    put_v1_load_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateGuard"];
+            };
+        };
+        responses: {
+            /** @description Set the load guard thresholds and builds at the same time (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoadView"];
                 };
             };
         };

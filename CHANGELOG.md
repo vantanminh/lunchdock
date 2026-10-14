@@ -8,6 +8,15 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+### Added
+- **The panel stays reachable when the server is overloaded.** A load guard reads the panel server's memory and CPU every few seconds. While the server is busy, new builds (and push deploys of stacks that build) wait in the queue; when free memory is about to run out, running builds are stopped and the reason is written to their log, so the panel, its database and Traefik keep enough room to answer. The guard is on by default and its thresholds can be changed (`busy` below 15% free memory or above 90% CPU, builds stopped below half the memory reserve). A build held only because of CPU starts anyway after 20 minutes.
+- **Pause, cancel and limit builds.** Admins can pause every new build, cancel all queued and running builds at once, and set how many builds run at the same time on one server (the API is under `/api/v1/load`).
+
+### Changed
+- **Apps are killed before the panel when memory runs out.** App, database and stack containers now start with a higher OOM score, and the panel, its database and Traefik get more CPU weight than apps (applied on every panel start). Redeploy an app to give its container the new score. New installs start the panel, Postgres and Traefik with a low OOM score; on an existing install the panel gets it with the next panel update, and Postgres and Traefik when their containers are recreated by `install.sh`.
+- **A flood of anonymous requests no longer locks you out.** Requests from signed-in people and API tokens always get through; anonymous requests (webhooks, sign-in pages, scanners) are answered "busy, try again in a few seconds" when 64 are already in progress.
+- **The agent on extra servers is protected the same way.** New agent installs run the agent and Traefik with a low OOM score and a higher CPU weight, so the panel can still stop apps on an overloaded server. For an agent installed earlier, add `OOMScoreAdjust=-900` and `CPUWeight=1000` with `systemctl edit rudder-agent`, then restart it.
+
 ## [0.2.0] - 2026-10-12
 
 ### Added

@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT guard_enabled, builds_paused, guard_memory_reserve_percent, guard_cpu_percent\n        FROM panel_settings\n        WHERE id = TRUE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "guard_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "builds_paused",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "guard_memory_reserve_percent",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 3,
+        "name": "guard_cpu_percent",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f7109cb5760a435a2dd5a3890634f04f2d9c4c1292f4c9bb9819e2243b3752b8"
+}

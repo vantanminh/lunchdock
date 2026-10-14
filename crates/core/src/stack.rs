@@ -145,6 +145,13 @@ pub fn transform_compose(project: &str, source: &str, routed: &[&str]) -> Result
             }
         }
         add_labels(service, project, &name)?;
+        if !service.contains_key("oom_score_adj") {
+            // Under memory pressure the kernel kills stack containers before the panel.
+            service.insert(
+                key("oom_score_adj"),
+                Value::Number(crate::WORKLOAD_OOM_SCORE_ADJ.into()),
+            );
+        }
         out.push(StackService {
             image: service
                 .get("image")
@@ -373,6 +380,7 @@ volumes:
             Value::Sequence(vec![key("default"), key("rudder-proxy")])
         );
         assert_eq!(web["labels"]["com.example"], "1");
+        assert_eq!(web["oom_score_adj"], crate::WORKLOAD_OOM_SCORE_ADJ);
         assert_eq!(web["labels"]["rudder.project"], "blog-1a2b3c");
         let db = &doc["services"]["db"];
         assert_eq!(db["container_name"], "blog-1a2b3c-pg");
@@ -427,6 +435,18 @@ volumes:
             "x".repeat(MAX_COMPOSE_BYTES)
         );
         assert!(transform_compose("app", &big, &[]).is_err());
+    }
+
+    #[test]
+    fn keeps_an_oom_score_the_file_sets() {
+        let source = "services:\n  a:\n    image: x\n    oom_score_adj: -100\n  b:\n    image: y\n";
+        let plan = transform_compose("app", source, &[]).unwrap();
+        let doc: Value = serde_yaml_ng::from_str(&plan.yaml).unwrap();
+        assert_eq!(doc["services"]["a"]["oom_score_adj"], -100);
+        assert_eq!(
+            doc["services"]["b"]["oom_score_adj"],
+            crate::WORKLOAD_OOM_SCORE_ADJ
+        );
     }
 
     #[test]

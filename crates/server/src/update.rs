@@ -551,7 +551,10 @@ pub async fn run_updater(config: Config, args: UpdaterArgs) -> anyhow::Result<bo
         &format!("updater {} started", rudder_core::VERSION),
     )
     .await;
-    let swap = match driver.swap_container(&args.container, &args.image).await {
+    let swap = match driver
+        .swap_control_plane(&args.container, &args.image)
+        .await
+    {
         Ok(swap) => swap,
         Err(error) => {
             finish(

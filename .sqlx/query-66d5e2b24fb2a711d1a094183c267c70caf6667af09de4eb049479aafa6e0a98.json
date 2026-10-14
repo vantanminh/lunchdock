@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE panel_settings SET build_concurrency_default = $1 WHERE id = TRUE",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "66d5e2b24fb2a711d1a094183c267c70caf6667af09de4eb049479aafa6e0a98"
+}

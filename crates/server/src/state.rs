@@ -36,6 +36,8 @@ pub struct AppState {
     pub updates: Arc<crate::update::Updates>,
     /// Running compose stack actions, so one can be cancelled.
     pub stack_runs: Arc<crate::stacks::StackRuns>,
+    /// Host load, and whether new builds may start.
+    pub guard: Arc<crate::guard::LoadGuard>,
 }
 
 impl AppState {
@@ -59,6 +61,7 @@ impl AppState {
             logs: Arc::new(LogHub::default()),
             updates: Arc::default(),
             stack_runs: Arc::default(),
+            guard: Arc::default(),
         }
     }
 }

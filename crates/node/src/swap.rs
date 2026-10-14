@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use bollard::models::{
-    ContainerCreateBody, ContainerInspectResponse, EndpointSettings, ImageConfig,
-    NetworkConnectRequest, NetworkingConfig,
+    ContainerCreateBody, ContainerInspectResponse, ContainerUpdateBody, EndpointSettings,
+    ImageConfig, NetworkConnectRequest, NetworkingConfig,
 };
 use bollard::query_parameters::{
     CreateContainerOptionsBuilder, RemoveContainerOptionsBuilder, RenameContainerOptionsBuilder,
@@ -18,7 +18,7 @@ use bollard::query_parameters::{
 };
 use rudder_core::{
     validate_image_ref, validate_name, Error, NodeDriver, ReadyProbe, ReplaceContainer,
-    ReplaceReport,
+    ReplaceReport, CONTROL_PLANE_CPU_SHARES, CONTROL_PLANE_OOM_SCORE_ADJ,
 };
 
 use crate::LocalDriver;
@@ -38,9 +38,99 @@ pub struct Swap {
     pub image: String,
 }
 
+/// How a control-plane container (panel, its database, Traefik) is protected right now.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Priority {
+    pub oom_score_adj: i64,
+    pub cpu_shares: i64,
+    pub memory_reservation: i64,
+}
+
 impl LocalDriver {
     /// Stop `name`, keep it as `<name>-previous`, and start a copy on `image`.
     pub async fn swap_container(&self, name: &str, image: &str) -> Result<Swap, Error> {
+        self.swap_with(name, image, false).await
+    }
+
+    /// Like [`Self::swap_container`], and the copy is also kept away from the OOM
+    /// killer and given more CPU weight than apps, unless the old container
+    /// already had its own values. When Docker refuses those settings (rootless
+    /// engines cannot lower the OOM score), the copy is created without them.
+    pub async fn swap_control_plane(&self, name: &str, image: &str) -> Result<Swap, Error> {
+        self.swap_with(name, image, true).await
+    }
+
+    /// Raise the CPU weight of a running control-plane container and protect part
+    /// of its memory from reclaim. Docker cannot change the OOM score of a running
+    /// container; [`Self::swap_control_plane`] and the installer set that.
+    /// `Ok(false)` when there is no such container.
+    pub async fn prioritize(
+        &self,
+        name: &str,
+        cpu_shares: i64,
+        memory_reservation: i64,
+    ) -> Result<bool, Error> {
+        validate_name(name)?;
+        let docker = self.docker()?;
+        let current = match docker.inspect_container(name, None).await {
+            Ok(current) => current,
+            Err(bollard::errors::Error::DockerResponseServerError {
+                status_code: 404, ..
+            }) => return Ok(false),
+            Err(error) => return Err(Self::node(error)),
+        };
+        let host = current.host_config.unwrap_or_default();
+        let shares = host.cpu_shares.unwrap_or(0);
+        let reservation = host.memory_reservation.unwrap_or(0);
+        let limit = host.memory.unwrap_or(0);
+        let want_shares = (shares < cpu_shares).then_some(cpu_shares);
+        // A reservation must stay below a memory limit the admin set.
+        let want_reservation = (reservation < memory_reservation
+            && (limit == 0 || memory_reservation < limit))
+            .then_some(memory_reservation);
+        if want_shares.is_none() && want_reservation.is_none() {
+            return Ok(true);
+        }
+        let update = ContainerUpdateBody {
+            cpu_shares: want_shares,
+            memory_reservation: want_reservation,
+            ..ContainerUpdateBody::default()
+        };
+        if docker.update_container(name, update).await.is_err() && want_shares.is_some() {
+            // Some engines refuse memory settings; the CPU weight matters most.
+            let shares_only = ContainerUpdateBody {
+                cpu_shares: want_shares,
+                ..ContainerUpdateBody::default()
+            };
+            docker
+                .update_container(name, shares_only)
+                .await
+                .map_err(|error| Error::Node(format!("update {name}: {error}")))?;
+        }
+        Ok(true)
+    }
+
+    /// The OOM score, CPU shares and memory reservation of `name`, or `None` when
+    /// there is no such container.
+    pub async fn priority(&self, name: &str) -> Result<Option<Priority>, Error> {
+        validate_name(name)?;
+        match self.docker()?.inspect_container(name, None).await {
+            Ok(current) => {
+                let host = current.host_config.unwrap_or_default();
+                Ok(Some(Priority {
+                    oom_score_adj: host.oom_score_adj.unwrap_or(0),
+                    cpu_shares: host.cpu_shares.unwrap_or(0),
+                    memory_reservation: host.memory_reservation.unwrap_or(0),
+                }))
+            }
+            Err(bollard::errors::Error::DockerResponseServerError {
+                status_code: 404, ..
+            }) => Ok(None),
+            Err(error) => Err(Self::node(error)),
+        }
+    }
+
+    async fn swap_with(&self, name: &str, image: &str, protect: bool) -> Result<Swap, Error> {
         validate_name(name)?;
         validate_image_ref(image)?;
         let docker = self.docker()?;
@@ -73,6 +163,13 @@ impl LocalDriver {
             None => None,
         };
         let (body, extra_networks) = clone_body(&current, image, defaults.as_ref());
+        // A protected copy first; if the engine refuses it (rootless engines cannot
+        // lower the OOM score), the plain copy, so an update never fails for it.
+        let mut attempts = Vec::with_capacity(2);
+        if let Some(protected) = protect.then(|| protect_body(&body)).flatten() {
+            attempts.push(protected);
+        }
+        attempts.push(body);
 
         let stop = StopContainerOptionsBuilder::default()
             .t(STOP_TIMEOUT)
@@ -88,17 +185,24 @@ impl LocalDriver {
             previous_image,
             image: image.to_owned(),
         };
-        if let Err(error) = self.create_copy(name, body, extra_networks).await {
+        let mut last_error = None;
+        for attempt in attempts {
+            match self
+                .create_copy(name, attempt, extra_networks.clone())
+                .await
+            {
+                Ok(_) => match docker.start_container(name, None).await {
+                    Ok(()) => return Ok(swap),
+                    Err(error) => {
+                        last_error = Some(Error::Node(format!("start {name} on {image}: {error}")))
+                    }
+                },
+                Err(error) => last_error = Some(error),
+            }
             let _ = self.remove_named(name).await;
-            self.restore_previous(&swap).await?;
-            return Err(error);
         }
-        if let Err(error) = docker.start_container(name, None).await {
-            let _ = self.remove_named(name).await;
-            self.restore_previous(&swap).await?;
-            return Err(Error::Node(format!("start {name} on {image}: {error}")));
-        }
-        Ok(swap)
+        self.restore_previous(&swap).await?;
+        Err(last_error.unwrap_or_else(|| Error::Node(format!("could not start {name}"))))
     }
 
     /// Wait until `name` passes `probe`, or fail with the reason.
@@ -332,6 +436,23 @@ impl LocalDriver {
     }
 }
 
+/// `body` with the control-plane OOM score and CPU weight, or `None` when the
+/// container already has its own values for both.
+fn protect_body(body: &ContainerCreateBody) -> Option<ContainerCreateBody> {
+    let mut protected = body.clone();
+    let host = protected.host_config.get_or_insert_with(Default::default);
+    let mut changed = false;
+    if host.oom_score_adj.unwrap_or(0) == 0 {
+        host.oom_score_adj = Some(CONTROL_PLANE_OOM_SCORE_ADJ);
+        changed = true;
+    }
+    if host.cpu_shares.unwrap_or(0) == 0 {
+        host.cpu_shares = Some(CONTROL_PLANE_CPU_SHARES);
+        changed = true;
+    }
+    changed.then_some(protected)
+}
+
 /// Build a create request equal to `current` but on `image`. Networks other
 /// than the primary one are returned separately, to connect before start.
 fn clone_body(
@@ -447,6 +568,36 @@ fn clone_body(
 mod tests {
     use super::*;
     use bollard::models::{ContainerConfig, HostConfig, NetworkSettings};
+
+    #[test]
+    fn control_plane_copies_are_protected_unless_already_set() {
+        let plain = ContainerCreateBody::default();
+        let protected = protect_body(&plain).expect("protected copy");
+        let host = protected.host_config.unwrap();
+        assert_eq!(host.oom_score_adj, Some(CONTROL_PLANE_OOM_SCORE_ADJ));
+        assert_eq!(host.cpu_shares, Some(CONTROL_PLANE_CPU_SHARES));
+
+        let custom = ContainerCreateBody {
+            host_config: Some(HostConfig {
+                oom_score_adj: Some(-500),
+                cpu_shares: Some(512),
+                ..HostConfig::default()
+            }),
+            ..ContainerCreateBody::default()
+        };
+        assert!(protect_body(&custom).is_none());
+
+        let half = ContainerCreateBody {
+            host_config: Some(HostConfig {
+                oom_score_adj: Some(-500),
+                ..HostConfig::default()
+            }),
+            ..ContainerCreateBody::default()
+        };
+        let host = protect_body(&half).unwrap().host_config.unwrap();
+        assert_eq!(host.oom_score_adj, Some(-500));
+        assert_eq!(host.cpu_shares, Some(CONTROL_PLANE_CPU_SHARES));
+    }
 
     #[test]
     fn clone_keeps_settings_and_drops_image_defaults() {
