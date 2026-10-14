@@ -205,6 +205,35 @@ const paths = {
       <circle cx="7" cy="14" r="1.75" />
     </>
   ),
+  gauge: (
+    <>
+      <path d="M3.5 14.5a6.5 6.5 0 1 1 13 0" />
+      <path d="m10 14.5 3-4.5M5.5 14.5h.01M14.5 14.5h.01" />
+    </>
+  ),
+  pause: <path d="M7 4.5v11M13 4.5v11" />,
+  cpu: (
+    <>
+      <rect x="5" y="5" width="10" height="10" rx="1.5" />
+      <rect x="8" y="8" width="4" height="4" rx=".5" />
+      <path d="M8 2.5V5M12 2.5V5M8 15v2.5M12 15v2.5M2.5 8H5M2.5 12H5M15 8h2.5M15 12h2.5" />
+    </>
+  ),
+  memory: (
+    <>
+      <rect x="2.5" y="6" width="15" height="8" rx="1.5" />
+      <path d="M6 9v2M9 9v2M12 9v2M5 14v2M10 14v2M15 14v2" />
+    </>
+  ),
+  command: (
+    <path d="M7.5 7.5h5v5h-5ZM7.5 7.5V5.75a1.75 1.75 0 1 0-1.75 1.75H7.5Zm5 0h1.75A1.75 1.75 0 1 0 12.5 5.75V7.5Zm0 5v1.75a1.75 1.75 0 1 0 1.75-1.75H12.5Zm-5 0H5.75a1.75 1.75 0 1 0 1.75 1.75V12.5Z" />
+  ),
+  shieldOff: (
+    <>
+      <path d="M10 2.5 16 5v4.5c0 3.8-2.6 6.8-6 8-3.4-1.2-6-4.2-6-8V5Z" />
+      <path d="M10 7v3.5M10 13h.01" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof paths;

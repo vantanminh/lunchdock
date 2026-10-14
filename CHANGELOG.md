@@ -10,12 +10,19 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ### Added
 - **The panel stays reachable when the server is overloaded.** A load guard reads the panel server's memory and CPU every few seconds. While the server is busy, new builds (and push deploys of stacks that build) wait in the queue; when free memory is about to run out, running builds are stopped and the reason is written to their log, so the panel, its database and Traefik keep enough room to answer. The guard is on by default and its thresholds can be changed (`busy` below 15% free memory or above 90% CPU, builds stopped below half the memory reserve). A build held only because of CPU starts anyway after 20 minutes.
+- **Load page.** **Operate → Load** shows the panel server's memory, CPU, swap, load and memory pressure with the guard's thresholds drawn on the bars, why builds wait, the build queue, how the panel, its database and Traefik are protected, the guard settings, and what to do if the panel stops answering. A banner on every page says when the server is out of memory, builds are paused, or builds wait for room.
+- **Search and jump from anywhere.** Press **Ctrl K** (**⌘K** on a Mac) or **/**, or use the search box in the header, to open any page or service by typing part of its name (Vietnamese works without accents) and to run common actions.
+- **Connection status in the header.** A dot shows whether the panel answers normally, slowly, is busy, or is not reachable; pages retry with growing pauses instead of failing at once.
 - **Pause, cancel and limit builds.** Admins can pause every new build, cancel all queued and running builds at once, and set how many builds run at the same time on one server (the API is under `/api/v1/load`).
 
 ### Changed
+- **Redesigned overview.** The overview opens with a health summary that lists each problem with the button that fixes it, shows builds running and waiting next to servers, services and alerts, adds the services using the most CPU or memory with a Stop button, and shows the panel server's load and build controls beside the service list.
 - **Apps are killed before the panel when memory runs out.** App, database and stack containers now start with a higher OOM score, and the panel, its database and Traefik get more CPU weight than apps (applied on every panel start). Redeploy an app to give its container the new score. New installs start the panel, Postgres and Traefik with a low OOM score; on an existing install the panel gets it with the next panel update, and Postgres and Traefik when their containers are recreated by `install.sh`.
 - **A flood of anonymous requests no longer locks you out.** Requests from signed-in people and API tokens always get through; anonymous requests (webhooks, sign-in pages, scanners) are answered "busy, try again in a few seconds" when 64 are already in progress.
 - **The agent on extra servers is protected the same way.** New agent installs run the agent and Traefik with a low OOM score and a higher CPU weight, so the panel can still stop apps on an overloaded server. For an agent installed earlier, add `OOMScoreAdjust=-900` and `CPUWeight=1000` with `systemctl edit rudder-agent`, then restart it.
+
+### Fixed
+- **Readable errors when a proxy answers instead of the panel.** When Traefik answers "Bad Gateway" because the panel is restarting or overloaded, pages show that error and keep retrying, instead of a JSON parse error.
 
 ## [0.2.0] - 2026-10-12
 

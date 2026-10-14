@@ -1,60 +1,60 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { Icon, type IconName } from "../components/icons";
 import {
-  Alert,
+  holdText,
+  PanelLoadCard,
+  reasonText,
+  TopConsumers,
+  useLoad,
+  useLoadActions,
+  type LoadView,
+} from "../components/load";
+import {
   Badge,
   buttonClass,
   Card,
   Empty,
+  KindTile,
   Meter,
-  PageHeader,
   Segmented,
   Skeleton,
   StatusDot,
-  toneOf,
 } from "../components/ui";
 import { errorMessage, formatBytes, formatRelative, formatTime } from "../format";
-import type { Schemas } from "../types";
+import { isIssue, statusOrder } from "../health";
 import { useT } from "../i18n";
+import type { Schemas } from "../types";
 
 type Server = Schemas["ServerView"];
 type Service = Schemas["ServiceSummary"];
 type Usage = Schemas["ServerUsage"];
 type Event = Schemas["EventView"];
 type AlertRule = Schemas["AlertView"];
-type Project = Schemas["ProjectView"];
 
 type Filter = "all" | "running" | "issues" | "stopped";
 
 const LIVE = 10_000;
 const PAGE = 8;
 
-// Failed first, then work in flight, then healthy, then idle.
-const statusOrder: Record<string, number> = {
-  failed: 0,
-  error: 0,
-  partial: 1,
-  rolled_back: 1,
-  deploying: 2,
-  building: 2,
-  queued: 2,
-  running: 3,
-  stopped: 4,
-};
-
-function isIssue(status: string) {
-  const tone = toneOf(status);
-  return tone === "danger" || tone === "warning";
+interface Issue {
+  key: string;
+  tone: "danger" | "warning" | "info";
+  icon: IconName;
+  title: ReactNode;
+  detail?: ReactNode;
+  action?: ReactNode;
 }
 
 export function DashboardPage() {
   const t = useT();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const [filter, setFilter] = useState<Filter>("all");
+  const servicesRef = useRef<HTMLDivElement>(null);
 
   const servers = useQuery({
     queryKey: ["servers"],
@@ -71,10 +71,6 @@ export function DashboardPage() {
     queryFn: () => api<Schemas["MetricsOverview"]>("/api/v1/metrics/overview"),
     refetchInterval: LIVE,
   });
-  const projects = useQuery({
-    queryKey: ["projects"],
-    queryFn: () => api<Project[]>("/api/v1/projects"),
-  });
   const alerts = useQuery({
     queryKey: ["alerts"],
     queryFn: () => api<AlertRule[]>("/api/v1/alerts"),
@@ -85,6 +81,8 @@ export function DashboardPage() {
     queryFn: () => api<Event[]>("/api/v1/events?limit=8"),
     refetchInterval: 30_000,
   });
+  const load = useLoad();
+  const { pause } = useLoadActions();
 
   const serverList = servers.data ?? [];
   const serviceList = services.data ?? [];
@@ -98,96 +96,161 @@ export function DashboardPage() {
   const failing = serviceList.filter((service) => isIssue(service.status));
   const firing = alertList.filter((rule) => rule.enabled && rule.state === "firing");
   const pendingAlerts = alertList.filter((rule) => rule.enabled && rule.state === "pending");
-  const projectCount = projects.data?.length ?? new Set(serviceList.map((s) => s.project_id)).size;
-  const activeProjects = new Set(serviceList.map((service) => service.project_id)).size;
-
   const loading = servers.isLoading || services.isLoading;
-  const issues: ReactNode[] = [];
+
+  const showIssues = () => {
+    setFilter("issues");
+    servicesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const issues: Issue[] = [];
+  const view = load.data;
+  if (view?.guard.level === "critical") {
+    issues.push({
+      key: "load",
+      tone: "danger",
+      icon: "gauge",
+      title: t("The panel server is running out of memory"),
+      detail: view.guard.reasons.map((reason) => reasonText(t, reason)).join(" · "),
+      action: <IssueLink to="/load">{t("Open load controls")}</IssueLink>,
+    });
+  } else if (view?.guard.level === "busy") {
+    issues.push({
+      key: "load",
+      tone: "warning",
+      icon: "gauge",
+      title: t("The panel server is busy"),
+      detail: view.guard.reasons.map((reason) => reasonText(t, reason)).join(" · "),
+      action: <IssueLink to="/load">{t("See what uses it")}</IssueLink>,
+    });
+  }
+  if (view?.guard.settings.builds_paused) {
+    issues.push({
+      key: "paused",
+      tone: "warning",
+      icon: "pause",
+      title: t("Builds are paused"),
+      detail: view.builds.queued
+        ? t("{count} builds wait until they are resumed.", { count: view.builds.queued })
+        : t("New builds wait until they are resumed."),
+      action: isAdmin ? (
+        <button
+          type="button"
+          className={buttonClass({ variant: "secondary", size: "sm" })}
+          disabled={pause.isPending}
+          onClick={() => pause.mutate(false)}
+        >
+          <Icon name="play" size={14} />
+          {t("Resume builds")}
+        </button>
+      ) : null,
+    });
+  }
   if (failing.length) {
-    issues.push(
-      <span key="svc">
-        {failing.length === 1
+    issues.push({
+      key: "services",
+      tone: "danger",
+      icon: "rocket",
+      title:
+        failing.length === 1
           ? t("{count} service needs a look", { count: failing.length })
-          : t("{count} services need a look", { count: failing.length })}
-      </span>,
-    );
+          : t("{count} services need a look", { count: failing.length }),
+      detail: failing
+        .slice(0, 3)
+        .map((service) => service.name)
+        .join(", "),
+      action: (
+        <button
+          type="button"
+          className={buttonClass({ variant: "secondary", size: "sm" })}
+          onClick={showIssues}
+        >
+          {t("Show them")}
+        </button>
+      ),
+    });
   }
   if (offline.length) {
-    issues.push(
-      <Link key="srv" to="/servers">
-        {offline.length === 1
+    issues.push({
+      key: "servers",
+      tone: "danger",
+      icon: "server",
+      title:
+        offline.length === 1
           ? t("{name} is offline", { name: offline[0]?.name ?? "" })
-          : t("{count} servers are offline", { count: offline.length })}
-      </Link>,
-    );
+          : t("{count} servers are offline", { count: offline.length }),
+      detail: offline[0]?.last_heartbeat_at
+        ? t("Last seen {time}", { time: formatRelative(offline[0].last_heartbeat_at) })
+        : undefined,
+      action: <IssueLink to="/servers">{t("Servers")}</IssueLink>,
+    });
   }
   if (firing.length) {
-    issues.push(
-      <Link key="alr" to="/alerts">
-        {firing.length === 1
+    issues.push({
+      key: "alerts",
+      tone: "danger",
+      icon: "bell",
+      title:
+        firing.length === 1
           ? t("{count} alert is firing", { count: firing.length })
-          : t("{count} alerts are firing", { count: firing.length })}
-      </Link>,
-    );
+          : t("{count} alerts are firing", { count: firing.length }),
+      detail: firing.map((rule) => rule.name).join(", "),
+      action: <IssueLink to="/alerts">{t("Alerts")}</IssueLink>,
+    });
   }
+
+  const firstName = (user?.display_name || user?.email || "").split(/[\s@]/)[0] ?? "";
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12
+      ? t("Good morning, {name}", { name: firstName })
+      : hour < 18
+        ? t("Good afternoon, {name}", { name: firstName })
+        : t("Good evening, {name}", { name: firstName });
 
   return (
     <>
-      <PageHeader
-        title={t("Overview")}
-        description={
-          loading
-            ? t("Checking your servers…")
-            : t("{services} on {servers}. Refreshes every 10 seconds.", {
-                services:
-                  serviceList.length === 1
-                    ? t("{count} service", { count: serviceList.length })
-                    : t("{count} services", { count: serviceList.length }),
-                servers:
-                  serverList.length === 1
-                    ? t("{count} server", { count: serverList.length })
-                    : t("{count} servers", { count: serverList.length }),
-              })
-        }
-        actions={
-          isAdmin ? (
-            <>
-              <Link to="/templates" className={buttonClass({ variant: "secondary" })}>
-                <Icon name="layers" />
-                {t("Deploy a template")}
-              </Link>
-              <Link to="/projects" className={buttonClass()}>
-                <Icon name="plus" />
-                {t("New project")}
-              </Link>
-            </>
-          ) : null
-        }
-      />
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-pine">{greeting}</p>
+          <h1 className="mt-1 text-2xl leading-tight font-semibold tracking-[-0.015em] text-ink">
+            {t("Overview")}
+          </h1>
+          <p className="mt-1.5 max-w-2xl text-[14.5px] text-muted">
+            {loading
+              ? t("Checking your servers…")
+              : t("{services} on {servers}. Refreshes every 10 seconds.", {
+                  services:
+                    serviceList.length === 1
+                      ? t("{count} service", { count: serviceList.length })
+                      : t("{count} services", { count: serviceList.length }),
+                  servers:
+                    serverList.length === 1
+                      ? t("{count} server", { count: serverList.length })
+                      : t("{count} servers", { count: serverList.length }),
+                })}
+          </p>
+        </div>
+        {isAdmin ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to="/templates" className={buttonClass({ variant: "secondary" })}>
+              <Icon name="layers" />
+              {t("Deploy a template")}
+            </Link>
+            <Link to="/projects" className={buttonClass()}>
+              <Icon name="plus" />
+              {t("New project")}
+            </Link>
+          </div>
+        ) : null}
+      </div>
 
-      {services.error || servers.error ? (
-        <Alert tone="error" title={t("Couldn't load the overview")}>
-          {errorMessage(services.error ?? servers.error, t("The panel did not answer."))}
-        </Alert>
-      ) : issues.length ? (
-        <Alert
-          tone={offline.length || firing.length ? "error" : "warning"}
-          title={
-            issues.length === 1
-              ? t("One thing needs attention")
-              : t("{count} things need attention", { count: issues.length })
-          }
-        >
-          <span className="flex flex-wrap gap-x-1.5">
-            {issues.map((issue, index) => (
-              <span key={index}>
-                {issue}
-                {index < issues.length - 1 ? " ·" : "."}
-              </span>
-            ))}
-          </span>
-        </Alert>
-      ) : null}
+      <HealthCard
+        issues={issues}
+        loading={loading}
+        error={services.error ?? servers.error}
+        updatedAt={services.dataUpdatedAt}
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatTile
@@ -224,14 +287,7 @@ export function DashboardPage() {
           }
           warn={failing.length > 0}
         />
-        <StatTile
-          to="/projects"
-          icon="folder"
-          label={t("Projects")}
-          loading={projects.isLoading && services.isLoading}
-          value={projectCount}
-          caption={t("{count} with running services", { count: activeProjects })}
-        />
+        <BuildsTile view={view} loading={load.isLoading} />
         <StatTile
           to="/alerts"
           icon="bell"
@@ -256,13 +312,21 @@ export function DashboardPage() {
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
-        <ServicesCard
-          services={serviceList}
-          serverName={serverName}
-          loading={services.isLoading}
-          isAdmin={isAdmin}
-        />
-        <div className="grid gap-6">
+        <div className="grid min-w-0 gap-6">
+          <div ref={servicesRef} className="scroll-mt-20">
+            <ServicesCard
+              services={serviceList}
+              serverName={serverName}
+              loading={services.isLoading}
+              isAdmin={isAdmin}
+              filter={filter}
+              onFilter={setFilter}
+            />
+          </div>
+          <TopConsumers />
+        </div>
+        <div className="grid min-w-0 gap-6">
+          <PanelLoadCard />
           <ServersCard servers={serverList} usage={usage} loading={servers.isLoading} />
           <ActivityCard
             events={events.data ?? []}
@@ -272,6 +336,112 @@ export function DashboardPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function IssueLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className={buttonClass({ variant: "secondary", size: "sm" })}>
+      {children}
+      <Icon name="arrowRight" size={14} />
+    </Link>
+  );
+}
+
+const issueTone: Record<Issue["tone"], string> = {
+  danger: "border-danger-line bg-danger-soft text-danger",
+  warning: "border-amber-line bg-amber-soft text-amber",
+  info: "border-line bg-sunken text-ink-soft",
+};
+
+/** One sentence on the state of everything, and a row for each thing that needs a person. */
+function HealthCard({
+  issues,
+  loading,
+  error,
+  updatedAt,
+}: {
+  issues: Issue[];
+  loading: boolean;
+  error: unknown;
+  updatedAt: number;
+}) {
+  const t = useT();
+  if (error) {
+    return (
+      <section className="flex items-start gap-4 rounded-card border border-danger-line bg-danger-soft p-5 text-danger">
+        <Icon name="alert" size={22} className="mt-0.5 shrink-0" />
+        <div>
+          <h2 className="text-[15px] font-semibold">{t("Couldn't load the overview")}</h2>
+          <p className="mt-1 text-sm">{errorMessage(error, t("The panel did not answer."))}</p>
+        </div>
+      </section>
+    );
+  }
+  const danger = issues.some((issue) => issue.tone === "danger");
+  const calm = !loading && issues.length === 0;
+  return (
+    <section className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
+      <div className="flex flex-wrap items-center gap-4 px-5 py-4 sm:px-6">
+        <span
+          className={`inline-flex size-10 shrink-0 items-center justify-center rounded-card border ${
+            loading
+              ? "border-line bg-sunken text-faint"
+              : calm
+                ? "border-pine-line bg-pine-soft text-pine"
+                : danger
+                  ? "border-danger-line bg-danger-soft text-danger"
+                  : "border-amber-line bg-amber-soft text-amber"
+          }`}
+        >
+          <Icon name={calm || loading ? "check" : "alert"} size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base leading-snug font-semibold text-ink">
+            {loading
+              ? t("Checking your servers…")
+              : calm
+                ? t("Everything is running normally")
+                : issues.length === 1
+                  ? t("One thing needs attention")
+                  : t("{count} things need attention", { count: issues.length })}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted">
+            {calm
+              ? t("Servers are reachable, services are up and no alert is firing.")
+              : t("Start with the first row; the panel keeps checking every few seconds.")}
+          </p>
+        </div>
+        {updatedAt ? (
+          <span className="text-xs text-faint" title={formatTime(new Date(updatedAt).toISOString())}>
+            {t("Updated {time}", { time: formatRelative(new Date(updatedAt).toISOString()) })}
+          </span>
+        ) : null}
+      </div>
+      {issues.length ? (
+        <ul className="divide-y divide-line border-t border-line">
+          {issues.map((issue) => (
+            <li
+              key={issue.key}
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3 sm:px-6"
+            >
+              <span
+                className={`inline-flex size-8 shrink-0 items-center justify-center rounded-alert border ${issueTone[issue.tone]}`}
+              >
+                <Icon name={issue.icon} size={16} />
+              </span>
+              <div className="min-w-0 flex-1 basis-56">
+                <p className="text-sm font-medium text-ink">{issue.title}</p>
+                {issue.detail ? (
+                  <p className="truncate text-[13px] text-muted">{issue.detail}</p>
+                ) : null}
+              </div>
+              {issue.action ? <div className="shrink-0">{issue.action}</div> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 
@@ -299,11 +469,13 @@ function StatTile({
   return (
     <Link
       to={to}
-      className="group min-w-0 rounded-card border border-line bg-surface p-4 shadow-card sm:p-5 transition-colors hover:border-line-strong"
+      className="group min-w-0 rounded-card border border-line bg-surface p-4 shadow-card transition-[border-color,box-shadow] hover:border-line-strong hover:shadow-raised sm:p-5"
     >
       <div className="flex items-center justify-between text-[13px] font-medium text-muted">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="hidden size-7 shrink-0 items-center justify-center rounded-alert bg-sunken text-ink-soft sm:inline-flex">
+          <span
+            className={`hidden size-7 shrink-0 items-center justify-center rounded-alert sm:inline-flex ${warn ? "bg-danger-soft text-danger" : "bg-sunken text-ink-soft"}`}
+          >
             <Icon name={icon} size={15} />
           </span>
           <span className="truncate">{label}</span>
@@ -334,10 +506,75 @@ function StatTile({
         />
       ) : null}
       <p
-        className={`mt-2.5 flex items-center gap-1.5 text-[13px] ${warn ? "font-medium text-danger" : "text-muted"}`}
+        className={`mt-2.5 flex items-center gap-1.5 truncate text-[13px] ${warn ? "font-medium text-danger" : "text-muted"}`}
       >
-        {warn ? <Icon name="alert" size={14} /> : null}
-        {loading ? " " : caption}
+        {warn ? <Icon name="alert" size={14} className="shrink-0" /> : null}
+        <span className="truncate">{loading ? " " : caption}</span>
+      </p>
+    </Link>
+  );
+}
+
+function BuildsTile({ view, loading }: { view: LoadView | undefined; loading: boolean }) {
+  const t = useT();
+  const running = view ? view.builds.running + view.builds.stack_builds : 0;
+  const hold = view ? holdText(t, view.builds.hold) : null;
+  const caption = !view
+    ? t("Build queue")
+    : view.builds.queued && hold
+      ? hold
+      : view.builds.queued
+        ? t("{count} waiting", { count: view.builds.queued })
+        : view.guard.settings.builds_paused
+          ? t("Builds are paused")
+          : t("Queue is empty");
+  return (
+    <Link
+      to="/load"
+      className="group min-w-0 rounded-card border border-line bg-surface p-4 shadow-card transition-[border-color,box-shadow] hover:border-line-strong hover:shadow-raised sm:p-5"
+    >
+      <div className="flex items-center justify-between text-[13px] font-medium text-muted">
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            className={`hidden size-7 shrink-0 items-center justify-center rounded-alert sm:inline-flex ${hold ? "bg-amber-soft text-amber" : "bg-sunken text-ink-soft"}`}
+          >
+            <Icon name="zap" size={15} />
+          </span>
+          <span className="truncate">{t("Builds running")}</span>
+        </span>
+        <Icon
+          name="arrowRight"
+          size={14}
+          className="-translate-x-1 text-faint opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100"
+        />
+      </div>
+      {loading ? (
+        <Skeleton className="mt-4 h-8 w-20" />
+      ) : (
+        <p className="mt-4 flex items-baseline gap-1.5 tabular-nums">
+          <span className="text-[28px] leading-none font-semibold tracking-[-0.02em] text-ink">
+            {running}
+          </span>
+          {view?.builds.queued ? (
+            <span className="text-sm text-muted">
+              {t("+{count} waiting", { count: view.builds.queued })}
+            </span>
+          ) : null}
+        </p>
+      )}
+      <div className="mt-3 flex h-1.5 gap-0.5" aria-hidden="true">
+        {Array.from({ length: Math.max(view?.builds.concurrency ?? 1, 1) }, (_, index) => (
+          <span
+            key={index}
+            className={`flex-1 rounded-full ${index < running ? "bg-pine animate-live" : "bg-sunken"}`}
+          />
+        ))}
+      </div>
+      <p
+        className={`mt-2.5 flex items-center gap-1.5 truncate text-[13px] ${hold ? "font-medium text-amber" : "text-muted"}`}
+      >
+        {hold ? <Icon name="pause" size={14} className="shrink-0" /> : null}
+        <span className="truncate">{loading ? " " : caption}</span>
       </p>
     </Link>
   );
@@ -348,14 +585,17 @@ function ServicesCard({
   serverName,
   loading,
   isAdmin,
+  filter,
+  onFilter,
 }: {
   services: Service[];
   serverName: Map<string, string>;
   loading: boolean;
   isAdmin: boolean;
+  filter: Filter;
+  onFilter: (filter: Filter) => void;
 }) {
   const t = useT();
-  const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
 
@@ -474,7 +714,7 @@ function ServicesCard({
           <Segmented<Filter>
             label={t("Filter services by status")}
             value={filter}
-            onChange={setFilter}
+            onChange={onFilter}
             options={[
               ["all", t("All"), counts.all],
               ["running", t("Running"), counts.running],
@@ -488,7 +728,7 @@ function ServicesCard({
         <ul className="divide-y divide-line">
           {Array.from({ length: 4 }, (_, index) => (
             <li key={index} className="flex items-center gap-3 px-5 py-3.5 sm:px-6">
-              <Skeleton className="size-2 rounded-full" />
+              <Skeleton className="size-8 rounded-alert" />
               <div className="flex-1 space-y-1.5">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-3 w-56 max-w-full" />
@@ -507,9 +747,14 @@ function ServicesCard({
             <li key={service.id}>
               <Link
                 to={`/services/${service.id}`}
-                className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-5 py-3 transition-colors hover:bg-paper sm:px-6 md:grid-cols-[auto_minmax(0,1fr)_88px_120px_118px]"
+                className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-5 py-3 transition-colors hover:bg-paper sm:px-6 md:grid-cols-[auto_minmax(0,1fr)_120px_118px]"
               >
-                <StatusDot status={service.status} />
+                <span className="relative">
+                  <KindTile kind={service.kind} size={32} />
+                  <span className="absolute -right-0.5 -bottom-0.5 inline-flex rounded-full bg-surface p-[2px]">
+                    <StatusDot status={service.status} />
+                  </span>
+                </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-ink group-hover:text-pine">
                     {service.name}
@@ -519,9 +764,6 @@ function ServicesCard({
                     <span className="px-1 text-faint">/</span>
                     {service.environment_name}
                   </span>
-                </span>
-                <span className="hidden justify-self-start md:block">
-                  <Badge value={service.kind} tone="outline" />
                 </span>
                 <span className="hidden truncate text-[13px] text-muted md:flex md:items-center md:gap-1.5">
                   <Icon name="server" size={14} className="shrink-0 text-faint" />
@@ -587,6 +829,9 @@ function ServersCard({
                     <p className="flex items-center gap-2 text-sm font-medium text-ink">
                       <StatusDot status={server.status} />
                       <span className="truncate">{server.name}</span>
+                      {server.kind === "local" ? (
+                        <span className="text-xs font-normal text-faint">{t("panel")}</span>
+                      ) : null}
                     </p>
                     <p className="mt-0.5 truncate pl-4 font-mono text-xs text-muted">
                       {[server.public_ip, server.hostname].filter(Boolean).join(" · ") ||
@@ -677,7 +922,12 @@ function ActivityCard({
       ) : (
         <ol className="border-t border-line px-5 py-2 sm:px-6">
           {events.map((event, index) => {
-            const [cls, icon] = severityStyle[event.severity] ?? infoStyle;
+            const [cls, icon] = event.kind.startsWith("guard.")
+              ? ([
+                  (severityStyle[event.severity] ?? infoStyle)[0],
+                  "gauge",
+                ] as [string, IconName])
+              : (severityStyle[event.severity] ?? infoStyle);
             return (
               <li key={event.id} className="relative flex gap-3 py-2.5">
                 {index < events.length - 1 ? (
@@ -717,3 +967,4 @@ function ActivityCard({
     </Card>
   );
 }
+

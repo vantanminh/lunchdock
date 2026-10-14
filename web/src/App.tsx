@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, useState, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
+import { ApiError } from "./api";
 import { AuthProvider, useAuth } from "./auth";
 import { LanguageProvider, useT } from "./i18n";
 import { Shell } from "./layout/Shell";
@@ -31,6 +32,7 @@ const GitHubCallbackPage = lazy(() =>
 const GitProvidersPage = lazy(() =>
   import("./pages/GitProvidersPage").then((m) => ({ default: m.GitProvidersPage })),
 );
+const LoadPage = lazy(() => import("./pages/LoadPage").then((m) => ({ default: m.LoadPage })));
 const LogsPage = lazy(() => import("./pages/LogsPage").then((m) => ({ default: m.LogsPage })));
 const MonitoringPage = lazy(() =>
   import("./pages/MonitoringPage").then((m) => ({ default: m.MonitoringPage })),
@@ -94,6 +96,7 @@ function AppRoutes() {
         <Route path="services/:id" element={<ServicePage />} />
         <Route path="templates" element={<TemplatesPage />} />
         <Route path="monitoring" element={<MonitoringPage />} />
+        <Route path="load" element={<LoadPage />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="logs" element={<LogsPage />} />
         <Route path="backups" element={<BackupsPage />} />
@@ -120,8 +123,27 @@ function ThemedToaster() {
   return <Toaster theme={dark ? "dark" : "light"} containerAriaLabel={t("Notifications")} />;
 }
 
+/** Retry what may pass a moment later (no answer, busy, server errors), not what never will. */
+function retry(failures: number, error: unknown): boolean {
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+    return error.status === 408 || error.status === 429 ? failures < 3 : false;
+  }
+  return failures < 3;
+}
+
 export function App() {
-  const [client] = useState(() => new QueryClient());
+  const [client] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry,
+            // Back off up to 15 s, so an overloaded panel is not hammered by every open tab.
+            retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15_000),
+          },
+        },
+      }),
+  );
   return (
     <QueryClientProvider client={client}>
       <LanguageProvider>
