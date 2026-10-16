@@ -4,6 +4,8 @@ Rudder updates itself from signed GitHub Releases. The panel replaces its own co
 
 ## What a release contains
 
+Version 0.3.0 was published without installation assets after its release build failed. Use 0.3.1 or newer for installation and updates. Version 0.3.1 includes the load guard and dashboard changes intended for 0.3.0, and waits for the agent's staged binary to close before executing its version check.
+
 | Asset | Purpose |
 | --- | --- |
 | `release.json` | Version, panel and cache images pinned by `@sha256` digest, sha256 of each agent build |

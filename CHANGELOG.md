@@ -8,6 +8,12 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-16
+
+### Fixed
+- **Agent updates reliably start the downloaded binary.** The agent waits until the staged file is fully closed before checking its version, avoiding intermittent Linux "Text file busy" errors.
+- **Complete installation and update downloads.** This release includes the installers, signed checksums, binaries and container images missing from the incomplete 0.3.0 release. It also includes the changes listed below; no manual migration is required.
+
 ### Added
 - **The panel stays reachable when the server is overloaded.** A load guard reads the panel server's memory and CPU every few seconds. While the server is busy, new builds (and push deploys of stacks that build) wait in the queue; when free memory is about to run out, running builds are stopped and the reason is written to their log, so the panel, its database and Traefik keep enough room to answer. The guard is on by default and its thresholds can be changed (`busy` below 15% free memory or above 90% CPU, builds stopped below half the memory reserve). A build held only because of CPU starts anyway after 20 minutes.
 - **Load page.** **Operate → Load** shows the panel server's memory, CPU, swap, load and memory pressure with the guard's thresholds drawn on the bars, why builds wait, the build queue, how the panel, its database and Traefik are protected, the guard settings, and what to do if the panel stops answering. A banner on every page says when the server is out of memory, builds are paused, or builds wait for room.

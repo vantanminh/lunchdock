@@ -99,7 +99,10 @@ pub async fn install(
         Ok(())
     }
     .await;
-    drop(file);
+    // Tokio may still hold a cloned writable descriptor on its blocking pool.
+    // Wait for it before executing the staged binary (Linux returns ETXTBSY
+    // while any writable descriptor is open).
+    drop(file.into_std().await);
     let cleanup = |error: Error| {
         let _ = std::fs::remove_file(&staged);
         error
