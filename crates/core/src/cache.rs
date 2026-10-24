@@ -47,6 +47,10 @@ pub struct CacheDocument {
     pub version: u64,
     #[serde(default)]
     pub memory_max_bytes: Option<u64>,
+    /// Sum of the disk budgets of the policies in use. Zero or absent keeps the
+    /// cache in memory only.
+    #[serde(default)]
+    pub disk_max_bytes: Option<u64>,
     #[serde(default)]
     pub sites: Vec<CacheSite>,
     #[serde(default)]
@@ -602,6 +606,15 @@ pub struct CacheStats {
     pub objects: u64,
     pub stored_bytes: u64,
     pub memory_max_bytes: u64,
+    /// Objects in the disk tier. Zero when the tier is off.
+    #[serde(default)]
+    pub disk_objects: u64,
+    /// Bytes in the disk tier.
+    #[serde(default)]
+    pub disk_stored_bytes: u64,
+    /// Disk budget. Zero when the tier is off.
+    #[serde(default)]
+    pub disk_max_bytes: u64,
     pub evictions: u64,
     pub reloads: u64,
     pub hosts: Vec<CacheHostStats>,
@@ -949,6 +962,7 @@ mod tests {
         let doc = CacheDocument {
             version: 1,
             memory_max_bytes: None,
+            disk_max_bytes: None,
             policies: vec![policy("static-assets")],
             sites: vec![
                 CacheSite {

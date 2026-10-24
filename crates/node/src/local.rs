@@ -381,6 +381,24 @@ impl NodeDriver for LocalDriver {
         })
     }
 
+    async fn extract_tree(&self, relative_path: &str, mut input: ByteStream) -> Result<(), Error> {
+        let dest = confined_path(&self.root, relative_path)?;
+        let manifest = confined_path(&self.root, &crate::tree::manifest_relative(relative_path))?;
+        let mut buf = Vec::new();
+        while let Some(chunk) = input.next().await {
+            let chunk = chunk?;
+            if buf.len().saturating_add(chunk.len()) > crate::tree::MAX_TREE_BYTES as usize {
+                return Err(Error::Validation(
+                    "the checkout is larger than 512 MiB, so it was not copied".into(),
+                ));
+            }
+            buf.extend_from_slice(&chunk);
+        }
+        tokio::task::spawn_blocking(move || crate::tree::apply_tree(&dest, &manifest, &buf))
+            .await
+            .map_err(|error| Error::Node(format!("copy checkout: {error}")))?
+    }
+
     async fn write_file(&self, relative_path: &str, bytes: &[u8]) -> Result<(), Error> {
         let path = confined_path(&self.root, relative_path)?;
         if let Some(parent) = path.parent() {

@@ -44,6 +44,8 @@ pub struct CreateStack {
     pub build_on_deploy: Option<bool>,
     /// A push to the Git branch deploys the stack. Defaults to false.
     pub deploy_on_push: Option<bool>,
+    /// Open pull requests against the branch get their own copy of this stack.
+    pub preview_pull_requests: Option<bool>,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -58,6 +60,8 @@ pub struct UpdateStack {
     pub build_on_deploy: Option<bool>,
     /// A push to the Git branch deploys the stack. Unchanged when omitted.
     pub deploy_on_push: Option<bool>,
+    /// Open pull requests against the branch get their own copy. Unchanged when omitted.
+    pub preview_pull_requests: Option<bool>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -96,6 +100,8 @@ pub struct StackView {
     pub build_on_deploy: bool,
     /// A push to the Git branch deploys the stack.
     pub deploy_on_push: bool,
+    /// Open pull requests against the branch get their own copy of this stack.
+    pub preview_pull_requests: bool,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -281,6 +287,7 @@ async fn create_stack(
     }
     spec.build_on_deploy = body.build_on_deploy.unwrap_or(false);
     spec.deploy_on_push = body.deploy_on_push.unwrap_or(false);
+    spec.preview_pull_requests = body.preview_pull_requests.unwrap_or(false);
     let mut tx = state.pool.begin().await.map_err(ApiError::database)?;
     let id = insert_stack(environment_id, body.server_id, &body.name, &spec, &mut tx).await?;
     tx.commit().await.map_err(ApiError::database)?;
@@ -351,6 +358,7 @@ async fn stack_view(state: &AppState, id: Uuid) -> Result<StackView, ApiError> {
         variable_details,
         build_on_deploy: spec.build_on_deploy,
         deploy_on_push: spec.deploy_on_push,
+        preview_pull_requests: spec.preview_pull_requests,
     })
 }
 
@@ -401,6 +409,9 @@ async fn update_stack(
     }
     if let Some(push) = body.deploy_on_push {
         stack.spec.deploy_on_push = push;
+    }
+    if let Some(previews) = body.preview_pull_requests {
+        stack.spec.preview_pull_requests = previews;
     }
     if let Some(new) = git.as_ref().filter(|_| stack.spec.source == "git") {
         let moved = stack.spec.git.as_ref().is_none_or(|old| {

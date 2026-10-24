@@ -78,6 +78,10 @@ export function CachePoliciesPage() {
                       : t("default"),
                   })}{" "}
                   ·{" "}
+                  {t("disk {size}", {
+                    size: policy.disk_max_bytes ? formatBytes(policy.disk_max_bytes) : t("off"),
+                  })}{" "}
+                  ·{" "}
                   {t("max object {size}", {
                     size: policy.max_object_bytes ? formatBytes(policy.max_object_bytes) : "16 MiB",
                   })}
@@ -127,6 +131,7 @@ function PolicyEditor({
   const [name, setName] = useState(policy?.name ?? "");
   const [description, setDescription] = useState(policy?.description ?? "");
   const [memory, setMemory] = useState(toMiB(policy?.memory_max_bytes));
+  const [disk, setDisk] = useState(toMiB(policy?.disk_max_bytes));
   const [maxObject, setMaxObject] = useState(toMiB(policy?.max_object_bytes));
   const [preset, setPreset] = useState(policy ? "" : (presets[0]?.slug ?? "static-assets"));
   const [rulesText, setRulesText] = useState(
@@ -155,6 +160,7 @@ function PolicyEditor({
         name,
         description,
         memory_max_bytes: fromMiB(memory),
+        disk_max_bytes: fromMiB(disk),
         max_object_bytes: fromMiB(maxObject),
         rules,
       });
@@ -221,6 +227,13 @@ function PolicyEditor({
             inputMode="numeric"
             value={memory}
             onChange={(event) => setMemory(event.target.value)}
+          />
+        </Field>
+        <Field label={t("Disk budget (MiB, blank for memory only)")}>
+          <TextInput
+            inputMode="numeric"
+            value={disk}
+            onChange={(event) => setDisk(event.target.value)}
           />
         </Field>
         <Field
@@ -324,12 +337,14 @@ function ServerStats({ server }: { server: Schemas["ServerView"] }) {
       {stats.data ? (
         <span className="text-muted">
           {t(
-            "hit ratio {ratio} · {objects} objects · {stored} of {memory} · {evictions} evictions · rules v{version}",
+            "hit ratio {ratio} · {objects} objects · {stored} of {memory} · disk {diskStored} of {disk} · {evictions} evictions · rules v{version}",
             {
               ratio: hitRatio(totals),
               objects: stats.data.objects,
               stored: formatBytes(stats.data.stored_bytes),
               memory: formatBytes(stats.data.memory_max_bytes),
+              diskStored: formatBytes(stats.data.disk_stored_bytes ?? 0),
+              disk: formatBytes(stats.data.disk_max_bytes ?? 0),
               evictions: stats.data.evictions,
               version: stats.data.rules_version,
             },

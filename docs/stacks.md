@@ -5,7 +5,7 @@ A compose stack is a service of kind `compose` that runs one `docker compose` pr
 ## Creating a stack
 
 - **Paste YAML**: Projects → choose an environment → Service → kind *compose stack*, then paste the file. API: `POST /api/v1/environments/{id}/stacks` with `source: "inline"` and `compose_yaml`.
-- **Git**: choose *Git repository*, a Git provider, the repository, branch, and the compose file path inside it. The repository is cloned on the first deploy into `<data dir>/stacks/<project>/src` and updated with `git fetch` + `git reset --hard` afterwards, so untracked files such as `./data` bind mounts survive. Git stacks run on the local server only for now.
+- **Git**: choose *Git repository*, a Git provider, the repository, branch, and the compose file path inside it. The repository is cloned on the panel into `<data dir>/stacks/<project>/src` and updated with `git fetch` + `git reset --hard` afterwards, so untracked files such as `./data` bind mounts survive. On an extra server the panel then copies the tracked files (not the `.git` directory) to that server. Files already on the server that Git does not track, such as a bind-mounted data directory, are left in place. A checkout larger than 512 MiB is refused. The agent must be connected.
 - **Template**: Templates → pick an app → fill in the domain and any options → Deploy.
 
 Set the *main service* to the compose service that serves HTTP. New domains target it unless you choose another compose service in the domain form.
@@ -88,6 +88,8 @@ Actions run in the background and appear under Deployments. Only one runs per st
 ### Deploy on push
 
 Turn on *Deploy when I push to the branch* for a Git stack whose provider was connected with **Connect with GitHub**. The provider's webhook then runs a deploy (a rebuild when *Build images on every deploy* is on) for every push to the stack's branch. A push that arrives while another action runs is skipped.
+
+*Preview pull requests* makes a copy of the stack for each pull request opened against that branch in the same repository, deploys the pull request's branch, and gives the copy a preview address. Closing the pull request removes the copy.
 
 ### Registry logins
 

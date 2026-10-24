@@ -16,6 +16,8 @@ use pingora_cache::trace::SpanHandle;
 use pingora_cache::{CacheKey, CacheMeta};
 use pingora_core::Result;
 
+use crate::disk::DiskStore;
+
 /// Bytes accounted per object on top of its body and metadata.
 const OBJECT_OVERHEAD: u64 = 256;
 
@@ -39,6 +41,7 @@ pub struct MemoryStore {
     inner: Arc<Mutex<Inner>>,
     budget: AtomicU64,
     evictions: AtomicU64,
+    disk: Option<DiskStore>,
 }
 
 /// The primary key is `host \n encoding \n path`.
@@ -67,7 +70,42 @@ impl MemoryStore {
             inner: Arc::default(),
             budget: AtomicU64::new(budget),
             evictions: AtomicU64::new(0),
+            disk: None,
         }
+    }
+
+    /// Memory store plus a disk directory. The disk budget stays unlimited until
+    /// [`Self::set_disk_budget`]; a later budget of zero drops the files.
+    pub fn with_disk(budget: u64, dir: &std::path::Path) -> Self {
+        let disk = match DiskStore::open(dir, u64::MAX) {
+            Ok(disk) => Some(disk),
+            Err(error) => {
+                tracing::warn!(%error, path = %dir.display(), "disk cache is off");
+                None
+            }
+        };
+        Self {
+            disk,
+            ..Self::new(budget)
+        }
+    }
+
+    pub fn set_disk_budget(&self, budget: u64) {
+        if let Some(disk) = &self.disk {
+            disk.set_budget(budget);
+        }
+    }
+
+    pub fn disk_budget(&self) -> u64 {
+        self.disk.as_ref().map(DiskStore::budget).unwrap_or(0)
+    }
+
+    pub fn disk_totals(&self) -> (u64, u64) {
+        self.disk.as_ref().map(DiskStore::totals).unwrap_or((0, 0))
+    }
+
+    pub fn disk_evictions(&self) -> u64 {
+        self.disk.as_ref().map(DiskStore::evictions).unwrap_or(0)
     }
 
     pub fn set_budget(&self, budget: u64) {
@@ -114,7 +152,18 @@ impl MemoryStore {
                 inner.total -= entry.size;
             }
         }
-        doomed.len() as u64
+        drop(inner);
+        if let Some(disk) = &self.disk {
+            for key in &doomed {
+                disk.remove(key);
+            }
+        }
+        let disk_only = self
+            .disk
+            .as_ref()
+            .map(|disk| disk.purge_where(host, &select))
+            .unwrap_or(0);
+        doomed.len() as u64 + disk_only
     }
 
     /// Remove every object whose host fails `keep`.
@@ -130,7 +179,12 @@ impl MemoryStore {
             kept
         });
         inner.total -= freed;
-        (before - inner.objects.len()) as u64
+        let removed = (before - inner.objects.len()) as u64;
+        drop(inner);
+        if let Some(disk) = &self.disk {
+            disk.retain_hosts(&keep);
+        }
+        removed
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
@@ -198,6 +252,36 @@ impl Storage for MemoryStore {
             })
         };
         let Some((meta, body)) = found else {
+            if let Some(disk) = &self.disk {
+                if let Some(object) = disk.get(&hash) {
+                    let meta = CacheMeta::deserialize(&object.meta.0, &object.meta.1)?;
+                    let size = object.body.len() as u64
+                        + (object.meta.0.len() + object.meta.1.len()) as u64
+                        + (object.host.len() + object.path.len()) as u64
+                        + OBJECT_OVERHEAD;
+                    self.insert(
+                        hash,
+                        Entry {
+                            meta: object.meta,
+                            body: object.body.clone(),
+                            host: object.host,
+                            path: object.path,
+                            size,
+                            last_access: 0,
+                        },
+                    );
+                    let end = object.body.len();
+                    return Ok(Some((
+                        meta,
+                        Box::new(Hit {
+                            body: object.body,
+                            start: 0,
+                            end,
+                            done: false,
+                        }),
+                    )));
+                }
+            }
             return Ok(None);
         };
         let meta = CacheMeta::deserialize(&meta.0, &meta.1)?;
@@ -239,12 +323,19 @@ impl Storage for MemoryStore {
     ) -> Result<PurgeOutcome> {
         let hash = target.key().combined();
         let mut inner = self.lock();
-        match inner.objects.remove(&hash) {
+        let removed = match inner.objects.remove(&hash) {
             Some(entry) => {
                 inner.total -= entry.size;
-                Ok(PurgeOutcome::Purged(None))
+                true
             }
-            None => Ok(PurgeOutcome::NotFound),
+            None => false,
+        };
+        drop(inner);
+        let disk_removed = self.disk.as_ref().is_some_and(|disk| disk.remove(&hash));
+        if removed || disk_removed {
+            Ok(PurgeOutcome::Purged(None))
+        } else {
+            Ok(PurgeOutcome::NotFound)
         }
     }
 
@@ -261,9 +352,13 @@ impl Storage for MemoryStore {
         };
         let old = (entry.meta.0.len() + entry.meta.1.len()) as u64;
         let new = (serialized.0.len() + serialized.1.len()) as u64;
-        entry.meta = serialized;
+        entry.meta = serialized.clone();
         entry.size = entry.size - old + new;
         inner.total = inner.total - old + new;
+        drop(inner);
+        if let Some(disk) = &self.disk {
+            disk.update_meta(&key.combined(), &serialized);
+        }
         Ok(true)
     }
 
@@ -363,6 +458,9 @@ impl HandleMiss for Miss {
             + (self.host.len() + self.path.len()) as u64
             + OBJECT_OVERHEAD;
         let store = self.store;
+        if let Some(disk) = &store.disk {
+            disk.insert(&self.hash, &self.meta, &self.body, &self.host, &self.path);
+        }
         let hash = self.hash;
         store.insert(
             hash,
@@ -460,5 +558,36 @@ mod tests {
         let store: &'static MemoryStore = Box::leak(Box::new(MemoryStore::new(8 * 1024)));
         put(store, "a.test", "/big", &[1; 64 * 1024]).await;
         assert_eq!(store.totals().0, 0);
+    }
+
+    #[tokio::test]
+    async fn a_restart_reads_the_object_back_from_disk() {
+        let dir = std::env::temp_dir().join(format!(
+            "rudder-cache-disk-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store: &'static MemoryStore =
+            Box::leak(Box::new(MemoryStore::with_disk(1_000_000, &dir)));
+        store.set_disk_budget(1_000_000);
+        let key = put(store, "a.test", "/kept", b"hello").await;
+        assert_eq!(store.disk_totals().0, 1);
+
+        let restarted: &'static MemoryStore =
+            Box::leak(Box::new(MemoryStore::with_disk(1_000_000, &dir)));
+        restarted.set_disk_budget(1_000_000);
+        assert_eq!(restarted.totals().0, 0, "memory starts empty");
+        let (_meta, mut hit) = restarted
+            .lookup(&key, &Span::inactive().handle())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(hit.read_body().await.unwrap().unwrap().as_ref(), b"hello");
+        assert_eq!(restarted.totals().0, 1, "a disk hit is copied into memory");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

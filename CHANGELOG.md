@@ -10,6 +10,10 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ### Added
 - **Cache effectiveness and a memory ceiling.** **Operate → Cache** shows the hit ratio and memory use over the last 14 days, and lets you limit the cache to a share of the machine (15% by default). Unless you set a higher ceiling, the cache stays at or below 384 MiB. A response larger than that budget is not stored.
+- **AI agents can control Rudder.** Add the panel address ending in `/mcp` to an agent. You sign in, pick **Full control** (read and change every setting and all data), **Read everything**, **Operate**, **Watch**, or a custom set of permissions. The agent gets a short-lived access token that refreshes on its own for 90 days. Using a refresh token twice revokes that approval. Revoke an agent from **Admin → AI agents**.
+- **Git stacks run on extra servers.** A stack whose compose file is in Git can deploy on a server that runs the agent. Rudder copies the repository's files to that server and leaves files you created there, such as a database directory mounted into the stack, in place. The agent has to be connected. A repository larger than 512 MiB is refused.
+- **Cached pages can be kept on disk.** A cache policy has a disk budget. Leave it blank and caching stays in memory, as before. Set it and responses are kept on disk across a cache restart, while the busiest ones stay in memory. The Cache page shows how much disk is in use.
+- **A pull request can get its own preview.** Turn on **Preview pull requests** on a service's Git source. Opening, updating, or reopening a pull request against that branch creates a copy of the service with a preview address; closing the pull request removes it. Pull requests from another repository are ignored. A GitHub App connected before this release needs the **Pull request** event turned on in the app's settings on GitHub, or previews will not start.
 
 ### Changed
 - **Update checks and the install scripts use `vantanminh/rudder`.** This update switches a panel that still has the old default. Rename the GitHub repository to that name before you check for updates or install from the release URL. If you have not renamed it yet, set the repository back to the previous name under **System → Updates** or with `RUDDER_GITHUB_REPO`.
@@ -17,9 +21,6 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ### Security
 - **The panel sends stricter browser headers, and the cache admin port slows repeated purge and reload calls.** Pages cannot be framed by another site, and a stolen cache admin token cannot flush the cache hundreds of times a second.
-
-### Added
-- **AI agents can control Rudder.** Add the panel address ending in `/mcp` to an agent. You sign in, pick **Full control** (read and change every setting and all data), **Read everything**, **Operate**, **Watch**, or a custom set of permissions. The agent gets a short-lived access token that refreshes on its own for 90 days. Using a refresh token twice revokes that approval. Revoke an agent from **Admin → AI agents**.
 
 ## [0.3.1] - 2026-10-16
 

@@ -47,7 +47,7 @@ pub fn github_app_manifest(input: &AppManifest<'_>) -> Value {
     });
     if let Some(url) = input.webhook_url {
         manifest["hook_attributes"] = json!({ "url": url, "active": true });
-        manifest["default_events"] = json!(["push"]);
+        manifest["default_events"] = json!(["push", "pull_request"]);
     }
     manifest
 }
@@ -178,7 +178,7 @@ mod tests {
         assert_eq!(manifest["public"], false);
         assert_eq!(manifest["default_permissions"]["contents"], "read");
         assert_eq!(manifest["hook_attributes"]["active"], true);
-        assert_eq!(manifest["default_events"][0], "push");
+        assert_eq!(manifest["default_events"], json!(["push", "pull_request"]));
     }
 
     #[test]

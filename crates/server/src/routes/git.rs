@@ -96,6 +96,8 @@ pub struct SourceView {
     pub has_webhook_secret: bool,
     pub public_key: Option<String>,
     pub webhook_secret: Option<String>,
+    /// Open pull requests against this branch get their own copy of the service.
+    pub preview_pull_requests: bool,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -107,6 +109,8 @@ pub struct UpdateSource {
     pub dockerfile: Option<String>,
     pub context: Option<String>,
     pub publish_dir: Option<String>,
+    /// Open pull requests against this branch get their own copy of the service.
+    pub preview_pull_requests: Option<bool>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -399,6 +403,9 @@ async fn put_source(
         "context": context,
         "publish_dir": publish_dir,
     });
+    if let Some(enabled) = body.preview_pull_requests {
+        row.spec["preview_pull_requests"] = json!(enabled);
+    }
     sqlx::query!(
         r#"
         UPDATE services
@@ -671,6 +678,10 @@ fn source_view(spec: &Value, has_webhook_secret: bool) -> Result<SourceView, Api
         has_webhook_secret,
         public_key: None,
         webhook_secret: None,
+        preview_pull_requests: spec
+            .get("preview_pull_requests")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
     })
 }
 

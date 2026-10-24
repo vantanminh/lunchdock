@@ -2,6 +2,7 @@
 //! file the panel writes.
 
 mod admin;
+mod disk;
 mod proxy;
 mod state;
 mod storage;

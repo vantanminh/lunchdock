@@ -543,6 +543,17 @@ impl NodeDriver for RemoteHandle {
         Ok(Box::pin(stream))
     }
 
+    async fn extract_tree(&self, relative_path: &str, input: ByteStream) -> Result<(), Error> {
+        self.0
+            .input_stream(
+                Request::ExtractTree {
+                    path: relative_path.into(),
+                },
+                input,
+            )
+            .await
+    }
+
     async fn archive_write(&self, target: &ArchiveSource, input: ByteStream) -> Result<(), Error> {
         target.validate()?;
         self.0

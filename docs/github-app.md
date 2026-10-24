@@ -12,7 +12,7 @@ Git providers → **Connect with GitHub**.
 
 To create the app under an organization, open *Create it under an organization* and enter its login first. An organization that requires approval shows *Waiting for approval* until an owner approves; then open **Manage repositories** on the provider to finish.
 
-Only admins can connect GitHub. The app is private to its owner and asks for read access to repository contents and metadata, plus the `push` event.
+Only admins can connect GitHub. The app is private to its owner and asks for read access to repository contents and metadata, plus the `push` and `pull_request` events. An app created before pull request previews existed does not receive pull request events until you open it on GitHub (Settings → Developer settings → GitHub Apps → the app → Permissions & events) and subscribe to **Pull request**.
 
 ### Public address
 
@@ -25,6 +25,10 @@ Open an application → Source, choose the GitHub App provider, then pick the re
 Both lists come from the installation: *repositories* are the ones you granted the app (private ones are marked), the branch list starts with the repository's default branch, and for a compose stack the *Compose file path* list shows the compose files found on the branch (`compose.yaml`, `docker-compose.prod.yml`, …). Picking a repository fills in its default branch. When the source is saved the panel asks GitHub whether the app can read the repository and the branch, so a typo or a repository outside the installation is refused with a clear message (`repo_not_accessible`, `branch_not_found`) instead of failing at the first deploy. If GitHub cannot be reached when saving, the source is saved anyway and the first build reports the problem; sources with another kind of provider are not checked.
 
 A push to a branch starts a build of every application whose source uses this provider, the same repository (`owner/name`, case-insensitive, HTTPS or SSH URL), and that branch. The Git source card still shows a per-service webhook secret; it is not needed for apps. A compose stack with the same provider, repository and branch is deployed too, but only when *Deploy when I push to the branch* is on in its source settings (see [stacks](stacks.md#deploy-on-push)).
+
+## Pull request previews
+
+On an application's Git source, or a Git stack's source settings, turn on **Preview pull requests**. When a pull request is opened, updated, or reopened against that branch in the same repository, Rudder creates a copy of the service, builds the pull request's branch, and gives it a preview address. Closing the pull request removes the copy. Pull requests from a fork are ignored. The copy uses the same environment variables as the service it came from.
 
 ## Manage
 

@@ -406,6 +406,7 @@ function SourceForm({
   const deployed = Boolean(initial.compose_path);
   const [buildOnDeploy, setBuildOnDeploy] = useState(initial.build_on_deploy);
   const [deployOnPush, setDeployOnPush] = useState(initial.deploy_on_push);
+  const [previews, setPreviews] = useState(initial.preview_pull_requests);
   const hasBuilds = initial.services.some((service) => service.build);
   const save = useMutation({
     mutationFn: (deploy: boolean) =>
@@ -419,6 +420,7 @@ function SourceForm({
           project: !deployed && project.trim() !== initial.project ? project.trim() : undefined,
           build_on_deploy: buildOnDeploy,
           deploy_on_push: source === "git" ? deployOnPush : false,
+          preview_pull_requests: source === "git" ? previews : false,
         }),
       }).then(async (view) => {
         if (deploy) {
@@ -525,22 +527,40 @@ function SourceForm({
             </span>
           </label>
           {source === "git" ? (
-            <label className="flex items-start gap-2.5 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={deployOnPush}
-                onChange={(event) => setDeployOnPush(event.target.checked)}
-              />
-              <span>
-                <span className="font-medium text-ink">{t("Deploy when I push to the branch")}</span>
-                <span className="block text-muted">
-                  {t(
-                    "Needs a Git provider connected with the GitHub button; pushes reach the panel through its webhook.",
-                  )}
+            <>
+              <label className="flex items-start gap-2.5 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={deployOnPush}
+                  onChange={(event) => setDeployOnPush(event.target.checked)}
+                />
+                <span>
+                  <span className="font-medium text-ink">{t("Deploy when I push to the branch")}</span>
+                  <span className="block text-muted">
+                    {t(
+                      "Needs a Git provider connected with the GitHub button; pushes reach the panel through its webhook.",
+                    )}
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+              <label className="flex items-start gap-2.5 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={previews}
+                  onChange={(event) => setPreviews(event.target.checked)}
+                />
+                <span>
+                  <span className="font-medium text-ink">{t("Preview pull requests")}</span>
+                  <span className="block text-muted">
+                    {t(
+                      "A pull request against this branch gets its own copy of the service and a preview address. Closing the pull request removes it. Forks are ignored.",
+                    )}
+                  </span>
+                </span>
+              </label>
+            </>
           ) : null}
         </fieldset>
         <p className="text-sm text-muted">

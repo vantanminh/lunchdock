@@ -683,6 +683,17 @@ async fn webhook(
     if event == "ping" {
         return ignored("ping");
     }
+    if event == "pull_request" {
+        let payload: Value =
+            serde_json::from_slice(&body).map_err(|_| bad("invalid", "payload is not json"))?;
+        let result = crate::previews::handle(&state, id, &payload).await?;
+        let status = if result.get("deploy").and_then(Value::as_bool) == Some(true) {
+            StatusCode::ACCEPTED
+        } else {
+            StatusCode::OK
+        };
+        return Ok((status, Json(result)));
+    }
     if event != "push" {
         return ignored("event ignored");
     }
@@ -711,6 +722,14 @@ async fn webhook(
     .map_err(ApiError::database)?;
     let mut queued = Vec::new();
     for service in services {
+        if service
+            .spec
+            .get("preview")
+            .and_then(|preview| preview.get("parent_id"))
+            .is_some()
+        {
+            continue;
+        }
         let git = service.spec.get("git");
         let repo = git
             .and_then(|git| git.get("repo"))

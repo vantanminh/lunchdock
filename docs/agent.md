@@ -32,7 +32,7 @@ Everything the local server supports goes through the agent: image deploys and r
 
 Routing changes made while an agent is offline are stored and written to the server when it reconnects. Deploys to a server whose agent is offline fail immediately with `remote_unavailable`.
 
-Git-sourced compose stacks on a remote server receive the generated compose file and `.env` only. Other files from the repository (build contexts, mounted configuration) are not copied yet.
+Git-sourced compose stacks are cloned on the panel, then the tracked files are copied to the server (the `.git` directory stays on the panel). Build contexts and files the compose file mounts from the repository are included. Files already on the server that are not part of the repository are kept. A checkout larger than 512 MiB is refused.
 
 ## Security
 

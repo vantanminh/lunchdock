@@ -57,8 +57,13 @@ pub struct Shared {
 
 impl Shared {
     pub fn new(rules_path: PathBuf, memory_override: Option<u64>, token: String) -> &'static Self {
-        let store: &'static MemoryStore = Box::leak(Box::new(MemoryStore::new(
+        let disk_dir = rules_path
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .join("disk");
+        let store: &'static MemoryStore = Box::leak(Box::new(MemoryStore::with_disk(
             memory_override.unwrap_or(DEFAULT_MEMORY_BYTES),
+            &disk_dir,
         )));
         Box::leak(Box::new(Self {
             rules: RwLock::new(Arc::new(CacheDocument::default())),
@@ -136,6 +141,8 @@ impl Shared {
                 .or(document.memory_max_bytes)
                 .unwrap_or(DEFAULT_MEMORY_BYTES),
         );
+        self.store
+            .set_disk_budget(document.disk_max_bytes.unwrap_or(0));
         self.store.retain_hosts(|host| hosts.contains(host));
         *self
             .rules
@@ -210,13 +217,17 @@ impl Shared {
             entry.stored_bytes = used.bytes;
         }
         let (objects, stored_bytes) = self.store.totals();
+        let (disk_objects, disk_stored_bytes) = self.store.disk_totals();
         CacheStats {
             version: rudder_core::VERSION.into(),
             rules_version: self.rules().version,
             objects,
             stored_bytes,
             memory_max_bytes: self.store.budget(),
-            evictions: self.store.evictions(),
+            disk_objects,
+            disk_stored_bytes,
+            disk_max_bytes: self.store.disk_budget(),
+            evictions: self.store.evictions() + self.store.disk_evictions(),
             reloads: self.reloads.load(Ordering::Relaxed),
             hosts: hosts.into_values().collect(),
         }
@@ -293,6 +304,24 @@ impl Shared {
                 "gauge",
                 "Memory store budget.",
                 stats.memory_max_bytes,
+            ),
+            (
+                "rudder_cache_disk_objects",
+                "gauge",
+                "Objects in the disk store.",
+                stats.disk_objects,
+            ),
+            (
+                "rudder_cache_disk_stored_bytes",
+                "gauge",
+                "Bytes held by the disk store.",
+                stats.disk_stored_bytes,
+            ),
+            (
+                "rudder_cache_disk_max_bytes",
+                "gauge",
+                "Disk store budget. Zero means the disk tier is off.",
+                stats.disk_max_bytes,
             ),
             (
                 "rudder_cache_evictions_total",
