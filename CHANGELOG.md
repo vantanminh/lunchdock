@@ -8,6 +8,8 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-24
+
 ### Added
 - **Rudder Access for internal apps.** Add people by email, group them into departments and ranks, and require sign-in before an app receives a request. Sign-in is Google or a 6-digit email code, and both require Cloudflare Turnstile. The portal is at `/access`, or on a hostname you choose. An app can ask Rudder who the current session belongs to. Other Access administrators cannot remove the original Access administrator.
 - **Email for Access codes.** Send codes with Resend, SMTP, or Cloudflare Email Sending. Send a test message from **Rudder Access**.
