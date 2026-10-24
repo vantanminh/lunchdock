@@ -202,6 +202,22 @@ for image in "$POSTGRES_IMAGE" "$TRAEFIK_IMAGE" "$PANEL_IMAGE"; do
 	docker pull -q "$image" >/dev/null || die "could not pull $image"
 done
 
+# Docker cannot lower the OOM score of a running container. One created before
+# the control plane was protected is replaced; its data lives on a volume or in
+# $DATA, so nothing is lost.
+unprotected() {
+	score="$(docker inspect -f '{{.HostConfig.OomScoreAdj}}' "$1" 2>/dev/null)" || return 1
+	[ "${score:-0}" -ge 0 ]
+}
+if unprotected rudder-postgres; then
+	info "recreating rudder-postgres with a protected OOM score"
+	docker rm -f rudder-postgres >/dev/null
+fi
+if unprotected rudder-traefik; then
+	info "recreating rudder-traefik with a protected OOM score"
+	docker rm -f rudder-traefik >/dev/null
+fi
+
 if ! docker inspect rudder-postgres >/dev/null 2>&1; then
 	info "starting rudder-postgres"
 	docker run -d --name rudder-postgres --restart unless-stopped \
