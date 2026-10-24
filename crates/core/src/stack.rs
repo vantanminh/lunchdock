@@ -55,11 +55,18 @@ pub fn validate_compose_service(name: &str) -> Result<(), Error> {
 /// - top-level `name` becomes `project`;
 /// - `container_name` values gain the `project-` prefix;
 /// - every service gets `rudder.*` labels;
-/// - services in `routed` join the external `rudder-proxy` network.
+/// - services in `routed` join the external `rudder-proxy` network;
+/// - when `isolate` is set, published host ports become container-only
+///   `expose` entries so another app can listen on the same port.
 ///
 /// Routing itself is written by the panel to Traefik's file provider and
 /// targets [`StackService::container`].
-pub fn transform_compose(project: &str, source: &str, routed: &[&str]) -> Result<StackPlan, Error> {
+pub fn transform_compose(
+    project: &str,
+    source: &str,
+    routed: &[&str],
+    isolate: bool,
+) -> Result<StackPlan, Error> {
     validate_name(project)?;
     if source.len() > MAX_COMPOSE_BYTES {
         return Err(Error::Validation(
@@ -121,6 +128,9 @@ pub fn transform_compose(project: &str, source: &str, routed: &[&str]) -> Result
             }
             None => format!("{project}-{name}-1"),
         };
+        if isolate {
+            unpublish_ports(service, &name, &mut warnings)?;
+        }
         if is_routed {
             if let Some(mode) = service.get("network_mode").and_then(Value::as_str) {
                 return Err(Error::Validation(format!(
@@ -128,7 +138,7 @@ pub fn transform_compose(project: &str, source: &str, routed: &[&str]) -> Result
                 )));
             }
             attach_proxy_network(service, &name)?;
-            if service.contains_key("ports") {
+            if !isolate && service.contains_key("ports") {
                 warnings.push(format!(
                     "service '{name}' publishes host ports; Traefik reaches it on {PROXY_NETWORK}, so they are usually unnecessary"
                 ));
@@ -192,6 +202,104 @@ pub fn transform_compose(project: &str, source: &str, routed: &[&str]) -> Result
         services: out,
         warnings,
     })
+}
+
+/// Turn `ports` into `expose` so Docker does not bind a host port.
+fn unpublish_ports(
+    service: &mut Mapping,
+    name: &str,
+    warnings: &mut Vec<String>,
+) -> Result<(), Error> {
+    let Some(ports) = service.remove("ports") else {
+        return Ok(());
+    };
+    let mut exposed = Vec::new();
+    match ports {
+        Value::Sequence(items) => {
+            for item in items {
+                match item {
+                    Value::String(spec) => {
+                        if let Some(token) = container_port_token(&spec) {
+                            exposed.push(key(&token));
+                        }
+                    }
+                    Value::Mapping(map) => {
+                        let target = map.get("target").and_then(port_text).ok_or_else(|| {
+                            Error::Validation(format!(
+                                "service '{name}' has a port without a target"
+                            ))
+                        })?;
+                        let protocol = map.get("protocol").and_then(Value::as_str).unwrap_or("tcp");
+                        if protocol != "tcp" && protocol != "udp" {
+                            return Err(Error::Validation(format!(
+                                "service '{name}' has an unsupported port protocol"
+                            )));
+                        }
+                        let token = if protocol == "tcp" {
+                            target
+                        } else {
+                            format!("{target}/{protocol}")
+                        };
+                        exposed.push(key(&token));
+                    }
+                    _ => {
+                        return Err(Error::Validation(format!(
+                            "service '{name}' has an invalid port"
+                        )))
+                    }
+                }
+            }
+        }
+        _ => {
+            return Err(Error::Validation(format!(
+                "service '{name}' ports must be a list"
+            )))
+        }
+    }
+    if !exposed.is_empty() {
+        match service.get_mut("expose") {
+            Some(Value::Sequence(existing)) => existing.extend(exposed),
+            _ => {
+                service.insert(key("expose"), Value::Sequence(exposed));
+            }
+        }
+    }
+    warnings.push(format!(
+        "service '{name}' is not published on the host; reach it through a domain on {PROXY_NETWORK}"
+    ));
+    Ok(())
+}
+
+fn port_text(value: &Value) -> Option<String> {
+    match value {
+        Value::Number(number) => number.as_u64().map(|port| port.to_string()),
+        Value::String(text) => Some(text.clone()),
+        _ => None,
+    }
+}
+
+/// Container port from compose short syntax: `80`, `8080:80`, `127.0.0.1:8080:80/tcp`.
+fn container_port_token(spec: &str) -> Option<String> {
+    let spec = spec.trim();
+    let (main, protocol) = spec.split_once('/').unwrap_or((spec, "tcp"));
+    if protocol != "tcp" && protocol != "udp" {
+        return None;
+    }
+    let port = match main.split(':').collect::<Vec<_>>().as_slice() {
+        [only] => *only,
+        [_, port] => *port,
+        [_, _, port] => *port,
+        _ => return None,
+    };
+    let number: u32 = port.parse().ok()?;
+    if !(1..=65535).contains(&number) {
+        return None;
+    }
+    if protocol == "tcp" {
+        Some(port.to_owned())
+    } else {
+        Some(format!("{port}/{protocol}"))
+    }
 }
 
 fn attach_proxy_network(service: &mut Mapping, name: &str) -> Result<(), Error> {
@@ -369,7 +477,7 @@ volumes:
 
     #[test]
     fn routed_services_join_the_proxy_network_with_labels_and_prefixes() {
-        let plan = transform_compose("blog-1a2b3c", SAMPLE, &["web"]).unwrap();
+        let plan = transform_compose("blog-1a2b3c", SAMPLE, &["web"], false).unwrap();
         let doc: Value = serde_yaml_ng::from_str(&plan.yaml).unwrap();
         assert_eq!(doc["name"], "blog-1a2b3c");
         assert!(doc.get("version").is_none());
@@ -405,11 +513,11 @@ volumes:
 
     #[test]
     fn unrouted_stacks_do_not_touch_networks_and_maps_are_extended() {
-        let plan = transform_compose("app", "services:\n  a:\n    image: x\n", &[]).unwrap();
+        let plan = transform_compose("app", "services:\n  a:\n    image: x\n", &[], false).unwrap();
         assert!(!plan.yaml.contains("rudder-proxy"));
         let mapped =
             "services:\n  a:\n    image: x\n    networks:\n      back: {}\nnetworks:\n  back: {}\n";
-        let plan = transform_compose("app", mapped, &["a"]).unwrap();
+        let plan = transform_compose("app", mapped, &["a"], false).unwrap();
         let doc: Value = serde_yaml_ng::from_str(&plan.yaml).unwrap();
         assert!(doc["services"]["a"]["networks"]
             .as_mapping()
@@ -420,27 +528,46 @@ volumes:
 
     #[test]
     fn rejects_invalid_input() {
-        assert!(transform_compose("Bad", SAMPLE, &[]).is_err());
-        assert!(transform_compose("app", "- a\n- b\n", &[]).is_err());
-        assert!(transform_compose("app", "services: {}\n", &[]).is_err());
-        assert!(transform_compose("app", "services:\n  a: [1]\n", &[]).is_err());
-        assert!(transform_compose("app", SAMPLE, &["missing"]).is_err());
+        assert!(transform_compose("Bad", SAMPLE, &[], false).is_err());
+        assert!(transform_compose("app", "- a\n- b\n", &[], false).is_err());
+        assert!(transform_compose("app", "services: {}\n", &[], false).is_err());
+        assert!(transform_compose("app", "services:\n  a: [1]\n", &[], false).is_err());
+        assert!(transform_compose("app", SAMPLE, &["missing"], false).is_err());
         let host = "services:\n  a:\n    image: x\n    network_mode: host\n";
-        assert!(transform_compose("app", host, &["a"]).is_err());
-        assert!(transform_compose("app", host, &[]).is_ok());
-        assert!(transform_compose("app", "services:\n  'a b':\n    image: x\n", &[]).is_err());
-        assert!(transform_compose("app", ": : :", &[]).is_err());
+        assert!(transform_compose("app", host, &["a"], false).is_err());
+        assert!(transform_compose("app", host, &[], false).is_ok());
+        assert!(
+            transform_compose("app", "services:\n  'a b':\n    image: x\n", &[], false).is_err()
+        );
+        assert!(transform_compose("app", ": : :", &[], false).is_err());
         let big = format!(
             "services:\n  a:\n    image: x\n# {}\n",
             "x".repeat(MAX_COMPOSE_BYTES)
         );
-        assert!(transform_compose("app", &big, &[]).is_err());
+        assert!(transform_compose("app", &big, &[], false).is_err());
+    }
+
+    #[test]
+    fn isolation_removes_host_ports_and_keeps_the_container_port() {
+        let plan = transform_compose("blog-1a2b3c", SAMPLE, &["web"], true).unwrap();
+        let doc: Value = serde_yaml_ng::from_str(&plan.yaml).unwrap();
+        let web = &doc["services"]["web"];
+        assert!(web.get("ports").is_none());
+        assert_eq!(web["expose"], Value::Sequence(vec![key("80")]));
+        assert!(plan
+            .warnings
+            .iter()
+            .any(|warning| warning.contains("not published on the host")));
+        assert!(!plan
+            .warnings
+            .iter()
+            .any(|warning| warning.contains("publishes host ports")));
     }
 
     #[test]
     fn keeps_an_oom_score_the_file_sets() {
         let source = "services:\n  a:\n    image: x\n    oom_score_adj: -100\n  b:\n    image: y\n";
-        let plan = transform_compose("app", source, &[]).unwrap();
+        let plan = transform_compose("app", source, &[], false).unwrap();
         let doc: Value = serde_yaml_ng::from_str(&plan.yaml).unwrap();
         assert_eq!(doc["services"]["a"]["oom_score_adj"], -100);
         assert_eq!(

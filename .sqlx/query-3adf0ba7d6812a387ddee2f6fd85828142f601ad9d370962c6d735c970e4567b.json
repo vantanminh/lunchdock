@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO access_policies (service_id, enabled)\n        VALUES ($1, $2)\n        ON CONFLICT (service_id) DO UPDATE SET enabled = $2, updated_at = now()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3adf0ba7d6812a387ddee2f6fd85828142f601ad9d370962c6d735c970e4567b"
+}

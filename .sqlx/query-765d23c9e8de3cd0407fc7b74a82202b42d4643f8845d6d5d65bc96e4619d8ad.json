@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.id, s.name,\n               (\n                   SELECT d.host FROM domains d\n                   WHERE d.service_id = s.id AND NOT d.is_preview\n                   ORDER BY d.created_at\n                   LIMIT 1\n               ) AS \"host?\"\n        FROM services s\n        JOIN access_policies p ON p.service_id = s.id AND p.enabled\n        ORDER BY s.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "host?",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "765d23c9e8de3cd0407fc7b74a82202b42d4643f8845d6d5d65bc96e4619d8ad"
+}

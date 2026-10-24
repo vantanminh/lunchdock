@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS(\n            SELECT 1 FROM rate_limit_rules\n            WHERE enabled AND (host IS NULL OR host = '')\n        ) AS \"global!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "global!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "fd7b1cb5586b320bc178ffb44adc871bb875152b4d8dc3ee272f9cd41473e576"
+}

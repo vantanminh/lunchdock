@@ -25,6 +25,23 @@ pub(crate) fn skip_reason(route: &Route) -> Option<&'static str> {
     match (method_name(&route.method), route.path) {
         ("POST", "/api/v1/login" | "/api/v1/logout" | "/api/v1/setup") => Some("browser session"),
         ("GET", "/api/v1/setup/status") => Some("browser session"),
+        (
+            "POST",
+            "/api/v1/access/login/email"
+            | "/api/v1/access/login/email/verify"
+            | "/api/v1/access/login/google"
+            | "/api/v1/access/logout",
+        ) => Some("browser session"),
+        (
+            "GET",
+            "/api/v1/access/login/google/callback"
+            | "/api/v1/access/me"
+            | "/api/v1/access/apps"
+            | "/api/v1/access/public"
+            | "/api/v1/access/callback"
+            | "/api/v1/edge/gate",
+        ) => Some("browser session"),
+        ("POST", "/api/v1/access/introspect") => Some("service credential"),
         ("POST", "/api/v1/agent/enroll") => Some("enrollment secret"),
         ("POST", "/api/v1/mcp/consent") => Some("browser approval"),
         ("GET", "/install-agent.sh" | "/downloads/{file}") => Some("public download"),

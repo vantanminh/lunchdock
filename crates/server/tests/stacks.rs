@@ -775,6 +775,7 @@ async fn templates_render_valid_compose(pool: PgPool) {
             slug,
             detail["compose"].as_str().unwrap(),
             &[detail["main_service"].as_str().unwrap()],
+            true,
         )
         .unwrap();
         let dir = data_dir.join(slug);

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO access_codes (email, code_hash, purpose, expires_at)\n        VALUES ($1, $2, 'login', now() + interval '10 minutes')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f9e53c8a6c14b0b9b0de737193dc732943e0a0aeed62a3a73ebe1dfcbacd33a7"
+}

@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.id, c.name, c.not_after,\n               (SELECT COUNT(*) FROM domains d WHERE d.certificate_id = c.id) AS \"domains!\"\n        FROM certificates c\n        ORDER BY c.not_after NULLS LAST, c.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "not_after",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "domains!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "b1d0126b24ace7db64a64cecaf8495e0aecf83ff547dc66129f0a4ee348fa751"
+}

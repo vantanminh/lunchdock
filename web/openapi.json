@@ -59,6 +59,697 @@
         }
       }
     },
+    "/api/v1/access/apps": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Internal apps the signed-in person may open",
+        "operationId": "get_v1_access_apps",
+        "responses": {
+          "200": {
+            "description": "Internal apps the signed-in person may open",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessApp"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/callback": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Set the app session cookie after sign-in",
+        "operationId": "get_v1_access_callback",
+        "responses": {
+          "302": {
+            "description": "Set the app session cookie after sign-in"
+          }
+        }
+      }
+    },
+    "/api/v1/access/departments": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "List Access departments",
+        "operationId": "get_v1_access_departments",
+        "responses": {
+          "200": {
+            "description": "List Access departments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessDepartment"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Create an Access department (admin, write)",
+        "operationId": "post_v1_access_departments",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDepartment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an Access department (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessDepartment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/departments/{id}": {
+      "delete": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Delete an Access department (admin, write)",
+        "operationId": "delete_v1_access_departments__id_",
+        "responses": {
+          "204": {
+            "description": "Delete an Access department (admin, write)"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Update an Access department (admin, write)",
+        "operationId": "patch_v1_access_departments__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDepartment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update an Access department (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessDepartment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/identities": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "List people allowed into Rudder Access",
+        "operationId": "get_v1_access_identities",
+        "responses": {
+          "200": {
+            "description": "List people allowed into Rudder Access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessIdentity"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Allow a person into Rudder Access (admin, write)",
+        "operationId": "post_v1_access_identities",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveIdentity"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Allow a person into Rudder Access (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessIdentity"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/identities/{id}": {
+      "delete": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Remove a Rudder Access person (admin, write)",
+        "operationId": "delete_v1_access_identities__id_",
+        "responses": {
+          "204": {
+            "description": "Remove a Rudder Access person (admin, write)"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Update a Rudder Access person (admin, write)",
+        "operationId": "patch_v1_access_identities__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveIdentity"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a Rudder Access person (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessIdentity"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/identities/{id}/memberships": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "List a person's departments and ranks",
+        "operationId": "get_v1_access_identities__id__memberships",
+        "responses": {
+          "200": {
+            "description": "List a person's departments and ranks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessMembership"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Replace a person's departments and ranks (admin, write)",
+        "operationId": "put_v1_access_identities__id__memberships",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveMemberships"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replace a person's departments and ranks (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessMembership"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/introspect": {
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Check an app session with the app's service token",
+        "operationId": "post_v1_access_introspect",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessIntrospectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Check an app session with the app's service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessIntrospect"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/login/email": {
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Email a 6-digit Rudder Access code",
+        "operationId": "post_v1_access_login_email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessEmailStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Email a 6-digit Rudder Access code"
+          }
+        }
+      }
+    },
+    "/api/v1/access/login/email/verify": {
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Sign in to Rudder Access with an email code",
+        "operationId": "post_v1_access_login_email_verify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessEmailVerify"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sign in to Rudder Access with an email code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessLoginResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/login/google": {
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Start Google sign-in for Rudder Access",
+        "operationId": "post_v1_access_login_google",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessGoogleStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Start Google sign-in for Rudder Access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessGoogleUrl"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/login/google/callback": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Finish Google sign-in for Rudder Access",
+        "operationId": "get_v1_access_login_google_callback",
+        "responses": {
+          "302": {
+            "description": "Finish Google sign-in for Rudder Access"
+          }
+        }
+      }
+    },
+    "/api/v1/access/logout": {
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Sign out of Rudder Access",
+        "operationId": "post_v1_access_logout",
+        "responses": {
+          "200": {
+            "description": "Sign out of Rudder Access"
+          }
+        }
+      }
+    },
+    "/api/v1/access/me": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "The signed-in Rudder Access person",
+        "operationId": "get_v1_access_me",
+        "responses": {
+          "200": {
+            "description": "The signed-in Rudder Access person",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessMe"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/public": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Public Rudder Access sign-in settings",
+        "operationId": "get_v1_access_public",
+        "responses": {
+          "200": {
+            "description": "Public Rudder Access sign-in settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessPublic"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/ranks": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "List Access ranks",
+        "operationId": "get_v1_access_ranks",
+        "responses": {
+          "200": {
+            "description": "List Access ranks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessRank"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Create an Access rank (admin, write)",
+        "operationId": "post_v1_access_ranks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRank"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create an Access rank (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessRank"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/ranks/{id}": {
+      "delete": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Delete an Access rank (admin, write)",
+        "operationId": "delete_v1_access_ranks__id_",
+        "responses": {
+          "204": {
+            "description": "Delete an Access rank (admin, write)"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Update an Access rank (admin, write)",
+        "operationId": "patch_v1_access_ranks__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRank"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update an Access rank (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessRank"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/services/{id}": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Read whether an app requires Rudder Access",
+        "operationId": "get_v1_access_services__id_",
+        "responses": {
+          "200": {
+            "description": "Read whether an app requires Rudder Access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessPolicyView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Set who may open an app (admin, write)",
+        "operationId": "put_v1_access_services__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAccessPolicy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set who may open an app (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessPolicyView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/services/{id}/token": {
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Rotate the token an app uses to check sessions (admin, write)",
+        "operationId": "post_v1_access_services__id__token",
+        "responses": {
+          "200": {
+            "description": "Rotate the token an app uses to check sessions (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenCreated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/settings": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Rudder Access provider settings",
+        "operationId": "get_v1_access_settings",
+        "responses": {
+          "200": {
+            "description": "Rudder Access provider settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessSettingsView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Save Rudder Access provider settings (admin, write)",
+        "operationId": "put_v1_access_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAccessSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Save Rudder Access provider settings (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessSettingsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/settings/test-email": {
+      "post": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Send a test email through the configured provider (admin, write)",
+        "operationId": "post_v1_access_settings_test-email",
+        "responses": {
+          "204": {
+            "description": "Send a test email through the configured provider (admin, write)"
+          }
+        }
+      }
+    },
     "/api/v1/agent/enroll": {
       "post": {
         "tags": [
@@ -918,6 +1609,20 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/edge/gate": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Traefik asks this before forwarding to an app",
+        "operationId": "get_v1_edge_gate",
+        "responses": {
+          "200": {
+            "description": "Traefik asks this before forwarding to an app"
           }
         }
       }
@@ -1787,7 +2492,7 @@
         "tags": [
           "auth"
         ],
-        "summary": "Enable authenticator",
+        "summary": "Enable authenticator and show recovery codes once",
         "operationId": "post_v1_me_totp_enable",
         "requestBody": {
           "content": {
@@ -1799,8 +2504,15 @@
           }
         },
         "responses": {
-          "204": {
-            "description": "Enable authenticator"
+          "200": {
+            "description": "Enable authenticator and show recovery codes once",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            }
           }
         }
       }
@@ -2392,6 +3104,278 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TestResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/edge": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "HTTP and raw-IP request counts, and recent rate-limit blocks",
+        "operationId": "get_v1_security_edge",
+        "responses": {
+          "200": {
+            "description": "HTTP and raw-IP request counts, and recent rate-limit blocks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/findings": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Findings from the latest finished security check",
+        "operationId": "get_v1_security_findings",
+        "responses": {
+          "200": {
+            "description": "Findings from the latest finished security check",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SecurityFindingView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/overview": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Security center summary",
+        "operationId": "get_v1_security_overview",
+        "responses": {
+          "200": {
+            "description": "Security center summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/rate-limits": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Shared rate limit rules",
+        "operationId": "get_v1_security_rate-limits",
+        "responses": {
+          "200": {
+            "description": "Shared rate limit rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RateLimitView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Create a shared rate limit rule (admin, write)",
+        "operationId": "post_v1_security_rate-limits",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRateLimit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a shared rate limit rule (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/rate-limits/stats": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Allowed and blocked requests for the last day",
+        "operationId": "get_v1_security_rate-limits_stats",
+        "responses": {
+          "200": {
+            "description": "Allowed and blocked requests for the last day",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RateLimitStat"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/rate-limits/{id}": {
+      "delete": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Delete a shared rate limit rule (admin, write)",
+        "operationId": "delete_v1_security_rate-limits__id_",
+        "responses": {
+          "204": {
+            "description": "Delete a shared rate limit rule (admin, write)"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Update a shared rate limit rule (admin, write)",
+        "operationId": "patch_v1_security_rate-limits__id_",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRateLimit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a shared rate limit rule (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/scans": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Recent security checks",
+        "operationId": "get_v1_security_scans",
+        "responses": {
+          "200": {
+            "description": "Recent security checks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SecurityScanView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Check deployed domains for exposed files (admin, write)",
+        "operationId": "post_v1_security_scans",
+        "responses": {
+          "202": {
+            "description": "Check deployed domains for exposed files (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityScanView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/ssl": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Certificate expiry and how domains use SSL",
+        "operationId": "get_v1_security_ssl",
+        "responses": {
+          "200": {
+            "description": "Certificate expiry and how domains use SSL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SslSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/ssl/events": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Recent SSL events",
+        "operationId": "get_v1_security_ssl_events",
+        "responses": {
+          "200": {
+            "description": "Recent SSL events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SslEventView"
+                  }
                 }
               }
             }
@@ -3074,6 +4058,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LogsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/network": {
+      "patch": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Turn network isolation on or off for one app (admin, write)",
+        "operationId": "patch_v1_services__id__network",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNetwork"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Turn network isolation on or off for one app (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkView"
                 }
               }
             }
@@ -4021,6 +5035,507 @@
   },
   "components": {
     "schemas": {
+      "AccessApp": {
+        "type": "object",
+        "required": [
+          "service_id",
+          "name"
+        ],
+        "properties": {
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "service_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "AccessDepartment": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessDepartmentGrant": {
+        "type": "object",
+        "required": [
+          "slug",
+          "name"
+        ],
+        "properties": {
+          "level": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rank": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessEmailStart": {
+        "type": "object",
+        "required": [
+          "email",
+          "turnstile_token"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "return_host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "return_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "turnstile_token": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessEmailVerify": {
+        "type": "object",
+        "required": [
+          "email",
+          "code",
+          "turnstile_token"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "return_host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "return_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "turnstile_token": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessGoogleStart": {
+        "type": "object",
+        "required": [
+          "turnstile_token"
+        ],
+        "properties": {
+          "return_host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "return_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "turnstile_token": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessGoogleUrl": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessIdentity": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "status",
+          "admin",
+          "owner"
+        ],
+        "properties": {
+          "admin": {
+            "type": "boolean"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_login_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "owner": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessIntrospect": {
+        "type": "object",
+        "required": [
+          "email",
+          "display_name",
+          "departments",
+          "expires_at"
+        ],
+        "properties": {
+          "departments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessDepartmentGrant"
+            }
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AccessIntrospectRequest": {
+        "type": "object",
+        "required": [
+          "session"
+        ],
+        "properties": {
+          "session": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessLoginResult": {
+        "type": "object",
+        "required": [
+          "csrf_token"
+        ],
+        "properties": {
+          "csrf_token": {
+            "type": "string"
+          },
+          "redirect": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AccessMe": {
+        "type": "object",
+        "required": [
+          "email",
+          "display_name",
+          "admin",
+          "owner",
+          "csrf_token"
+        ],
+        "properties": {
+          "admin": {
+            "type": "boolean"
+          },
+          "csrf_token": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AccessMembership": {
+        "type": "object",
+        "required": [
+          "department_id",
+          "department_slug"
+        ],
+        "properties": {
+          "department_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "department_slug": {
+            "type": "string"
+          },
+          "rank_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "rank_slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AccessPolicyView": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "rules",
+          "token_configured"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessRuleView"
+            }
+          },
+          "token_configured": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AccessPublic": {
+        "type": "object",
+        "required": [
+          "site_key",
+          "ready",
+          "google",
+          "email",
+          "google_redirect_uri"
+        ],
+        "properties": {
+          "email": {
+            "type": "boolean"
+          },
+          "google": {
+            "type": "boolean"
+          },
+          "google_redirect_uri": {
+            "type": "string"
+          },
+          "portal_host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "site_key": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessRank": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "level",
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessRuleView": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "department_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "rank_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "AccessSettingsView": {
+        "type": "object",
+        "required": [
+          "turnstile_site_key",
+          "has_turnstile_secret",
+          "turnstile_hostnames",
+          "google_client_id",
+          "has_google_secret",
+          "email_provider",
+          "email_from",
+          "email_ready",
+          "google_redirect_uri"
+        ],
+        "properties": {
+          "email_from": {
+            "type": "string"
+          },
+          "email_provider": {
+            "type": "string"
+          },
+          "email_ready": {
+            "type": "boolean"
+          },
+          "google_client_id": {
+            "type": "string"
+          },
+          "google_redirect_uri": {
+            "type": "string"
+          },
+          "has_google_secret": {
+            "type": "boolean"
+          },
+          "has_turnstile_secret": {
+            "type": "boolean"
+          },
+          "portal_host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "turnstile_hostnames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "turnstile_site_key": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessTokenCreated": {
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
       "AlertKindView": {
         "type": "object",
         "required": [
@@ -4391,6 +5906,35 @@
           },
           "trigger": {
             "type": "string"
+          }
+        }
+      },
+      "BlockView": {
+        "type": "object",
+        "required": [
+          "rule_id",
+          "host",
+          "path",
+          "ip",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "host": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "rule_id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -5864,6 +7408,30 @@
           }
         }
       },
+      "EdgeStats": {
+        "type": "object",
+        "required": [
+          "http_requests",
+          "ip_requests",
+          "recent_blocks"
+        ],
+        "properties": {
+          "http_requests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ip_requests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recent_blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlockView"
+            }
+          }
+        }
+      },
       "EnrollRequest": {
         "type": "object",
         "required": [
@@ -7018,6 +8586,25 @@
           }
         }
       },
+      "MembershipInput": {
+        "type": "object",
+        "required": [
+          "department_id"
+        ],
+        "properties": {
+          "department_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rank_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "MetricPoint": {
         "type": "object",
         "required": [
@@ -7138,6 +8725,23 @@
           "since": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "NetworkView": {
+        "type": "object",
+        "required": [
+          "isolation"
+        ],
+        "properties": {
+          "internal_ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isolation": {
+            "type": "boolean"
           }
         }
       },
@@ -7401,6 +9005,108 @@
           }
         }
       },
+      "RateLimitStat": {
+        "type": "object",
+        "required": [
+          "rule_id",
+          "name",
+          "allowed",
+          "blocked"
+        ],
+        "properties": {
+          "allowed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "blocked": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rule_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "RateLimitView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "path_prefix",
+          "methods",
+          "limit_count",
+          "window_secs",
+          "burst",
+          "key_kind"
+        ],
+        "properties": {
+          "burst": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "header_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key_kind": {
+            "type": "string"
+          },
+          "limit_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "methods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "path_prefix": {
+            "type": "string"
+          },
+          "window_secs": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RecoveryCodes": {
+        "type": "object",
+        "required": [
+          "recovery_codes"
+        ],
+        "properties": {
+          "recovery_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "RegistryView": {
         "type": "object",
         "required": [
@@ -7603,6 +9309,37 @@
           }
         }
       },
+      "RuleInput": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "department_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "rank_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "RuleMatch": {
         "type": "object",
         "description": "Every set field must match. An empty matcher matches every request.",
@@ -7649,6 +9386,24 @@
           "run_id": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "SaveAccessPolicy": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "rules"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleInput"
+            }
           }
         }
       },
@@ -7923,6 +9678,34 @@
           }
         }
       },
+      "SaveDepartment": {
+        "type": "object",
+        "required": [
+          "name",
+          "slug"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
       "SaveDestination": {
         "type": "object",
         "required": [
@@ -7965,6 +9748,255 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "SaveIdentity": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "admin": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SaveMemberships": {
+        "type": "object",
+        "required": [
+          "memberships"
+        ],
+        "properties": {
+          "memberships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MembershipInput"
+            }
+          }
+        }
+      },
+      "SaveRank": {
+        "type": "object",
+        "required": [
+          "name",
+          "slug",
+          "level"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "SaveRateLimit": {
+        "type": "object",
+        "required": [
+          "name",
+          "limit_count",
+          "window_secs",
+          "key_kind"
+        ],
+        "properties": {
+          "burst": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "header_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key_kind": {
+            "type": "string"
+          },
+          "limit_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "methods": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "path_prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "window_secs": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SecurityFindingView": {
+        "type": "object",
+        "required": [
+          "id",
+          "host",
+          "kind",
+          "severity",
+          "summary",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "host": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "severity": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "SecurityOverview": {
+        "type": "object",
+        "required": [
+          "certificates",
+          "expiring",
+          "expired",
+          "open_findings",
+          "http_requests",
+          "ip_requests",
+          "rate_rules"
+        ],
+        "properties": {
+          "certificates": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expired": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiring": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "http_requests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ip_requests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "open_findings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rate_rules": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SecurityScanView": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "started_at"
+        ],
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
           }
         }
       },
@@ -8433,6 +10465,101 @@
           }
         }
       },
+      "SslCertificateStat": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "domains"
+        ],
+        "properties": {
+          "days_left": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "domains": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "not_after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "SslEventView": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "summary",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "SslSummary": {
+        "type": "object",
+        "required": [
+          "letsencrypt",
+          "custom",
+          "none",
+          "certificates"
+        ],
+        "properties": {
+          "certificates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SslCertificateStat"
+            }
+          },
+          "custom": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "letsencrypt": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "none": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "StackGit": {
         "type": "object",
         "required": [
@@ -8552,7 +10679,8 @@
           "variable_details",
           "build_on_deploy",
           "deploy_on_push",
-          "preview_pull_requests"
+          "preview_pull_requests",
+          "network_isolation"
         ],
         "properties": {
           "build_on_deploy": {
@@ -8595,6 +10723,10 @@
               "type": "string"
             },
             "description": "Referenced variables with no value under Environment and no fallback in the file."
+          },
+          "network_isolation": {
+            "type": "boolean",
+            "description": "Host ports are not published. Missing means on."
           },
           "preview_pull_requests": {
             "type": "boolean",
@@ -8946,6 +11078,118 @@
           }
         }
       },
+      "UpdateAccessSettings": {
+        "type": "object",
+        "properties": {
+          "clear_portal_host": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "cloudflare_account_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cloudflare_api_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email_from": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email_provider": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "google_client_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "google_client_secret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "portal_host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resend_api_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "smtp_host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "smtp_password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "smtp_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "smtp_security": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "smtp_username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "turnstile_hostnames": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "turnstile_secret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "turnstile_site_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateCacheSettings": {
         "type": "object",
         "required": [
@@ -9075,6 +11319,13 @@
               "boolean",
               "null"
             ]
+          },
+          "compose_service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Empty string selects the stack's main service."
           },
           "host": {
             "type": [
@@ -9218,6 +11469,17 @@
           },
           "to_version": {
             "type": "string"
+          }
+        }
+      },
+      "UpdateNetwork": {
+        "type": "object",
+        "required": [
+          "isolation"
+        ],
+        "properties": {
+          "isolation": {
+            "type": "boolean"
           }
         }
       },
@@ -9589,7 +11851,8 @@
           "email",
           "display_name",
           "role",
-          "totp_enabled"
+          "totp_enabled",
+          "is_owner"
         ],
         "properties": {
           "display_name": {
@@ -9601,6 +11864,9 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "is_owner": {
+            "type": "boolean"
           },
           "role": {
             "type": "string"

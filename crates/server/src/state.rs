@@ -42,6 +42,8 @@ pub struct AppState {
     pub stack_runs: Arc<crate::stacks::StackRuns>,
     /// Host load, and whether new builds may start.
     pub guard: Arc<crate::guard::LoadGuard>,
+    /// Rate-limit buckets and counters for the edge gate.
+    pub edge: Arc<crate::gate::EdgeMemory>,
 }
 
 impl AppState {
@@ -72,6 +74,7 @@ impl AppState {
             updates: Arc::default(),
             stack_runs: Arc::default(),
             guard: Arc::default(),
+            edge: crate::gate::memory(),
         }
     }
 }

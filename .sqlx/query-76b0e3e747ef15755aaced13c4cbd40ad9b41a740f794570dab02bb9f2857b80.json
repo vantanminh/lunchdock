@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE access_settings\n        SET portal_host = $1, turnstile_site_key = $2, turnstile_secret_enc = $3,\n            turnstile_hostnames = $4, google_client_id = $5, google_client_secret_enc = $6,\n            email_provider = $7, email_from = $8, email_config_enc = $9, updated_at = now()\n        WHERE id = TRUE\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bytea",
+        "TextArray",
+        "Text",
+        "Bytea",
+        "Text",
+        "Text",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "76b0e3e747ef15755aaced13c4cbd40ad9b41a740f794570dab02bb9f2857b80"
+}

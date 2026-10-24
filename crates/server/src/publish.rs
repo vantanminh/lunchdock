@@ -4,7 +4,7 @@ use std::fmt::Write as _;
 
 use chrono::{DateTime, Utc};
 use rudder_core::{
-    render_dynamic_config, NodeDriver, ProxyRoute, TlsMaterial, TlsMode, TRAEFIK_CERT_DIR,
+    render_dynamic_config, EdgeGate, NodeDriver, ProxyRoute, TlsMaterial, TlsMode, TRAEFIK_CERT_DIR,
 };
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -29,6 +29,7 @@ struct RouteRow {
     project: Option<String>,
     cache_enabled: bool,
     cache_policy_id: Option<Uuid>,
+    access_enabled: bool,
 }
 
 struct PanelRoute {
@@ -62,8 +63,15 @@ pub async fn publish_server(state: &AppState, server_id: Uuid) -> Result<bool, A
         tracing::info!(%server_id, "routing change stored; the agent applies it when connected");
         return Ok(false);
     };
-    let (routes, note, sites) =
-        render_for_server(&state.pool, server_id, state.config.bind.port()).await?;
+    let secret = crate::routes::access::gate_secret(state).await?;
+    let (routes, note, sites, gate) = render_for_server(
+        &state.pool,
+        server_id,
+        state.config.bind.port(),
+        &state.config.self_container,
+        &secret,
+    )
+    .await?;
     let yaml = (routes, note);
     let budget_cap = crate::cache::memory_cap(&state.pool, &state.config.host_proc).await?;
     let cache_document = crate::cache::render_document(&state.pool, sites, budget_cap).await?;
@@ -76,7 +84,7 @@ pub async fn publish_server(state: &AppState, server_id: Uuid) -> Result<bool, A
         .await
         .map_err(core_error)?;
     let materials = write_certificates(state, driver.as_ref()).await?;
-    let document = render_dynamic_config(&yaml.0, &materials).map_err(core_error)?;
+    let document = render_dynamic_config(&yaml.0, &materials, gate.as_ref()).map_err(core_error)?;
     let mut body = document;
     if !yaml.1.is_empty() {
         let _ = write!(body, "\n# panel certificate {}\n", yaml.1);
@@ -88,11 +96,46 @@ pub async fn publish_server(state: &AppState, server_id: Uuid) -> Result<bool, A
     Ok(true)
 }
 
+pub async fn publish_local(state: &AppState) -> Result<(), ApiError> {
+    let id = sqlx::query_scalar!(r#"SELECT id FROM servers WHERE kind = 'local' LIMIT 1"#)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(ApiError::database)?;
+    if let Some(id) = id {
+        publish_server(state, id).await?;
+    }
+    Ok(())
+}
+
+pub async fn publish_for_service(state: &AppState, service_id: Uuid) -> Result<(), ApiError> {
+    let server_id = sqlx::query_scalar!(
+        r#"SELECT server_id FROM services WHERE id = $1"#,
+        service_id
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    if let Some(server_id) = server_id {
+        publish_server(state, server_id).await?;
+    }
+    Ok(())
+}
+
 async fn render_for_server(
     pool: &PgPool,
     server_id: Uuid,
     panel_port: u16,
-) -> Result<(Vec<ProxyRoute>, String, Vec<crate::cache::SiteSource>), ApiError> {
+    panel_container: &str,
+    gate_secret: &str,
+) -> Result<
+    (
+        Vec<ProxyRoute>,
+        String,
+        Vec<crate::cache::SiteSource>,
+        Option<EdgeGate>,
+    ),
+    ApiError,
+> {
     let rows = sqlx::query_as!(
         RouteRow,
         r#"
@@ -110,6 +153,10 @@ async fn render_for_server(
                s.spec ->> 'project' AS "project?",
                d.cache_enabled,
                d.cache_policy_id,
+               EXISTS (
+                   SELECT 1 FROM access_policies ap
+                   WHERE ap.service_id = s.id AND ap.enabled
+               ) AS "access_enabled!",
                (
                    SELECT sc.container_name
                    FROM service_containers sc
@@ -127,11 +174,45 @@ async fn render_for_server(
     .fetch_all(pool)
     .await
     .map_err(ApiError::database)?;
+    let global_limit = sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM rate_limit_rules
+            WHERE enabled AND (host IS NULL OR host = '')
+        ) AS "global!"
+        "#
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::database)?;
+    let limited_hosts = sqlx::query_scalar!(
+        r#"
+        SELECT host AS "host!"
+        FROM rate_limit_rules
+        WHERE enabled AND host IS NOT NULL AND host <> ''
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::database)?;
+    let portal_host =
+        sqlx::query_scalar!(r#"SELECT portal_host FROM access_settings WHERE id = TRUE"#)
+            .fetch_one(pool)
+            .await
+            .map_err(ApiError::database)?;
     let mut routes = Vec::new();
     let mut sites = Vec::new();
     for row in rows {
+        let access = row.access_enabled;
         let cache = row.cache_enabled.then_some(row.cache_policy_id);
         let mut route = route_from_row(row)?;
+        let portal = portal_host.as_deref() == Some(route.host.as_str());
+        let limited = global_limit
+            || limited_hosts
+                .iter()
+                .any(|item| item.eq_ignore_ascii_case(&route.host));
+        route.access_handoff = access && !portal;
+        route.gate = (access || limited) && !portal;
         if let Some(policy_id) = cache {
             sites.push(crate::cache::SiteSource {
                 host: route.host.clone(),
@@ -167,7 +248,7 @@ async fn render_for_server(
         if local == "local" {
             routes.push(ProxyRoute {
                 name: "panel".into(),
-                host,
+                host: host.clone(),
                 path_prefix: "/".into(),
                 container: "rudder".into(),
                 port: panel_port,
@@ -175,10 +256,43 @@ async fn render_for_server(
                 tls: tls_mode(&panel.panel_ssl_mode)?,
                 basic_auth_user: None,
                 basic_auth_hash: None,
+                gate: false,
+                access_handoff: false,
+            });
+            for route in &mut routes {
+                if route.host == host {
+                    route.gate = false;
+                    route.access_handoff = false;
+                }
+            }
+        }
+    }
+    if let Some(host) = portal_host.filter(|host| !host.is_empty()) {
+        if !routes.iter().any(|route| route.host == host) {
+            routes.push(ProxyRoute {
+                name: "access".into(),
+                host,
+                path_prefix: "/".into(),
+                container: panel_container.into(),
+                port: panel_port,
+                https_redirect: true,
+                tls: TlsMode::LetsEncrypt,
+                basic_auth_user: None,
+                basic_auth_hash: None,
+                gate: false,
+                access_handoff: false,
             });
         }
     }
-    Ok((routes, note, sites))
+    let gate = routes
+        .iter()
+        .any(|route| route.gate || route.access_handoff)
+        .then(|| EdgeGate {
+            secret: gate_secret.to_owned(),
+            panel_container: panel_container.to_owned(),
+            panel_port,
+        });
+    Ok((routes, note, sites, gate))
 }
 
 fn route_from_row(row: RouteRow) -> Result<ProxyRoute, ApiError> {
@@ -199,6 +313,8 @@ fn route_from_row(row: RouteRow) -> Result<ProxyRoute, ApiError> {
         tls: tls_mode(&row.ssl_mode)?,
         basic_auth_user: row.basic_auth_user,
         basic_auth_hash: row.basic_auth_hash,
+        gate: false,
+        access_handoff: false,
     })
 }
 

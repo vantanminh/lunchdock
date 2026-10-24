@@ -68,6 +68,12 @@ pub struct Config {
     pub update_check_secs: u64,
     /// Longest a compose stack action (up, build, pull) may run, in seconds; 0 means no limit.
     pub stack_timeout_secs: u64,
+    /// Cloudflare Turnstile siteverify URL. Release builds always use Cloudflare.
+    pub turnstile_siteverify_url: String,
+    /// Google OAuth token endpoint. Release builds always use Google.
+    pub google_token_url: String,
+    /// Google userinfo endpoint. Release builds always use Google.
+    pub google_userinfo_url: String,
 }
 
 /// Release signing key compiled into official builds.
@@ -253,6 +259,21 @@ impl Config {
                 reason: "expected a number of seconds".into(),
             })?,
         };
+        let turnstile_siteverify_url = debug_url(
+            vars,
+            "RUDDER_TURNSTILE_SITEVERIFY_URL",
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        )?;
+        let google_token_url = debug_url(
+            vars,
+            "RUDDER_GOOGLE_TOKEN_URL",
+            "https://oauth2.googleapis.com/token",
+        )?;
+        let google_userinfo_url = debug_url(
+            vars,
+            "RUDDER_GOOGLE_USERINFO_URL",
+            "https://openidconnect.googleapis.com/v1/userinfo",
+        )?;
         Ok(Self {
             database_url,
             bind,
@@ -278,6 +299,33 @@ impl Config {
             self_container,
             update_check_secs,
             stack_timeout_secs,
+            turnstile_siteverify_url,
+            google_token_url,
+            google_userinfo_url,
+        })
+    }
+}
+
+/// A test build may point these at a local server. Release builds ignore the variable.
+fn debug_url(
+    vars: &HashMap<String, String>,
+    name: &'static str,
+    default: &str,
+) -> Result<String, ConfigError> {
+    let value = if cfg!(debug_assertions) {
+        vars.get(name)
+            .map(String::as_str)
+            .filter(|value| !value.is_empty())
+            .unwrap_or(default)
+    } else {
+        default
+    };
+    if value.starts_with("https://") || (cfg!(debug_assertions) && value.starts_with("http://")) {
+        Ok(value.to_owned())
+    } else {
+        Err(ConfigError::Invalid {
+            name,
+            reason: "expected an https URL".into(),
         })
     }
 }

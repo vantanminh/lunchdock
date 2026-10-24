@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE rate_limit_rules\n        SET name = $2, enabled = $3, host = $4, path_prefix = $5, methods = $6,\n            limit_count = $7, window_secs = $8, burst = $9, key_kind = $10, header_name = $11,\n            updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "TextArray",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aa6b594804ba467df940663c544e638fbc8d895ff112e162a14958299a3589b5"
+}

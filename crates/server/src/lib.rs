@@ -16,9 +16,11 @@ mod driver;
 mod embed;
 mod error;
 mod events;
+mod gate;
 mod gitkey;
 mod guard;
 mod logs;
+mod mailer;
 mod mcp;
 mod monitor;
 mod nodes;
@@ -111,6 +113,15 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         loop {
             if let Err(error) = routes::cache::sample_cache(&cache_state).await {
                 tracing::warn!(message = %error.public_message(), "cache sample failed");
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        }
+    });
+    let edge_state = state.clone();
+    tokio::spawn(async move {
+        loop {
+            if let Err(error) = edge_state.edge.flush(&edge_state).await {
+                tracing::warn!(message = %error.public_message(), "edge counter flush failed");
             }
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
         }
@@ -299,6 +310,8 @@ pub fn router(state: AppState) -> axum::Router {
     axum::Router::new()
         .merge(routes::health::router())
         .merge(routes::account::router())
+        .merge(routes::access::router())
+        .merge(routes::security::router())
         .merge(routes::catalog::router())
         .merge(routes::edge::router())
         .merge(routes::panel_ssl::router())

@@ -262,7 +262,10 @@ async fn totp_setup_enable_and_login(pool: PgPool) {
         Some(json!({ "code": code })),
     )
     .await;
-    assert_eq!(enabled.status, StatusCode::NO_CONTENT);
+    assert_eq!(enabled.status, StatusCode::OK);
+    let recovery = enabled.body["recovery_codes"].as_array().unwrap();
+    assert_eq!(recovery.len(), 8);
+    let backup = recovery[0].as_str().unwrap().to_owned();
 
     let needs_code = call(
         &app,
@@ -297,6 +300,38 @@ async fn totp_setup_enable_and_login(pool: PgPool) {
     .await;
     assert_eq!(login.status, StatusCode::OK);
     assert_eq!(login.body["user"]["totp_enabled"], true);
+    assert_eq!(login.body["user"]["is_owner"], true);
+
+    let backup_login = call(
+        &app,
+        "POST",
+        "/api/v1/login",
+        None,
+        None,
+        None,
+        Some(json!({
+            "email": "owner@example.com",
+            "password": "correct-horse-battery",
+            "totp_code": backup
+        })),
+    )
+    .await;
+    assert_eq!(backup_login.status, StatusCode::OK);
+    let reused = call(
+        &app,
+        "POST",
+        "/api/v1/login",
+        None,
+        None,
+        None,
+        Some(json!({
+            "email": "owner@example.com",
+            "password": "correct-horse-battery",
+            "totp_code": backup
+        })),
+    )
+    .await;
+    assert_eq!(reused.status, StatusCode::UNAUTHORIZED);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -412,6 +447,30 @@ async fn roles_and_api_tokens(pool: PgPool) {
     )
     .await;
     assert_eq!(removed.status, StatusCode::NO_CONTENT);
+
+    let owner_id = created.body["user"]["id"].as_str().unwrap();
+    let demote = call(
+        &app,
+        "PATCH",
+        &format!("/api/v1/users/{owner_id}"),
+        None,
+        None,
+        Some(write),
+        Some(json!({ "role": "viewer" })),
+    )
+    .await;
+    assert_eq!(demote.status, StatusCode::CONFLICT);
+    let remove_owner = call(
+        &app,
+        "DELETE",
+        &format!("/api/v1/users/{owner_id}"),
+        None,
+        None,
+        Some(write),
+        None,
+    )
+    .await;
+    assert_eq!(remove_owner.status, StatusCode::CONFLICT);
 }
 
 #[sqlx::test(migrations = "./migrations")]

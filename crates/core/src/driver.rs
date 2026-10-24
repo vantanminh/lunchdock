@@ -257,6 +257,10 @@ pub trait NodeDriver: Send + Sync {
     async fn restart_container(&self, id: &str) -> Result<(), Error>;
     async fn remove_container(&self, id: &str, force: bool) -> Result<(), Error>;
     async fn container_running(&self, id: &str) -> Result<bool, Error>;
+    /// IPv4 address on the proxy network, when the driver can see it.
+    async fn container_ipv4(&self, _id: &str) -> Result<Option<String>, Error> {
+        Ok(None)
+    }
     async fn container_logs(&self, id: &str, tail: u32) -> Result<String, Error>;
     async fn exec(&self, id: &str, command: Vec<String>) -> Result<ExecOutput, Error>;
     async fn write_file(&self, relative_path: &str, bytes: &[u8]) -> Result<(), Error>;

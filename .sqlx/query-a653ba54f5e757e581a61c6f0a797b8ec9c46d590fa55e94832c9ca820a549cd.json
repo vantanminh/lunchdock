@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT portal_host, turnstile_site_key, turnstile_secret_enc, turnstile_hostnames,\n               google_client_id, google_client_secret_enc, email_provider, email_from, email_config_enc\n        FROM access_settings\n        WHERE id = TRUE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "portal_host",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "turnstile_site_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "turnstile_secret_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 3,
+        "name": "turnstile_hostnames",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "google_client_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "google_client_secret_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 6,
+        "name": "email_provider",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "email_from",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "email_config_enc",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "a653ba54f5e757e581a61c6f0a797b8ec9c46d590fa55e94832c9ca820a549cd"
+}

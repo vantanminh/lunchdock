@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(*) AS \"count!\"\n        FROM security_findings f\n        JOIN security_scans s ON s.id = f.scan_id\n        WHERE s.id = (SELECT id FROM security_scans WHERE status = 'ok' ORDER BY started_at DESC LIMIT 1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "1568808fe1394f5b15a2894025b974cc897631405b2d1f4984afd86b270a4c5e"
+}
