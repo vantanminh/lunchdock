@@ -8,6 +8,11 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-24
+
+### Fixed
+- **Release 0.5.0 is superseded.** 0.5.1 has the same changes as 0.5.0 and fixes a flaky test that failed the 0.5.0 build; update to it directly.
+
 ## [0.5.0] - 2026-10-24
 
 ### Added
