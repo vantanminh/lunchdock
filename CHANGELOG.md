@@ -8,6 +8,8 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-24
+
 ### Added
 - **Check the panel's SSL certificate.** **Certificates → Panel domain** has a **Check SSL** button. It connects to the saved panel domain over HTTPS, as a browser would, and shows whether the certificate is trusted, whether it covers the domain, who issued it, and how many days are left. AI agents can run the same check.
 
