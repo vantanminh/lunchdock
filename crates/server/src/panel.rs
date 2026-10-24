@@ -567,20 +567,29 @@ pub async fn restore(options: RestoreOptions) -> anyhow::Result<RestoreReport> {
             .await
             .context("clear the database")?;
     }
+    let server_major = server_major(&pool).await?;
     pool.close().await;
 
     let env = pg_env(&options.database_url)?;
-    let args = vec![
-        "--no-owner".to_owned(),
-        "--no-acl".to_owned(),
-        "--exit-on-error".to_owned(),
-        "--single-transaction".to_owned(),
-        format!("--dbname={}", database_name(&env)),
-        work.file(DUMP).display().to_string(),
-    ];
-    run_pg_tool(&options.pg_restore, &args, &env)
-        .await
-        .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+    let client_major = client_major(&options.pg_restore).await;
+    // pg_restore 17 and newer emits `SET transaction_timeout = 0`, which
+    // PostgreSQL 16 and older reject. Load the script with psql there and
+    // drop that statement. The same client against PostgreSQL 17 keeps using
+    // pg_restore directly, so the timeout stays disabled for a long restore.
+    if server_major < 17 && client_major.is_some_and(|major| major >= 17) {
+        load_dump_with_psql(&options.pg_restore, &work.file(DUMP), &env).await
+    } else {
+        let args = vec![
+            "--no-owner".to_owned(),
+            "--no-acl".to_owned(),
+            "--exit-on-error".to_owned(),
+            "--single-transaction".to_owned(),
+            format!("--dbname={}", database_name(&env)),
+            work.file(DUMP).display().to_string(),
+        ];
+        run_pg_tool(&options.pg_restore, &args, &env).await
+    }
+    .map_err(|error| anyhow::anyhow!(error.to_string()))?;
     // The key file may be a read-only mount; leave it alone when it already matches.
     if current_key != Some(key) {
         write_key(&options.master_key_out, &key)?;
@@ -589,6 +598,230 @@ pub async fn restore(options: RestoreOptions) -> anyhow::Result<RestoreReport> {
         manifest,
         replaced_existing: has_tables,
     })
+}
+
+async fn server_major(pool: &PgPool) -> anyhow::Result<i64> {
+    let version: String = sqlx::query_scalar("SHOW server_version_num")
+        .fetch_one(pool)
+        .await
+        .context("read the PostgreSQL version")?;
+    let numeric: i64 = version
+        .trim()
+        .parse()
+        .context("PostgreSQL version is not a number")?;
+    Ok(numeric / 10_000)
+}
+
+async fn client_major(program: &Path) -> Option<i64> {
+    let output = tokio::process::Command::new(program)
+        .arg("--version")
+        .output()
+        .await
+        .ok()?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    text.split_whitespace()
+        .find_map(|word| word.split('.').next().and_then(|major| major.parse().ok()))
+}
+
+/// `psql` installed next to `pg_restore`, or `psql` on `PATH`.
+fn psql_for(pg_restore: &Path) -> PathBuf {
+    let sibling = match pg_restore.parent() {
+        Some(dir) if !dir.as_os_str().is_empty() => dir.join("psql"),
+        _ => PathBuf::from("psql"),
+    };
+    if sibling.exists() {
+        sibling
+    } else {
+        PathBuf::from("psql")
+    }
+}
+
+/// A restore script line that PostgreSQL 16 cannot execute.
+///
+/// The match is the whole statement, not a tab-separated `COPY` row, so a
+/// stored value that mentions the setting is still restored.
+fn skip_restore_line(line: &[u8]) -> bool {
+    let trimmed = trim_ascii(line);
+    if trimmed.contains(&b'\t') {
+        return false;
+    }
+    if let Some(rest) = strip_prefix_ignore_ascii(trimmed, b"set transaction_timeout") {
+        let rest = trim_ascii(rest);
+        return rest.first() == Some(&b'=') || strip_prefix_ignore_ascii(rest, b"to").is_some();
+    }
+    strip_prefix_ignore_ascii(trimmed, b"\\restrict").is_some()
+        || strip_prefix_ignore_ascii(trimmed, b"\\unrestrict").is_some()
+}
+
+fn trim_ascii(bytes: &[u8]) -> &[u8] {
+    let start = bytes
+        .iter()
+        .position(|byte| !byte.is_ascii_whitespace())
+        .unwrap_or(bytes.len());
+    let end = bytes
+        .iter()
+        .rposition(|byte| !byte.is_ascii_whitespace())
+        .map(|index| index + 1)
+        .unwrap_or(start);
+    &bytes[start..end]
+}
+
+fn strip_prefix_ignore_ascii<'a>(bytes: &'a [u8], prefix: &[u8]) -> Option<&'a [u8]> {
+    if bytes.len() < prefix.len() {
+        return None;
+    }
+    if !bytes[..prefix.len()].eq_ignore_ascii_case(prefix) {
+        return None;
+    }
+    Some(&bytes[prefix.len()..])
+}
+
+async fn load_dump_with_psql(
+    pg_restore: &Path,
+    dump: &Path,
+    env: &[(&'static str, String)],
+) -> Result<(), Error> {
+    let psql = psql_for(pg_restore);
+    let mut restore = spawn_pg(
+        pg_restore,
+        &[
+            "--no-owner".into(),
+            "--no-acl".into(),
+            "--file=-".into(),
+            dump.display().to_string(),
+        ],
+        env,
+        true,
+    )?;
+    let mut load = spawn_pg(
+        &psql,
+        &[
+            "--set=ON_ERROR_STOP=1".into(),
+            "--single-transaction".into(),
+        ],
+        env,
+        false,
+    )?;
+    let script = restore.stdout.take().expect("pg_restore stdout");
+    let sql = load.stdin.take().expect("psql stdin");
+    let restore_err = restore.stderr.take().expect("pg_restore stderr");
+    let load_err = load.stderr.take().expect("psql stderr");
+    let (copied, restore_stderr, load_stderr) = tokio::join!(
+        filter_restore_script(script, sql),
+        read_to_end(restore_err),
+        read_to_end(load_err),
+    );
+    let restore_status = restore
+        .wait()
+        .await
+        .map_err(|error| Error::Node(format!("pg_restore failed to exit: {error}")))?;
+    let load_status = load
+        .wait()
+        .await
+        .map_err(|error| Error::Node(format!("psql failed to exit: {error}")))?;
+    if let Err(error) = copied {
+        return Err(Error::Node(format!(
+            "could not filter the restore script: {error}"
+        )));
+    }
+    if !restore_status.success() {
+        return Err(tool_failure(
+            "pg_restore",
+            restore_status,
+            &restore_stderr,
+            env,
+        ));
+    }
+    if !load_status.success() {
+        return Err(tool_failure("psql", load_status, &load_stderr, env));
+    }
+    Ok(())
+}
+
+fn spawn_pg(
+    program: &Path,
+    args: &[String],
+    env: &[(&'static str, String)],
+    capture_stdout: bool,
+) -> Result<tokio::process::Child, Error> {
+    let name = program
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| program.display().to_string());
+    tokio::process::Command::new(program)
+        .args(args)
+        .env_remove("PGPASSFILE")
+        .envs(env.iter().map(|(key, value)| (*key, value.as_str())))
+        .stdin(if capture_stdout {
+            Stdio::null()
+        } else {
+            Stdio::piped()
+        })
+        .stdout(if capture_stdout {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
+        .stderr(Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(|error| match error.kind() {
+            std::io::ErrorKind::NotFound => Error::Node(format!(
+                "{name} is not installed; install the PostgreSQL client tools or set its path"
+            )),
+            _ => Error::Node(format!("could not start {name}: {error}")),
+        })
+}
+
+async fn filter_restore_script(
+    script: impl tokio::io::AsyncRead + Unpin,
+    mut sql: impl tokio::io::AsyncWrite + Unpin,
+) -> std::io::Result<()> {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+    let mut reader = tokio::io::BufReader::new(script);
+    let mut line = Vec::new();
+    loop {
+        line.clear();
+        let read = reader.read_until(b'\n', &mut line).await?;
+        if read == 0 {
+            break;
+        }
+        if skip_restore_line(&line) {
+            continue;
+        }
+        sql.write_all(&line).await?;
+    }
+    sql.shutdown().await
+}
+
+async fn read_to_end(mut pipe: impl tokio::io::AsyncRead + Unpin) -> Vec<u8> {
+    let mut buf = Vec::new();
+    let _ = tokio::io::copy(&mut pipe, &mut buf).await;
+    buf
+}
+
+fn tool_failure(
+    name: &str,
+    status: std::process::ExitStatus,
+    stderr: &[u8],
+    env: &[(&'static str, String)],
+) -> Error {
+    let secrets: Vec<&str> = env
+        .iter()
+        .filter(|(key, _)| *key == "PGPASSWORD")
+        .map(|(_, value)| value.as_str())
+        .collect();
+    let stderr = String::from_utf8_lossy(stderr);
+    let stderr = rudder_core::redact(stderr.trim(), &secrets);
+    let tail: String = stderr
+        .chars()
+        .rev()
+        .take(800)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+    Error::Node(format!("{name} failed ({status}): {tail}"))
 }
 
 fn database_name(env: &[(&'static str, String)]) -> String {
@@ -648,5 +881,88 @@ mod tests {
     fn passphrases_need_twelve_characters() {
         assert!(validate_passphrase("short").is_err());
         assert!(validate_passphrase("twelve chars").is_ok());
+    }
+
+    #[test]
+    fn restore_script_drops_only_the_incompatible_statements() {
+        assert!(skip_restore_line(b"SET transaction_timeout = 0;\n"));
+        assert!(skip_restore_line(b"  set transaction_timeout TO 0;\r\n"));
+        assert!(skip_restore_line(b"\\restrict abc123\n"));
+        assert!(skip_restore_line(b"\\unrestrict abc123\n"));
+        assert!(!skip_restore_line(b"SET statement_timeout = 0;\n"));
+        assert!(!skip_restore_line(b"SET transaction_timeout = 0;\tkept\n"));
+        assert!(!skip_restore_line(
+            b"INSERT INTO notes VALUES ('SET transaction_timeout = 0;');\n"
+        ));
+    }
+
+    #[tokio::test]
+    async fn old_server_restore_skips_transaction_timeout() {
+        let Ok(admin_url) = std::env::var("DATABASE_URL") else {
+            return;
+        };
+        if admin_url.is_empty() {
+            return;
+        }
+        let name = format!("rudder_to_{}", Uuid::new_v4().simple());
+        let admin = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&admin_url)
+            .await
+            .expect("connect");
+        sqlx::raw_sql(&format!("CREATE DATABASE {name}"))
+            .execute(&admin)
+            .await
+            .expect("create database");
+        let _cleanup = TempDb {
+            admin: admin_url.clone(),
+            name: name.clone(),
+        };
+        let mut url = url::Url::parse(&admin_url).unwrap();
+        url.set_path(&name);
+        let script = std::env::temp_dir().join(format!(
+            "rudder-fake-pg-restore-{}",
+            Uuid::new_v4().simple()
+        ));
+        std::fs::write(
+            &script,
+            "#!/bin/sh\nprintf '%s\\n' \\\n  'SET transaction_timeout = 0;' \\\n  '\\restrict tok' \\\n  'CREATE TABLE probe (n int);' \\\n  'INSERT INTO probe VALUES (7);' \\\n  '\\unrestrict tok'\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let env = pg_env(url.as_str()).unwrap();
+        load_dump_with_psql(&script, &script, &env)
+            .await
+            .expect("filtered restore");
+        let restored = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .connect(url.as_str())
+            .await
+            .unwrap();
+        let value: i32 = sqlx::query_scalar("SELECT n FROM probe")
+            .fetch_one(&restored)
+            .await
+            .unwrap();
+        assert_eq!(value, 7);
+        let _ = std::fs::remove_file(&script);
+    }
+
+    struct TempDb {
+        admin: String,
+        name: String,
+    }
+
+    impl Drop for TempDb {
+        fn drop(&mut self) {
+            let _ = std::process::Command::new("psql")
+                .arg(&self.admin)
+                .args([
+                    "-v",
+                    "ON_ERROR_STOP=1",
+                    "-c",
+                    &format!("DROP DATABASE IF EXISTS {} WITH (FORCE)", self.name),
+                ])
+                .output();
+        }
     }
 }

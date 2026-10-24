@@ -19,6 +19,9 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 - **Update checks and the install scripts use `vantanminh/rudder`.** This update switches a panel that still has the old default. Rename the GitHub repository to that name before you check for updates or install from the release URL. If you have not renamed it yet, set the repository back to the previous name under **System → Updates** or with `RUDDER_GITHUB_REPO`.
 - **The cache container is limited to 512 MiB.** New installs, and the next run of `install.sh` on an existing machine, stop `rudder-cache` at `RUDDER_CACHE_MEMORY` (default `512m`) before it can fill the host. If you raise the ceiling in the panel above that, raise `RUDDER_CACHE_MEMORY` and run the installer again.
 
+### Fixed
+- **A panel backup restores on PostgreSQL 16.** PostgreSQL 17's restore tool sends `transaction_timeout`, which PostgreSQL 16 rejects. Restoring onto 16 now skips that setting instead of stopping.
+
 ### Security
 - **The panel sends stricter browser headers, and the cache admin port slows repeated purge and reload calls.** Pages cannot be framed by another site, and a stolen cache admin token cannot flush the cache hundreds of times a second.
 
