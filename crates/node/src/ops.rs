@@ -122,6 +122,11 @@ pub enum Request {
     ArchiveWrite {
         target: ArchiveSource,
     },
+    /// Input stream: a tar of a repository work tree. `path` is relative to the
+    /// node data directory.
+    ExtractTree {
+        path: String,
+    },
     /// Output stream: one JSON `LogLine` per frame.
     SaveImage {
         image: String,
@@ -185,6 +190,7 @@ impl Request {
             Self::ExecWrite { .. } => "exec_write",
             Self::ArchiveRead { .. } => "archive_read",
             Self::ArchiveWrite { .. } => "archive_write",
+            Self::ExtractTree { .. } => "extract_tree",
             Self::SaveImage { .. } => "save_image",
             Self::LoadImage => "load_image",
             Self::FollowLogs { .. } => "follow_logs",
@@ -200,6 +206,7 @@ impl Request {
             | Self::SaveImage { .. } => Streaming::Output,
             Self::ExecWrite { .. }
             | Self::ArchiveWrite { .. }
+            | Self::ExtractTree { .. }
             | Self::LoadImage
             | Self::UpdateAgent { .. } => Streaming::Input,
             Self::Terminal { .. } => Streaming::Both,
@@ -219,7 +226,10 @@ impl Request {
             Self::Exec { .. } => 600,
             // Input streams answer only after the whole upload, so the panel's own
             // backup timeout bounds them instead.
-            Self::ExecWrite { .. } | Self::ArchiveWrite { .. } | Self::LoadImage => 6 * 3600,
+            Self::ExecWrite { .. }
+            | Self::ArchiveWrite { .. }
+            | Self::ExtractTree { .. }
+            | Self::LoadImage => 6 * 3600,
             _ => 120,
         }
     }

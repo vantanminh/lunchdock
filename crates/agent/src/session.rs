@@ -243,6 +243,9 @@ impl Session {
                     Request::ArchiveWrite { target } => {
                         driver.archive_write(&target, input).await.and_then(json)
                     }
+                    Request::ExtractTree { path } => {
+                        driver.extract_tree(&path, input).await.and_then(json)
+                    }
                     Request::LoadImage => driver.load_image(input).await.and_then(json),
                     _ => Err(Error::Validation("not an upload".into())),
                 };

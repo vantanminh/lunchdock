@@ -3914,6 +3914,7 @@ dependencies = [
  "rudder-core",
  "serde",
  "serde_json",
+ "tar",
  "tokio",
  "tracing",
 ]

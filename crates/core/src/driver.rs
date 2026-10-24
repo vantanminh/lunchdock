@@ -318,6 +318,13 @@ pub trait NodeDriver: Send + Sync {
         Err(unsupported("archive_write"))
     }
 
+    /// Extract a tar of a repository work tree into `relative_path` under the
+    /// node data directory. The previous copy's manifest is updated so files
+    /// Git removed are deleted and files the panel did not send are kept.
+    async fn extract_tree(&self, _relative_path: &str, _input: ByteStream) -> Result<(), Error> {
+        Err(unsupported("extract_tree"))
+    }
+
     /// `docker save` of one image, as a tar stream.
     async fn save_image(&self, _image: &str) -> Result<ByteStream, Error> {
         Err(unsupported("save_image"))
