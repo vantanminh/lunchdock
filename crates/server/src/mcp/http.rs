@@ -52,10 +52,29 @@ fn no_store(response: Response) -> Response {
     response
 }
 
+/// The address agents should use. An `https` public address always wins. A plain
+/// `http` one (the install default before a panel domain exists) gives way to the
+/// HTTPS address the request actually came in on, because agents in the cloud
+/// reject `http` endpoints and cannot reach the install's IP address.
 fn origin(state: &AppState, headers: &HeaderMap) -> Result<String, ApiError> {
-    if let Some(url) = &state.config.public_url {
-        return Ok(url.trim_end_matches('/').to_owned());
+    let configured = state
+        .config
+        .public_url
+        .as_deref()
+        .map(|url| url.trim_end_matches('/').to_owned());
+    if let Some(url) = &configured {
+        if url.starts_with("https://") {
+            return Ok(url.clone());
+        }
+        return match request_origin(state, headers) {
+            Ok(seen) if seen.starts_with("https://") => Ok(seen),
+            _ => Ok(url.clone()),
+        };
     }
+    request_origin(state, headers)
+}
+
+fn request_origin(state: &AppState, headers: &HeaderMap) -> Result<String, ApiError> {
     let host = headers
         .get(if state.config.trust_proxy {
             "x-forwarded-host"

@@ -8,6 +8,9 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+### Fixed
+- **AI agents can connect again behind an HTTPS panel domain.** If Rudder was installed by IP address and the panel later moved to an HTTPS domain, agents such as Claude were told to sign in at the old `http://` address and failed with "Couldn't register". Rudder now advertises the HTTPS address the agent actually used.
+
 ## [0.4.0] - 2026-10-24
 
 ### Added
