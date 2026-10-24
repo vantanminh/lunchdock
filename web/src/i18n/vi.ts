@@ -1627,4 +1627,10 @@ export const vi: Record<string, string> = {
   "Blank applies to every app.": "Để trống để áp dụng cho mọi ứng dụng.",
   Requests: "Số yêu cầu",
   "Window (seconds)": "Cửa sổ (giây)",
+  "Membership saved": "Đã lưu phòng ban",
+  "Could not save the membership": "Không lưu được phòng ban",
+  Person: "Người",
+  Department: "Phòng ban",
+  Rank: "Cấp bậc",
+  Assign: "Gán",
 };

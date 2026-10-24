@@ -71,7 +71,11 @@ export function AccessAdminPage() {
           await queryClient.invalidateQueries({ queryKey: ["access-ranks"] });
         }}
       />
-      <People people={people.data ?? []} />
+      <People
+        people={people.data ?? []}
+        departments={departments.data ?? []}
+        ranks={ranks.data ?? []}
+      />
     </>
   );
 }
@@ -271,12 +275,23 @@ function Directory({
   );
 }
 
-function People({ people }: { people: Person[] }) {
+function People({
+  people,
+  departments,
+  ranks,
+}: {
+  people: Person[];
+  departments: Department[];
+  ranks: Rank[];
+}) {
   const t = useT();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [admin, setAdmin] = useState(false);
+  const [memberId, setMemberId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
+  const [rankId, setRankId] = useState("");
   const create = useMutation({
     mutationFn: () =>
       api("/api/v1/access/identities", {
@@ -312,6 +327,72 @@ function People({ people }: { people: Person[] }) {
         </label>
         <div className="flex items-end">
           <Button type="submit">{t("Add")}</Button>
+        </div>
+      </form>
+      <form
+        className="mb-4 grid gap-3 md:grid-cols-4"
+        onSubmit={(event: FormEvent) => {
+          event.preventDefault();
+          void api(`/api/v1/access/identities/${memberId}/memberships`, {
+            method: "PUT",
+            body: JSON.stringify({
+              memberships: [
+                { department_id: departmentId, rank_id: rankId || null },
+              ],
+            }),
+          })
+            .then(() => toast.success(t("Membership saved")))
+            .catch((error: unknown) =>
+              toast.error(error instanceof ApiError ? error.message : t("Could not save the membership")),
+            );
+        }}
+      >
+        <Field label={t("Person")}>
+          <select
+            className="h-10 rounded-md border border-line bg-paper px-2 text-sm"
+            value={memberId}
+            onChange={(event) => setMemberId(event.target.value)}
+            required
+          >
+            <option value="">{t("Choose")}</option>
+            {people.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.email}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t("Department")}>
+          <select
+            className="h-10 rounded-md border border-line bg-paper px-2 text-sm"
+            value={departmentId}
+            onChange={(event) => setDepartmentId(event.target.value)}
+            required
+          >
+            <option value="">{t("Choose")}</option>
+            {departments.map((department) => (
+              <option key={department.id} value={department.id}>
+                {department.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t("Rank")}>
+          <select
+            className="h-10 rounded-md border border-line bg-paper px-2 text-sm"
+            value={rankId}
+            onChange={(event) => setRankId(event.target.value)}
+          >
+            <option value="">{t("None")}</option>
+            {ranks.map((rank) => (
+              <option key={rank.id} value={rank.id}>
+                {rank.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="flex items-end">
+          <Button type="submit">{t("Assign")}</Button>
         </div>
       </form>
       <ul className="divide-y divide-line">
