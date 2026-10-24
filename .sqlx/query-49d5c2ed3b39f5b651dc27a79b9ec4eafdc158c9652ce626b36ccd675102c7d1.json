@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT r.grant_id, g.client_id\n            FROM mcp_refresh_tokens r\n            JOIN mcp_grants g ON g.id = r.grant_id\n            WHERE r.token_hash = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "grant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "client_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "49d5c2ed3b39f5b651dc27a79b9ec4eafdc158c9652ce626b36ccd675102c7d1"
+}

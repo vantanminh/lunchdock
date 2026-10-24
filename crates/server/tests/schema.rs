@@ -41,6 +41,11 @@ const REQUIRED_TABLES: &[&str] = &[
     "build_queue",
     "webhook_deliveries",
     "cleanup_schedules",
+    "oauth_clients",
+    "mcp_grants",
+    "oauth_codes",
+    "mcp_refresh_tokens",
+    "mcp_access_tokens",
 ];
 
 fn test_config(database_url: &str) -> rudder_server::Config {

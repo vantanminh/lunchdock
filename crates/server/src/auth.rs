@@ -36,6 +36,9 @@ pub struct AuthUser {
     pub csrf_token: Option<String>,
     pub scopes: Vec<String>,
     pub via_token: bool,
+    /// Set when the bearer is an agent access token. Scope checks are finer
+    /// than `read`/`write` and run before the handler.
+    pub via_mcp: bool,
 }
 
 impl AuthUser {
@@ -47,6 +50,9 @@ impl AuthUser {
     pub fn can_write(&self) -> bool {
         if !self.is_admin() {
             return false;
+        }
+        if self.via_mcp {
+            return self.scopes.iter().any(|scope| scope.ends_with(":write"));
         }
         if self.via_token {
             self.scopes.iter().any(|scope| scope == "write")
@@ -186,6 +192,11 @@ pub fn session_cookie(token: &str, secure: bool) -> Cookie<'static> {
         .build()
 }
 
+pub(crate) async fn session_user(state: &AppState, headers: &HeaderMap) -> Option<AuthUser> {
+    let token = cookie_value(headers, SESSION_COOKIE)?;
+    load_session(state, &token).await.ok()
+}
+
 pub fn clear_session_cookie(secure: bool) -> Cookie<'static> {
     Cookie::build((SESSION_COOKIE, ""))
         .path("/")
@@ -310,10 +321,14 @@ async fn load_session(state: &AppState, token: &str) -> Result<AuthUser, ApiErro
         csrf_token: Some(row.csrf_token),
         scopes: vec!["read".into(), "write".into()],
         via_token: false,
+        via_mcp: false,
     })
 }
 
 async fn load_token(state: &AppState, token: &str) -> Result<AuthUser, ApiError> {
+    if token.starts_with(crate::mcp::ACCESS_PREFIX) {
+        return crate::mcp::tokens::load_access(state, token).await;
+    }
     let hash = sha256_hex(token);
     let row = sqlx::query!(
         r#"
@@ -356,6 +371,7 @@ async fn load_token(state: &AppState, token: &str) -> Result<AuthUser, ApiError>
         csrf_token: None,
         scopes: row.scopes,
         via_token: true,
+        via_mcp: false,
     })
 }
 

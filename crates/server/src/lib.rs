@@ -19,6 +19,7 @@ mod events;
 mod gitkey;
 mod guard;
 mod logs;
+mod mcp;
 mod monitor;
 mod nodes;
 mod openapi;
@@ -103,6 +104,15 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     });
     start_monitoring(&state);
     tokio::spawn(guard::run(state.clone()));
+    let maintain_state = state.clone();
+    tokio::spawn(async move {
+        loop {
+            if let Err(error) = mcp::maintain(&maintain_state).await {
+                tracing::warn!(message = %error.public_message(), "agent login cleanup failed");
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+        }
+    });
     let publish_state = state.clone();
     tokio::spawn(async move {
         let local = sqlx::query_scalar!(r#"SELECT id FROM servers WHERE kind = 'local' LIMIT 1"#)
@@ -293,10 +303,16 @@ pub fn router(state: AppState) -> axum::Router {
         .merge(routes::system::router())
         .merge(routes::load::router())
         .merge(routes::updates::router())
+        .merge(routes::mcp::router())
+        .merge(mcp::router())
         .merge(
             utoipa_swagger_ui::SwaggerUi::new("/api/docs")
                 .url("/api/openapi.json", openapi::document()),
         )
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            mcp::gate,
+        ))
         .layer(axum::middleware::from_fn_with_state(
             shed::slots(),
             shed::middleware,

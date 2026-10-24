@@ -83,7 +83,8 @@ pub use image_ref::{
     RegistryRecord,
 };
 pub use mcp::{
-    scopes_for_template, validate_agent_scopes, McpScope, McpTemplate, MCP_SCOPES, MCP_TEMPLATES,
+    scope_known, scopes_for_template, validate_agent_scopes, McpScope, McpTemplate, MCP_SCOPES,
+    MCP_TEMPLATES,
 };
 pub use logs::{
     escape_like, normalize_level, parse_docker_timestamp, parse_line, partition_day,

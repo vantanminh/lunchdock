@@ -29,6 +29,10 @@ pub struct AppState {
     pub config: Arc<Config>,
     pub cipher: Arc<Cipher>,
     pub login_limiter: Arc<LoginLimiter>,
+    /// Registration and token-endpoint requests, per client IP.
+    pub oauth_limiter: Arc<LoginLimiter>,
+    /// MCP JSON-RPC requests, per client IP.
+    pub mcp_limiter: Arc<LoginLimiter>,
     pub local_driver: Arc<LocalDriver>,
     pub agents: Arc<AgentRegistry>,
     pub backup_slots: Arc<BackupSlots>,
@@ -45,6 +49,10 @@ impl AppState {
         let cipher = Arc::new(Cipher::new(*config.master_key()));
         let per_minute = NonZeroU32::new(10).expect("login quota");
         let login_limiter = Arc::new(RateLimiter::keyed(Quota::per_minute(per_minute)));
+        let oauth_per_minute = NonZeroU32::new(30).expect("oauth quota");
+        let oauth_limiter = Arc::new(RateLimiter::keyed(Quota::per_minute(oauth_per_minute)));
+        let mcp_per_minute = NonZeroU32::new(300).expect("mcp quota");
+        let mcp_limiter = Arc::new(RateLimiter::keyed(Quota::per_minute(mcp_per_minute)));
         let local_driver = Arc::new(
             LocalDriver::connect(&config.data_dir, config.docker_socket.as_deref())
                 .with_cache_admin(&config.cache_admin_url)
@@ -55,6 +63,8 @@ impl AppState {
             config: Arc::new(config),
             cipher,
             login_limiter,
+            oauth_limiter,
+            mcp_limiter,
             local_driver,
             agents: Arc::new(AgentRegistry::default()),
             backup_slots: Arc::new(Mutex::new(HashMap::new())),

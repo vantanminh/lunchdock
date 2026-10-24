@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE mcp_access_tokens\n        SET revoked_at = COALESCE(revoked_at, now())\n        WHERE grant_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b7263be547d039662606532deaf15b56fc87430bf8a79330fbaac8ef68fd255b"
+}

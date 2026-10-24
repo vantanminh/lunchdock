@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, client_id, scopes, created_at, revoked_at\n        FROM mcp_grants\n        WHERE id = $1\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "client_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "scopes",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "revoked_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "2898f78e6d6476f79bd583cf2b2b7e984b0acb875720a6cf6a860e02a62a086b"
+}

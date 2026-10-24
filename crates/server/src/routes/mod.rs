@@ -11,6 +11,7 @@ pub mod github_repos;
 pub mod health;
 pub mod load;
 pub mod logs;
+pub mod mcp;
 pub mod monitoring;
 pub mod stacks;
 pub mod system;

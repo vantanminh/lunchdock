@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE mcp_grants SET last_used_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4ef18d059c330d4b8a409de93e44f8ac97d33bff3505b8a75154d5f9bdfd2ade"
+}

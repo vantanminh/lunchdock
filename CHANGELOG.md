@@ -8,6 +8,9 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+### Added
+- **AI agents can control Rudder.** Add the panel address ending in `/mcp` to an agent. You sign in, pick **Full control** (read and change every setting and all data), **Read everything**, **Operate**, **Watch**, or a custom set of permissions. The agent gets a short-lived access token that refreshes on its own for 90 days. Using a refresh token twice revokes that approval. Revoke an agent from **Admin → AI agents**.
+
 ## [0.3.1] - 2026-10-16
 
 ### Fixed
