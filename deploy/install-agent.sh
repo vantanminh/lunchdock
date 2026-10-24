@@ -166,7 +166,7 @@ if [ "$edge" -eq 1 ]; then
 		printf '      email: "%s"\n' "$(printf '%s' "$email" | tr -d '"\\\n')" >>"$NODE_DATA/traefik/traefik.yml"
 	fi
 	[ -f "$NODE_DATA/cache/rules.json" ] || printf '{"version":0,"sites":[],"policies":[]}\n' >"$NODE_DATA/cache/rules.json"
-	if ! docker inspect rudder-traefik >/dev/null 2>&1; then
+	if ! docker container inspect rudder-traefik >/dev/null 2>&1; then
 		docker pull -q "$TRAEFIK_IMAGE" >/dev/null
 		docker run -d --name rudder-traefik --restart unless-stopped \
 			--network rudder-proxy -p 80:80 -p 443:443 \
@@ -174,7 +174,7 @@ if [ "$edge" -eq 1 ]; then
 			-v "$NODE_DATA/traefik:/etc/rudder/traefik" \
 			"$TRAEFIK_IMAGE" --configFile=/etc/rudder/traefik/traefik.yml >/dev/null
 	fi
-	if ! docker inspect rudder-cache >/dev/null 2>&1; then
+	if ! docker container inspect rudder-cache >/dev/null 2>&1; then
 		if docker image inspect "$CACHE_IMAGE" >/dev/null 2>&1 || docker pull "$CACHE_IMAGE" >/dev/null 2>&1; then
 			docker run -d --name rudder-cache --restart unless-stopped \
 				--network rudder-proxy -p 127.0.0.1:9090:9090 \

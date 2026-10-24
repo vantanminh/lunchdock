@@ -147,7 +147,7 @@ database_url() {
 # --- backup of a running installation ---------------------------------------
 if [ -n "$backup" ]; then
 	ensure_docker
-	docker inspect "$PANEL" >/dev/null 2>&1 || die "the panel container '$PANEL' is not running here"
+	docker container inspect "$PANEL" >/dev/null 2>&1 || die "the panel container '$PANEL' is not running here"
 	passphrase="$(read_secret "${RUDDER_BACKUP_PASSPHRASE:-}" RUDDER_BACKUP_PASSPHRASE 'Backup passphrase (12+ characters)')"
 	umask 077
 	RUDDER_BACKUP_PASSPHRASE="$passphrase" docker exec -e RUDDER_BACKUP_PASSPHRASE "$PANEL" \
@@ -162,7 +162,7 @@ fi
 ensure_docker
 if [ -n "$restore" ]; then
 	[ -f "$restore" ] || die "$restore does not exist"
-	if docker inspect "$PANEL" >/dev/null 2>&1; then
+	if docker container inspect "$PANEL" >/dev/null 2>&1; then
 		[ "$force" -eq 1 ] || die "a panel is already installed; pass --force to replace its data with the backup"
 		info "stopping the running panel"
 		docker rm -f "$PANEL" >/dev/null
@@ -206,7 +206,7 @@ done
 # the control plane was protected is replaced; its data lives on a volume or in
 # $DATA, so nothing is lost.
 unprotected() {
-	score="$(docker inspect -f '{{.HostConfig.OomScoreAdj}}' "$1" 2>/dev/null)" || return 1
+	score="$(docker container inspect -f '{{.HostConfig.OomScoreAdj}}' "$1" 2>/dev/null)" || return 1
 	[ "${score:-0}" -ge 0 ]
 }
 if unprotected rudder-postgres; then
@@ -218,7 +218,7 @@ if unprotected rudder-traefik; then
 	docker rm -f rudder-traefik >/dev/null
 fi
 
-if ! docker inspect rudder-postgres >/dev/null 2>&1; then
+if ! docker container inspect rudder-postgres >/dev/null 2>&1; then
 	info "starting rudder-postgres"
 	docker run -d --name rudder-postgres --restart unless-stopped \
 		--network rudder-internal \
@@ -273,7 +273,7 @@ info "writing the Traefik configuration"
 	echo "        entryPoint: web"
 	[ -z "$email" ] || printf '      email: "%s"\n' "$email"
 } >"$DATA/traefik/traefik.yml"
-if ! docker inspect rudder-traefik >/dev/null 2>&1; then
+if ! docker container inspect rudder-traefik >/dev/null 2>&1; then
 	info "starting rudder-traefik"
 	docker run -d --name rudder-traefik --restart unless-stopped \
 		--network rudder-proxy -p 80:80 -p 443:443 \
@@ -282,7 +282,7 @@ if ! docker inspect rudder-traefik >/dev/null 2>&1; then
 		"$TRAEFIK_IMAGE" --configFile=/etc/rudder/traefik/traefik.yml >/dev/null
 fi
 CACHE_MEMORY="${RUDDER_CACHE_MEMORY:-512m}"
-if ! docker inspect rudder-cache >/dev/null 2>&1; then
+if ! docker container inspect rudder-cache >/dev/null 2>&1; then
 	if docker image inspect "$CACHE_IMAGE" >/dev/null 2>&1 || docker pull -q "$CACHE_IMAGE" >/dev/null 2>&1; then
 		info "starting rudder-cache"
 		docker run -d --name rudder-cache --restart unless-stopped \
@@ -295,7 +295,7 @@ if ! docker inspect rudder-cache >/dev/null 2>&1; then
 		info "could not pull $CACHE_IMAGE; HTTP caching stays off until it is available"
 	fi
 fi
-if docker inspect rudder-cache >/dev/null 2>&1; then
+if docker container inspect rudder-cache >/dev/null 2>&1; then
 	docker update --memory "$CACHE_MEMORY" --memory-reservation 64m rudder-cache >/dev/null 2>&1 || true
 fi
 

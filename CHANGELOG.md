@@ -9,7 +9,7 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 ## [Unreleased]
 
 ### Fixed
-- **Re-running the installer protects the database and Traefik.** Containers created before they were protected kept a normal OOM score, so the panel showed "partly protected" and the kernel could stop them first. `install.sh` now recreates them (their data is kept).
+- **Re-running the installer protects the database and Traefik.** Containers created before they were protected kept a normal OOM score, so the panel showed "partly protected" and the kernel could stop them first. `install.sh` now recreates them (their data is kept). It also checks for the container itself, not a volume of the same name, so a missing database or Traefik container is created again.
 - **Re-running the installer no longer starts an old panel.** `install.sh` now pulls the newest `latest` panel image every time. Before, a copy pulled earlier was reused, and a panel updated since then stopped with "migration was previously applied but is missing".
 
 ## [0.5.1] - 2026-10-24
