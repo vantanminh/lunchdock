@@ -456,13 +456,24 @@ async fn agent_enrolls_connects_runs_commands_and_ships_telemetry(pool: PgPool) 
     // Stopping the agent marks the server offline and records it.
     agent.abort();
     panel.wait_for_status(&server_id, "offline").await;
-    let offline_events = count(
-        &pool,
-        "SELECT count(*) FROM system_events WHERE server_id = $1 AND kind = 'server.offline'",
-        &server_id,
-    )
-    .await;
-    assert!(offline_events >= 1);
+    // The event is written just after the status flips, so wait for it.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let offline_events = count(
+            &pool,
+            "SELECT count(*) FROM system_events WHERE server_id = $1 AND kind = 'server.offline'",
+            &server_id,
+        )
+        .await;
+        if offline_events >= 1 {
+            break;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "no server.offline event was recorded"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
     let unavailable = rudder_server::node_driver(&panel.state, server_id.parse().unwrap()).await;
     assert!(unavailable.is_err());
 
