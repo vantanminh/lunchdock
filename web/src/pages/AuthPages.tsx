@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api, ApiError } from "../api";
 import { rememberSession, useAuth } from "../auth";
@@ -79,9 +79,23 @@ export function SetupPage() {
   );
 }
 
+/** Only the agent approval flow may leave the sign-in page for a specific path. */
+function safeNext(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
+    return null;
+  }
+  const path = value.split("?")[0];
+  if (path === "/oauth/authorize" || path === "/mcp/consent") {
+    return value;
+  }
+  return null;
+}
+
 export function LoginPage() {
   const t = useT();
   const { needsSetup, loading, refresh, user } = useAuth();
+  const [params] = useSearchParams();
+  const next = safeNext(params.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");
@@ -92,7 +106,7 @@ export function LoginPage() {
     return <Navigate to="/setup" replace />;
   }
   if (!loading && user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={next ?? "/"} replace />;
   }
 
   async function onSubmit(event: FormEvent) {

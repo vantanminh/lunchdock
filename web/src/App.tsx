@@ -10,6 +10,12 @@ import { useDarkTheme } from "./theme";
 import { DashboardPage } from "./pages/Dashboard";
 import { LoginPage, SetupPage } from "./pages/AuthPages";
 
+const AgentConsentPage = lazy(() =>
+  import("./pages/AgentConsentPage").then((m) => ({ default: m.AgentConsentPage })),
+);
+const AgentsPage = lazy(() =>
+  import("./pages/AgentsPage").then((m) => ({ default: m.AgentsPage })),
+);
 const AccountPage = lazy(() =>
   import("./pages/AccountPage").then((m) => ({ default: m.AccountPage })),
 );
@@ -108,6 +114,8 @@ function AppRoutes() {
         <Route path="git/github" element={<GitHubCallbackPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="tokens" element={<TokensPage />} />
+        <Route path="agents" element={<AgentsPage />} />
+        <Route path="mcp/consent" element={<AgentConsentPage />} />
         <Route path="audit" element={<AuditPage />} />
         <Route path="system" element={<SystemPage />} />
         <Route path="account" element={<AccountPage />} />

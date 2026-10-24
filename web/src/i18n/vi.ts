@@ -1391,4 +1391,64 @@ export const vi: Record<string, string> = {
   "{name} is stopping": "{name} đang dừng",
   "{queued} queued builds will not run and {running} running builds are stopped. Services keep their current version.": "{queued} build đang chờ sẽ không chạy và {running} build đang chạy sẽ bị dừng. Các dịch vụ giữ nguyên phiên bản hiện tại.",
   "{used} used of {total}": "Đã dùng {used} trên {total}",
+
+  "AI agents": "Tác nhân AI",
+  "An agent connects to this address and asks you to approve what it may do. Full control can read and change every setting and all data.":
+    "Một tác nhân kết nối vào địa chỉ này và xin bạn duyệt những gì nó được phép làm. Toàn quyền có thể đọc và sửa mọi cài đặt và toàn bộ dữ liệu.",
+  "Connection address": "Địa chỉ kết nối",
+  "In the agent, add a remote MCP server with this address. You will sign in and pick a permission template.":
+    "Trong tác nhân, thêm một máy chủ MCP từ xa với địa chỉ này. Bạn sẽ đăng nhập và chọn một mẫu quyền.",
+  "Address copied": "Đã chép địa chỉ",
+  "Approved agents": "Tác nhân đã duyệt",
+  "No agents yet. Connect one with the address above.":
+    "Chưa có tác nhân nào. Hãy kết nối bằng địa chỉ ở trên.",
+  "Full control": "Toàn quyền",
+  "Read everything": "Đọc mọi thứ",
+  Watch: "Theo dõi",
+  Custom: "Tùy chọn",
+  "Used {time}": "Dùng {time}",
+  "Not used yet": "Chưa dùng",
+  "Revoke {name}? It will have to be approved again.":
+    "Thu hồi {name}? Tác nhân sẽ phải được duyệt lại.",
+  "Agent revoked": "Đã thu hồi tác nhân",
+  "Could not revoke the agent": "Không thu hồi được tác nhân",
+  "Approve an agent": "Duyệt một tác nhân",
+  "{name} wants to control this panel.": "{name} muốn điều khiển panel này.",
+  "An agent wants to control this panel.": "Một tác nhân muốn điều khiển panel này.",
+  Permissions: "Quyền",
+  "Something is missing": "Thiếu thông tin",
+  "Open this page from the agent. The sign-in request was incomplete.":
+    "Hãy mở trang này từ tác nhân. Yêu cầu đăng nhập chưa đủ.",
+  "After you approve, the browser returns to {url}.":
+    "Sau khi bạn duyệt, trình duyệt sẽ quay lại {url}.",
+  "Read and change every setting and all data.": "Đọc và sửa mọi cài đặt và toàn bộ dữ liệu.",
+  "Read every setting and all data. Cannot change anything.":
+    "Đọc mọi cài đặt và toàn bộ dữ liệu. Không thể sửa gì.",
+  "Deploy and manage apps, caches, logs, and monitors. Cannot change users, tokens, or panel updates.":
+    "Triển khai và quản lý ứng dụng, bộ nhớ đệm, nhật ký và giám sát. Không thể sửa người dùng, token hay bản cập nhật panel.",
+  "Read health, logs, metrics, and cache stats.":
+    "Đọc tình trạng, nhật ký, số liệu và thống kê bộ nhớ đệm.",
+  "Choose each area this agent may read or change.":
+    "Chọn từng phần tác nhân này được đọc hoặc sửa.",
+  "Users, sessions, API tokens, and the audit log":
+    "Người dùng, phiên đăng nhập, token API và nhật ký kiểm tra",
+  "Servers, projects, environments, and services": "Máy chủ, dự án, môi trường và dịch vụ",
+  "Agent install tokens": "Token cài agent",
+  "Domains, certificates, registries, and deploys":
+    "Tên miền, chứng chỉ, registry và lần triển khai",
+  "Git providers and builds": "Nhà cung cấp Git và bản build",
+  "Managed databases": "Cơ sở dữ liệu được quản lý",
+  "Backups and S3 destinations": "Bản sao lưu và đích S3",
+  "Compose stacks and app templates": "Stack Compose và mẫu ứng dụng",
+  "HTTP cache policies, purge, and stats": "Chính sách bộ nhớ đệm HTTP, xóa cache và thống kê",
+  "Logs and retention": "Nhật ký và thời gian lưu",
+  "Metrics, alerts, and notifications": "Số liệu, cảnh báo và thông báo",
+  "Panel settings, load, and updates": "Cài đặt panel, tải và bản cập nhật",
+  Change: "Sửa",
+  Read: "Đọc",
+  "Shown in the list of approved agents. Optional.":
+    "Hiện trong danh sách tác nhân đã duyệt. Có thể để trống.",
+  "Approving…": "Đang duyệt…",
+  Approve: "Duyệt",
+  "Could not approve the agent": "Không duyệt được tác nhân",
 };
