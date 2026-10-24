@@ -8,6 +8,9 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+### Fixed
+- **A cancelled stack is free as soon as its deployment ends.** Cancelling, failing, or finishing a stack action updates the stack and the deployment together, so the stack does not stay on Deploying after the deployment is already over and the next action is accepted.
+
 ### Added
 - **Git stacks run on extra servers.** A stack whose compose file is in Git can deploy on a server that runs the agent. Rudder copies the repository's files to that server and leaves files you created there, such as a database directory mounted into the stack, in place. The agent has to be connected. A repository larger than 512 MiB is refused.
 - **Cached pages can be kept on disk.** A cache policy has a disk budget. Leave it blank and caching stays in memory, as before. Set it and responses are kept on disk across a cache restart, while the busiest ones stay in memory. The Cache page shows how much disk is in use.
