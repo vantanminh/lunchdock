@@ -8,6 +8,9 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+### Fixed
+- **Re-running the installer no longer starts an old panel.** `install.sh` now pulls the newest `latest` panel image every time. Before, a copy pulled earlier was reused, and a panel updated since then stopped with "migration was previously applied but is missing".
+
 ## [0.5.1] - 2026-10-24
 
 ### Fixed

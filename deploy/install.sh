@@ -194,7 +194,12 @@ done
 
 info "pulling images"
 for image in "$POSTGRES_IMAGE" "$TRAEFIK_IMAGE" "$PANEL_IMAGE"; do
-	docker image inspect "$image" >/dev/null 2>&1 || docker pull -q "$image" >/dev/null || die "could not pull $image"
+	# ":latest" moves with every release, so a copy pulled earlier is stale and
+	# an old panel would refuse a database a newer one already migrated.
+	if [ "$image" != "$PANEL_IMAGE" ] || [ "$tag" != "latest" ]; then
+		docker image inspect "$image" >/dev/null 2>&1 && continue
+	fi
+	docker pull -q "$image" >/dev/null || die "could not pull $image"
 done
 
 if ! docker inspect rudder-postgres >/dev/null 2>&1; then
