@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { lazy, useState, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ApiError } from "./api";
@@ -15,6 +15,12 @@ const AgentConsentPage = lazy(() =>
 );
 const AgentsPage = lazy(() =>
   import("./pages/AgentsPage").then((m) => ({ default: m.AgentsPage })),
+);
+const AccessAdminPage = lazy(() =>
+  import("./pages/AccessAdminPage").then((m) => ({ default: m.AccessAdminPage })),
+);
+const AccessPortalPage = lazy(() =>
+  import("./pages/AccessPortalPage").then((m) => ({ default: m.AccessPortalPage })),
 );
 const AccountPage = lazy(() =>
   import("./pages/AccountPage").then((m) => ({ default: m.AccountPage })),
@@ -58,6 +64,9 @@ const ServersPage = lazy(() =>
 const ServicePage = lazy(() =>
   import("./pages/ServicePage").then((m) => ({ default: m.ServicePage })),
 );
+const SecurityPage = lazy(() =>
+  import("./pages/SecurityPage").then((m) => ({ default: m.SecurityPage })),
+);
 const SystemPage = lazy(() =>
   import("./pages/SystemPage").then((m) => ({ default: m.SystemPage })),
 );
@@ -90,6 +99,14 @@ function AppRoutes() {
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route
+        path="/access"
+        element={
+          <Suspense fallback={null}>
+            <AccessPortalPage />
+          </Suspense>
+        }
+      />
+      <Route
         element={
           <Guard>
             <Shell />
@@ -109,6 +126,8 @@ function AppRoutes() {
         <Route path="s3-destinations" element={<S3DestinationsPage />} />
         <Route path="cache" element={<CachePoliciesPage />} />
         <Route path="certificates" element={<CertificatesPage />} />
+        <Route path="security" element={<SecurityPage />} />
+        <Route path="access-admin" element={<AccessAdminPage />} />
         <Route path="registries" element={<RegistriesPage />} />
         <Route path="git" element={<GitProvidersPage />} />
         <Route path="git/github" element={<GitHubCallbackPage />} />

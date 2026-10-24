@@ -15,6 +15,7 @@ export function AccountPage() {
   const [code, setCode] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
   const [disableCode, setDisableCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
   async function changePassword(event: FormEvent) {
     event.preventDefault();
@@ -50,10 +51,11 @@ export function AccountPage() {
   async function enableTotp(event: FormEvent) {
     event.preventDefault();
     try {
-      await api("/api/v1/me/totp/enable", {
+      const saved = await api<{ recovery_codes: string[] }>("/api/v1/me/totp/enable", {
         method: "POST",
         body: JSON.stringify({ code }),
       });
+      setRecoveryCodes(saved.recovery_codes);
       setSetup(null);
       setCode("");
       toast.success(t("Authenticator enabled"));
@@ -162,6 +164,18 @@ export function AccountPage() {
                 </Field>
                 <Button type="submit">{t("Enable")}</Button>
               </form>
+            ) : null}
+            {recoveryCodes.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted">
+                  {t("Save these recovery codes. Each one signs you in once if you lose the authenticator.")}
+                </p>
+                <ul className="font-mono text-sm">
+                  {recoveryCodes.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
           </div>
         )}

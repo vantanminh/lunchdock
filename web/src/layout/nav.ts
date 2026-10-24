@@ -23,6 +23,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: msg("Operate"),
     items: [
       ["/monitoring", msg("Monitoring"), "activity"],
+      ["/security", msg("Security"), "shield"],
       ["/load", msg("Load"), "gauge"],
       ["/alerts", msg("Alerts"), "bell"],
       ["/logs", msg("Logs"), "logs"],
@@ -43,6 +44,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: msg("Admin"),
     items: [
       ["/users", msg("Users"), "users"],
+      ["/access-admin", msg("Rudder Access"), "lock"],
       ["/tokens", msg("API tokens"), "key"],
       ["/agents", msg("AI agents"), "command"],
       ["/audit", msg("Audit log"), "history"],

@@ -328,6 +328,8 @@ export function DomainsPanel({
 }) {
   const t = useT();
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Domain | null>(null);
+  const queryClient = useQueryClient();
   const domains = useQuery({
     queryKey: ["domains", serviceId],
     queryFn: () => api<Domain[]>(`/api/v1/services/${serviceId}/domains`),
@@ -410,6 +412,29 @@ export function DomainsPanel({
                   <span title={domain.published ? undefined : t("waiting for agent")}>
                     <Badge value={domain.published ? "active" : "pending"} />
                   </span>
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => setEditing(domain)}>
+                      {t("Edit")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      quiet
+                      onClick={() => {
+                        void api(`/api/v1/domains/${domain.id}`, { method: "DELETE" })
+                          .then(async () => {
+                            toast.success(t("Domain removed"));
+                            await queryClient.invalidateQueries({ queryKey: ["domains", serviceId] });
+                          })
+                          .catch((error: unknown) =>
+                            toast.error(
+                              error instanceof ApiError ? error.message : t("Could not remove the domain"),
+                            ),
+                          );
+                      }}
+                    >
+                      {t("Delete")}
+                    </Button>
+                  </div>
                 </Td>
               </tr>
             ))}
@@ -422,6 +447,15 @@ export function DomainsPanel({
           stackServices={stackServices}
           mainService={mainService}
           onClose={() => setAdding(false)}
+        />
+      ) : null}
+      {editing ? (
+        <EditDomainDialog
+          domain={editing}
+          serviceId={serviceId}
+          stackServices={stackServices}
+          mainService={mainService}
+          onClose={() => setEditing(null)}
         />
       ) : null}
     </>
@@ -579,6 +613,222 @@ function AddDomainDialog({
         </div>
       </form>
     </Dialog>
+  );
+}
+
+function EditDomainDialog({
+  domain,
+  serviceId,
+  stackServices,
+  mainService,
+  onClose,
+}: {
+  domain: Domain;
+  serviceId: string;
+  stackServices: string[];
+  mainService?: string | null;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const queryClient = useQueryClient();
+  const [host, setHost] = useState(domain.host);
+  const [port, setPort] = useState(String(domain.target_port));
+  const [sslMode, setSslMode] = useState(domain.ssl_mode);
+  const [composeService, setComposeService] = useState(domain.compose_service ?? "");
+  const isStack = stackServices.length > 0;
+  const save = useMutation({
+    mutationFn: () =>
+      api(`/api/v1/domains/${domain.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          host,
+          target_port: Number(port),
+          ssl_mode: sslMode,
+          compose_service: isStack ? composeService : undefined,
+        }),
+      }),
+    onSuccess: async () => {
+      toast.success(t("Domain updated"));
+      await queryClient.invalidateQueries({ queryKey: ["domains", serviceId] });
+      onClose();
+    },
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : t("Could not update the domain")),
+  });
+  return (
+    <Dialog
+      open
+      variant="drawer"
+      onClose={onClose}
+      title={t("Edit domain")}
+      description={t("Change the hostname, port, or certificate mode. Rudder updates routing immediately.")}
+    >
+      <form
+        className="grid gap-5"
+        onSubmit={(event: FormEvent) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <Field label={t("Host")}>
+          <TextInput required value={host} onChange={(event) => setHost(event.target.value)} />
+        </Field>
+        <Field label={t("Port")} hint={t("The port your app listens on inside the container.")}>
+          <TextInput value={port} onChange={(event) => setPort(event.target.value)} />
+        </Field>
+        {isStack ? (
+          <Field label={t("Compose service")}>
+            <Select value={composeService} onChange={(event) => setComposeService(event.target.value)}>
+              <option value="">
+                {mainService ? t("Main service ({name})", { name: mainService }) : t("Main service")}
+              </option>
+              {stackServices.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
+        <PickField label={t("SSL")} options={SSL_MODES} value={sslMode} onPick={setSslMode} />
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t("Cancel")}
+          </Button>
+          <Button type="submit" disabled={save.isPending}>
+            {t("Save")}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+export function ServiceAccess({
+  serviceId,
+  kind,
+  spec,
+}: {
+  serviceId: string;
+  kind: string;
+  spec: Record<string, unknown>;
+}) {
+  const t = useT();
+  const queryClient = useQueryClient();
+  const isolation = spec.network_isolation !== false;
+  const internalIp = typeof spec.internal_ip === "string" ? spec.internal_ip : "";
+  const policy = useQuery({
+    queryKey: ["access-policy", serviceId],
+    queryFn: () => api<Schemas["AccessPolicyView"]>(`/api/v1/access/services/${serviceId}`),
+  });
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [emails, setEmails] = useState<string | null>(null);
+  const loaded = policy.data;
+  const accessOn = enabled ?? loaded?.enabled ?? false;
+  const emailText =
+    emails ??
+    (loaded?.rules ?? [])
+      .map((rule) => rule.email)
+      .filter((email): email is string => Boolean(email))
+      .join("\n");
+  const network = useMutation({
+    mutationFn: (next: boolean) =>
+      api(`/api/v1/services/${serviceId}/network`, {
+        method: "PATCH",
+        body: JSON.stringify({ isolation: next }),
+      }),
+    onSuccess: async () => {
+      toast.success(t("Network isolation updated. It applies on the next deploy."));
+      await queryClient.invalidateQueries({ queryKey: ["service", serviceId] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : t("Could not update network isolation")),
+  });
+  const savePolicy = useMutation({
+    mutationFn: () =>
+      api(`/api/v1/access/services/${serviceId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          enabled: accessOn,
+          rules: emailText
+            .split(/[,\n]/)
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .map((email) => ({ kind: "email", email })),
+        }),
+      }),
+    onSuccess: async () => {
+      toast.success(t("Rudder Access updated"));
+      await queryClient.invalidateQueries({ queryKey: ["access-policy", serviceId] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : t("Could not update Rudder Access")),
+  });
+  const rotate = useMutation({
+    mutationFn: () =>
+      api<Schemas["AccessTokenCreated"]>(`/api/v1/access/services/${serviceId}/token`, { method: "POST" }),
+    onSuccess: (body) => {
+      toast.success(t("Service token rotated. Copy it now; Rudder also injects it on the next deploy."));
+      void navigator.clipboard.writeText(body.token).catch(() => undefined);
+    },
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : t("Could not rotate the service token")),
+  });
+  return (
+    <>
+      {kind !== "database" ? (
+        <Card
+          title={t("Network isolation")}
+          description={t(
+            "On by default. Each app keeps its own address on the internal network, so two apps can both listen on port 80. Turn it off only when this app must publish a host port.",
+          )}
+        >
+          <p className="mb-3 text-sm text-muted">
+            {isolation
+              ? t("Isolation is on. Reach this app through a domain.")
+              : t("Isolation is off. Host ports are published and can collide.")}
+            {internalIp ? ` ${t("Internal address {ip}", { ip: internalIp })}` : ""}
+          </p>
+          <Button variant="secondary" disabled={network.isPending} onClick={() => network.mutate(!isolation)}>
+            {isolation ? t("Turn isolation off") : t("Turn isolation on")}
+          </Button>
+        </Card>
+      ) : null}
+      <Card
+        title={t("Rudder Access")}
+        description={t(
+          "When this is on, Rudder checks a session before the app sees a request. Add email addresses, or manage departments from Rudder Access.",
+        )}
+      >
+        <form
+          className="grid gap-3"
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault();
+            savePolicy.mutate();
+          }}
+        >
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={accessOn}
+              onChange={(event) => setEnabled(event.target.checked)}
+            />
+            {t("Require Rudder Access")}
+          </label>
+          <Field label={t("Allowed emails")} hint={t("One address per line, or separated by commas.")}>
+            <TextArea value={emailText} onChange={(event) => setEmails(event.target.value)} />
+          </Field>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={savePolicy.isPending}>
+              {t("Save")}
+            </Button>
+            <Button type="button" variant="secondary" disabled={rotate.isPending} onClick={() => rotate.mutate()}>
+              {loaded?.token_configured ? t("Rotate service token") : t("Create service token")}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </>
   );
 }
 

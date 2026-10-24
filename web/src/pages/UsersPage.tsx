@@ -113,9 +113,11 @@ export function UsersPage() {
                 <p className="text-sm text-muted">{row.email}</p>
               </div>
               <div className="flex items-center gap-2">
+                {row.is_owner ? <span className="text-sm text-muted">{t("Owner")}</span> : null}
                 <select
                   className="h-10 rounded-md border border-line bg-paper px-2 text-sm"
                   value={row.role}
+                  disabled={row.is_owner}
                   onChange={(event) =>
                     updateRole.mutate({ id: row.id, role: event.target.value as Role })
                   }
@@ -123,7 +125,11 @@ export function UsersPage() {
                   <option value="viewer">{t("viewer")}</option>
                   <option value="admin">{t("admin")}</option>
                 </select>
-                <Button quiet disabled={row.id === user.id} onClick={() => remove.mutate(row.id)}>
+                <Button
+                  quiet
+                  disabled={row.id === user.id || row.is_owner}
+                  onClick={() => remove.mutate(row.id)}
+                >
                   {t("Delete")}
                 </Button>
               </div>

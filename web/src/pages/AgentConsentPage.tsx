@@ -47,13 +47,13 @@ function templateCopy(t: (key: string) => string, id: string): { name: string; s
       return {
         name: t("Operate"),
         summary: t(
-          "Deploy and manage apps, caches, logs, and monitors. Cannot change users, tokens, or panel updates.",
+          "Deploy and manage apps, Access, security, caches, logs, and monitors. Cannot change users, tokens, or panel updates.",
         ),
       };
     case "observer":
       return {
         name: t("Watch"),
-        summary: t("Read health, logs, metrics, and cache stats."),
+        summary: t("Read health, logs, metrics, cache stats, and security checks."),
       };
     default:
       return { name: t("Custom"), summary: t("Choose each area this agent may read or change.") };
@@ -84,6 +84,10 @@ function areaLabel(t: (key: string) => string, group: string): string {
       return t("Logs and retention");
     case "monitoring":
       return t("Metrics, alerts, and notifications");
+    case "access":
+      return t("Rudder Access people, departments, and app sign-in");
+    case "security":
+      return t("Security checks, SSL activity, and rate limits");
     default:
       return t("Panel settings, load, and updates");
   }

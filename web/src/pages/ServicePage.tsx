@@ -12,6 +12,7 @@ import {
   DeploymentsPanel,
   DeployImageCard,
   DomainsPanel,
+  ServiceAccess,
   EnvironmentPanel,
   GitSourceCard,
   type ServiceDetail,
@@ -421,7 +422,12 @@ function Panel({
     case "environment":
       return <EnvironmentPanel serviceId={id} isStack={isStack} />;
     case "domains":
-      return <DomainsPanel serviceId={id} stackServices={stackServices} mainService={mainService} />;
+      return (
+        <>
+          <ServiceAccess serviceId={id} kind={service.kind} spec={service.spec} />
+          <DomainsPanel serviceId={id} stackServices={stackServices} mainService={mainService} />
+        </>
+      );
     case "cache":
       return <ServiceCachePanel serviceId={id} />;
     case "metrics":
