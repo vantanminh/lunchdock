@@ -189,7 +189,7 @@ pub async fn deploy_service(
         }
     };
     let env = match runtime_env(state, service.id).await {
-        Ok(env) => env,
+        Ok(env) => access_env(state, service.id, env).await,
         Err(error) => {
             mark_failed(
                 state,
@@ -219,7 +219,10 @@ pub async fn deploy_service(
         image: image.clone(),
         env,
         command: resources.command,
-        ports: resources.ports,
+        ports: rudder_core::isolated_ports(
+            resources.ports,
+            rudder_core::network_isolation_enabled(&service.spec),
+        ),
         volumes: resources.volumes,
         memory_bytes: resources.memory_bytes,
         nano_cpus: resources.nano_cpus,
@@ -303,6 +306,8 @@ pub async fn deploy_service(
             } else if previous_id.is_some() {
                 logs.push_str("previous container stopped\n");
             }
+            let _ =
+                note_internal_ip(driver.as_ref(), state, service.id, &output.container_id).await;
             if let Ok(digest) = driver.image_digest(&image).await {
                 let _ = sqlx::query!(
                     r#"UPDATE services SET current_digest = $2, updated_at = now() WHERE id = $1"#,
@@ -416,7 +421,7 @@ pub(crate) async fn roll_built_image(state: &AppState, roll: BuiltRollout) -> Re
         }
     };
     let env = match runtime_env(state, service.id).await {
-        Ok(env) => env,
+        Ok(env) => access_env(state, service.id, env).await,
         Err(error) => {
             mark_failed(
                 state,
@@ -446,7 +451,10 @@ pub(crate) async fn roll_built_image(state: &AppState, roll: BuiltRollout) -> Re
         image: roll.image.clone(),
         env,
         command: resources.command,
-        ports: resources.ports,
+        ports: rudder_core::isolated_ports(
+            resources.ports,
+            rudder_core::network_isolation_enabled(&service.spec),
+        ),
         volumes: resources.volumes,
         memory_bytes: resources.memory_bytes,
         nano_cpus: resources.nano_cpus,
@@ -539,6 +547,8 @@ pub(crate) async fn roll_built_image(state: &AppState, roll: BuiltRollout) -> Re
                     format_args!("previous container was left running: {error}\n"),
                 );
             }
+            let _ =
+                note_internal_ip(driver.as_ref(), state, service.id, &output.container_id).await;
             finish_deployment(state, roll.deployment_id, "succeeded", None, &logs).await?;
             let _ = sqlx::query!(
                 r#"UPDATE services SET status = 'running', updated_at = now() WHERE id = $1"#,
@@ -882,6 +892,64 @@ pub(crate) async fn registry_auth(
         username: row.username.clone().unwrap_or_default(),
         password,
     }))
+}
+
+async fn note_internal_ip(
+    driver: &dyn rudder_core::NodeDriver,
+    state: &AppState,
+    service_id: Uuid,
+    container_id: &str,
+) {
+    let Ok(Some(address)) = driver.container_ipv4(container_id).await else {
+        return;
+    };
+    if address.parse::<std::net::Ipv4Addr>().is_err() {
+        return;
+    }
+    let _ = sqlx::query!(
+        r#"UPDATE services SET spec = spec || $2, updated_at = now() WHERE id = $1"#,
+        service_id,
+        json!({ "internal_ip": address }),
+    )
+    .execute(&state.pool)
+    .await;
+}
+
+async fn access_env(
+    state: &AppState,
+    service_id: Uuid,
+    mut env: Vec<(String, String)>,
+) -> Vec<(String, String)> {
+    let enabled = sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM access_policies WHERE service_id = $1 AND enabled
+        ) AS "enabled!"
+        "#,
+        service_id
+    )
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(false);
+    if !enabled {
+        return env;
+    }
+    let Ok(Some(token)) = crate::routes::access::service_token(state, service_id).await else {
+        return env;
+    };
+    let mut extra = vec![
+        ("RUDDER_ACCESS_TOKEN".to_owned(), token),
+        ("RUDDER_ACCESS_SERVICE".to_owned(), service_id.to_string()),
+    ];
+    if let Some(url) = state.config.public_url.clone() {
+        extra.push(("RUDDER_ACCESS_URL".to_owned(), url));
+    }
+    for (key, value) in extra {
+        if !env.iter().any(|(existing, _)| existing == &key) {
+            env.push((key, value));
+        }
+    }
+    env
 }
 
 async fn runtime_env(

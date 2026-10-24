@@ -119,7 +119,12 @@ impl Template {
                 )));
             }
         }
-        transform_compose(&self.slug, &self.compose, &[self.main_service.as_str()])?;
+        transform_compose(
+            &self.slug,
+            &self.compose,
+            &[self.main_service.as_str()],
+            true,
+        )?;
         Ok(())
     }
 

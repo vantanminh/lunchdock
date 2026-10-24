@@ -3,6 +3,7 @@
 //! Infrastructure crates depend on this crate. It does not talk to Docker,
 //! PostgreSQL, or the network.
 
+mod access;
 mod backup;
 mod buildspec;
 mod cache;
@@ -14,12 +15,15 @@ mod driver;
 mod envelope;
 mod envfile;
 mod error;
+mod exposure;
 mod github_app;
 mod guard;
 mod image_ref;
+mod isolate;
 mod logs;
 mod mcp;
 mod metrics;
+mod ratelimit;
 mod release;
 mod retention;
 mod rollout;
@@ -30,6 +34,10 @@ mod traefik;
 mod validate;
 mod webhook;
 
+pub use access::{
+    accept_turnstile, access_allowed, department_closure, parse_turnstile, safe_return_path,
+    AccessRule, Membership, TurnstileResult, ACCESS_LOGIN_ACTION,
+};
 pub use backup::{
     dump_command, dump_extension, filter_databases, mysql_list_databases_command, object_key,
     redis_bgsave_command, redis_persistence_command, restore_command, retry_backoff_secs,
@@ -67,6 +75,7 @@ pub use envfile::{
     parse_env_text, EnvEntry, EnvParse, EnvParseError, MAX_ENV_VALUE_BYTES, MAX_IMPORT_ENTRIES,
 };
 pub use error::Error;
+pub use exposure::{classify_probe, host_is_ip, Exposure, Probe, PROBES};
 pub use github_app::{
     github_app_jwt, github_app_manifest, github_repo_full_name, is_private_host, validate_app_name,
     validate_github_login, AppManifest,
@@ -81,6 +90,7 @@ pub use image_ref::{
     container_name, image_registry, normalize_registry, select_registry, validate_registry_url,
     RegistryRecord,
 };
+pub use isolate::{isolated_ports, network_isolation_enabled};
 pub use logs::{
     escape_like, normalize_level, parse_docker_timestamp, parse_line, partition_day,
     partitions_to_drop, validate_source as validate_log_source, ParsedLog, LOG_LEVELS,
@@ -95,6 +105,9 @@ pub use metrics::{
     parse_meminfo, parse_net_dev, parse_proc_stat, percent, rate, read_host_stats, resolution_for,
     step_alert, validate_alert_kind, AlertState, AlertTransition, CpuTimes, HostStats, Resolution,
     ALERT_KINDS, SAMPLE_INTERVAL_SECS,
+};
+pub use ratelimit::{
+    decide as decide_rate, validate_rate_rule, Bucket, RateDecision, RateKey, RateRequest, RateRule,
 };
 pub use release::{
     in_maintenance_window, newer_releases, parse_maintenance_window, parse_sha256sums,
@@ -113,8 +126,8 @@ pub use stack::{
 };
 pub use template::{ResolvedTemplate, Template, TemplateVariable, VariableKind};
 pub use traefik::{
-    preview_hostname, render_dynamic_config, validate_host, validate_path_prefix, ProxyRoute,
-    TlsMaterial, TlsMode, PROXY_NETWORK, TRAEFIK_CERT_DIR, TRAEFIK_CONTAINER,
+    preview_hostname, render_dynamic_config, validate_host, validate_path_prefix, EdgeGate,
+    ProxyRoute, TlsMaterial, TlsMode, PROXY_NETWORK, TRAEFIK_CERT_DIR, TRAEFIK_CONTAINER,
 };
 pub use validate::{validate_env_key, validate_image_ref, validate_name};
 pub use webhook::{evaluate_hook, verify_github_signature, HookInput, HookKind, HookOutcome};

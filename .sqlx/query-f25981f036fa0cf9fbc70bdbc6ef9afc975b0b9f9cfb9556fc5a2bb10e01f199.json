@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM rate_limit_blocks WHERE created_at < now() - interval '24 hours'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f25981f036fa0cf9fbc70bdbc6ef9afc975b0b9f9cfb9556fc5a2bb10e01f199"
+}

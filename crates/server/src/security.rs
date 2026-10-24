@@ -12,6 +12,11 @@ use crate::state::AppState;
 
 const CSP: &str = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 
+/// The Access sign-in page loads Cloudflare Turnstile from Cloudflare's host.
+/// The widget is an iframe and calls back to that host. Other panel pages stay
+/// on the stricter policy.
+const ACCESS_CSP: &str = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+
 pub async fn middleware(State(state): State<AppState>, request: Request, next: Next) -> Response {
     let secure = state.config.cookie_secure;
     let path = request.uri().path().to_owned();
@@ -25,7 +30,9 @@ pub async fn middleware(State(state): State<AppState>, request: Request, next: N
         HeaderName::from_static("permissions-policy"),
         "camera=(), microphone=(), geolocation=()",
     );
-    if !path.starts_with("/api/docs") {
+    if path == "/access" || path.starts_with("/access/") {
+        insert(headers, header::CONTENT_SECURITY_POLICY, ACCESS_CSP);
+    } else if !path.starts_with("/api/docs") {
         insert(headers, header::CONTENT_SECURITY_POLICY, CSP);
     }
     if secure {

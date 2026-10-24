@@ -1,0 +1,96 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE domains\n            SET host = $2, path_prefix = $3, target_port = $4, https_redirect = $5, ssl_mode = $6,\n                certificate_id = $7, basic_auth_user = COALESCE($8, basic_auth_user),\n                compose_service = $9\n            WHERE id = $1\n            RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,\n                      certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "service_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "host",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "path_prefix",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "target_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "https_redirect",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "ssl_mode",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "certificate_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "basic_auth_user",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "cache_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "is_preview",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "compose_service",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4",
+        "Bool",
+        "Text",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "43c2e8d3f1e528130d368167391bc73846cd2ffb3ff665e6ff414d59aca26e28"
+}

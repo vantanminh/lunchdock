@@ -32,6 +32,18 @@ pub struct ProxyRoute {
     pub tls: TlsMode,
     pub basic_auth_user: Option<String>,
     pub basic_auth_hash: Option<String>,
+    /// Ask the panel before Traefik forwards the request.
+    pub gate: bool,
+    /// Also publish `/_rudder` on this host so Access can set a cookie.
+    pub access_handoff: bool,
+}
+
+/// How Traefik reaches the panel for the shared gate.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EdgeGate {
+    pub secret: String,
+    pub panel_container: String,
+    pub panel_port: u16,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,12 +137,26 @@ fn is_ipv4(value: &str) -> bool {
 pub fn render_dynamic_config(
     routes: &[ProxyRoute],
     certs: &[TlsMaterial],
+    gate: Option<&EdgeGate>,
 ) -> Result<String, Error> {
     // Traefik's file provider rejects empty sections such as `middlewares: {}`,
     // so only sections with entries are written.
+    let needs_gate = routes
+        .iter()
+        .any(|route| route.gate || route.access_handoff);
+    if needs_gate {
+        let Some(gate) = gate else {
+            return Err(Error::Validation(
+                "a gated route needs the panel gate settings".into(),
+            ));
+        };
+        validate_gate(gate)?;
+    }
     let mut routers = String::new();
     let mut services = String::new();
     let mut middlewares = String::new();
+    let mut handoff_hosts = std::collections::BTreeSet::new();
+    let mut needs_panel = false;
     for route in routes {
         validate_route(route)?;
         let rule = format!(
@@ -140,28 +166,18 @@ pub fn render_dynamic_config(
         routers.push_str(&format!("    {}:\n", route.name));
         routers.push_str(&format!("      rule: \"{rule}\"\n"));
         routers.push_str(&format!("      service: {}\n", route.name));
-        match route.tls {
-            TlsMode::None => {
-                routers.push_str("      entryPoints:\n        - web\n");
-            }
-            TlsMode::LetsEncrypt => {
-                routers.push_str("      entryPoints:\n        - websecure\n");
-                routers.push_str("      tls:\n        certResolver: letsencrypt\n");
-            }
-            TlsMode::Custom => {
-                routers.push_str("      entryPoints:\n        - websecure\n");
-                routers.push_str("      tls: {}\n");
-            }
+        write_tls(&mut routers, route.tls);
+        let mut middleware_names = Vec::new();
+        if route.gate {
+            middleware_names.push("rudder-gate".to_owned());
         }
         if let (Some(user), Some(hash)) = (&route.basic_auth_user, &route.basic_auth_hash) {
-            routers.push_str(&format!(
-                "      middlewares:\n        - {}-auth\n",
-                route.name
-            ));
+            middleware_names.push(format!("{}-auth", route.name));
             middlewares.push_str(&format!("    {}-auth:\n", route.name));
             middlewares.push_str("      basicAuth:\n        users:\n");
             middlewares.push_str(&format!("          - \"{user}:{hash}\"\n"));
         }
+        write_middlewares(&mut routers, &middleware_names);
         if route.https_redirect && route.tls != TlsMode::None {
             routers.push_str(&format!("    {}-http:\n", route.name));
             routers.push_str(&format!("      rule: \"{rule}\"\n"));
@@ -176,11 +192,48 @@ pub fn render_dynamic_config(
                 "      redirectScheme:\n        scheme: https\n        permanent: true\n",
             );
         }
+        if route.access_handoff && handoff_hosts.insert(route.host.clone()) {
+            needs_panel = true;
+            let name = format!("{}cb", route.name);
+            crate::validate_name(&name)?;
+            routers.push_str(&format!("    {name}:\n"));
+            routers.push_str(&format!(
+                "      rule: \"Host(`{}`) && PathPrefix(`/_rudder`)\"\n",
+                route.host
+            ));
+            routers.push_str("      priority: 1000\n");
+            routers.push_str("      service: rudder-panel\n");
+            write_tls(&mut routers, route.tls);
+        }
         services.push_str(&format!("    {}:\n", route.name));
         services.push_str("      loadBalancer:\n        servers:\n");
         services.push_str(&format!(
             "          - url: \"http://{}:{}\"\n",
             route.container, route.port
+        ));
+    }
+    if routes.iter().any(|route| route.gate) {
+        let gate = gate.expect("checked above");
+        middlewares.push_str("    rudder-gate:\n");
+        middlewares.push_str("      forwardAuth:\n");
+        middlewares.push_str(&format!(
+            "        address: \"http://{}:{}/api/v1/edge/gate?k={}\"\n",
+            gate.panel_container, gate.panel_port, gate.secret
+        ));
+        middlewares.push_str("        trustForwardHeader: true\n");
+        middlewares.push_str("        authResponseHeaders:\n");
+        middlewares.push_str("          - X-Rudder-Access-Email\n");
+        middlewares.push_str("          - X-Rudder-Access-User\n");
+        middlewares.push_str("          - X-Rudder-Access-Departments\n");
+        middlewares.push_str("          - X-Rudder-Access-Ranks\n");
+    }
+    if needs_panel {
+        let gate = gate.expect("checked above");
+        services.push_str("    rudder-panel:\n");
+        services.push_str("      loadBalancer:\n        servers:\n");
+        services.push_str(&format!(
+            "          - url: \"http://{}:{}\"\n",
+            gate.panel_container, gate.panel_port
         ));
     }
     let mut yaml = String::from("# Written by Rudder. Changes are overwritten.\n");
@@ -204,6 +257,48 @@ pub fn render_dynamic_config(
         yaml.push_str(&format!("      keyFile: {}\n", cert.key_file));
     }
     Ok(yaml)
+}
+
+fn write_tls(routers: &mut String, tls: TlsMode) {
+    match tls {
+        TlsMode::None => {
+            routers.push_str("      entryPoints:\n        - web\n");
+        }
+        TlsMode::LetsEncrypt => {
+            routers.push_str("      entryPoints:\n        - websecure\n");
+            routers.push_str("      tls:\n        certResolver: letsencrypt\n");
+        }
+        TlsMode::Custom => {
+            routers.push_str("      entryPoints:\n        - websecure\n");
+            routers.push_str("      tls: {}\n");
+        }
+    }
+}
+
+fn write_middlewares(routers: &mut String, names: &[String]) {
+    if names.is_empty() {
+        return;
+    }
+    routers.push_str("      middlewares:\n");
+    for name in names {
+        routers.push_str(&format!("        - {name}\n"));
+    }
+}
+
+fn validate_gate(gate: &EdgeGate) -> Result<(), Error> {
+    crate::validate_name(&gate.panel_container)?;
+    if gate.panel_port == 0 {
+        return Err(Error::Validation("panel port is invalid".into()));
+    }
+    let ok = (32..=128).contains(&gate.secret.len())
+        && gate.secret.bytes().all(|byte| byte.is_ascii_hexdigit());
+    if ok {
+        Ok(())
+    } else {
+        Err(Error::Validation(
+            "gate secret must be 32 to 128 hex characters".into(),
+        ))
+    }
 }
 
 fn validate_route(route: &ProxyRoute) -> Result<(), Error> {
@@ -272,12 +367,14 @@ mod tests {
             tls,
             basic_auth_user: None,
             basic_auth_hash: None,
+            gate: false,
+            access_handoff: false,
         }
     }
 
     #[test]
     fn letsencrypt_uses_the_resolver_and_redirects() {
-        let yaml = render_dynamic_config(&[route(TlsMode::LetsEncrypt)], &[]).unwrap();
+        let yaml = render_dynamic_config(&[route(TlsMode::LetsEncrypt)], &[], None).unwrap();
         assert!(yaml.contains("Host(`app.example.com`) && PathPrefix(`/api`)"));
         assert!(yaml.contains("certResolver: letsencrypt"));
         assert!(yaml.contains("redirectScheme:"));
@@ -293,6 +390,7 @@ mod tests {
                 cert_file: format!("{TRAEFIK_CERT_DIR}/cert.crt"),
                 key_file: format!("{TRAEFIK_CERT_DIR}/cert.key"),
             }],
+            None,
         )
         .unwrap();
         assert!(yaml.contains("tls: {}"));
@@ -308,6 +406,42 @@ mod tests {
         assert!(validate_path_prefix("/").is_ok());
         assert!(validate_path_prefix("/api").is_ok());
         assert!(validate_path_prefix("/../etc").is_err());
+    }
+
+    #[test]
+    fn access_gate_and_handoff_are_written_once_per_host() {
+        let mut app = route(TlsMode::LetsEncrypt);
+        app.gate = true;
+        app.access_handoff = true;
+        let mut other = route(TlsMode::LetsEncrypt);
+        other.name = "other".into();
+        other.host = "other.example.com".into();
+        other.gate = true;
+        other.access_handoff = true;
+        let gate = EdgeGate {
+            secret: "ab".repeat(16),
+            panel_container: "rudder".into(),
+            panel_port: 3000,
+        };
+        let yaml = render_dynamic_config(&[app, other], &[], Some(&gate)).unwrap();
+        assert!(yaml.contains("forwardAuth:"));
+        assert!(yaml.contains("/api/v1/edge/gate?k=abababababababababababababababab"));
+        assert!(yaml.contains("PathPrefix(`/_rudder`)"));
+        assert!(yaml.contains("http://rudder:3000"));
+        assert_eq!(yaml.matches("rudder-gate:").count(), 1);
+        assert!(render_dynamic_config(
+            &[route(TlsMode::None)],
+            &[],
+            Some(&EdgeGate {
+                secret: "not-hex".into(),
+                panel_container: "rudder".into(),
+                panel_port: 3000,
+            })
+        )
+        .is_ok());
+        let mut gated = route(TlsMode::None);
+        gated.gate = true;
+        assert!(render_dynamic_config(&[gated], &[], None).is_err());
     }
 
     #[test]

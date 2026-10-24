@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE access_codes SET used_at = now()\n        WHERE email = $1 AND purpose = 'login' AND used_at IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "377ccecb8c9a3ba0b7bdd225b8d831be37aab63591826fd2e81af51a5c94d1d5"
+}

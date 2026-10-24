@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE access_settings SET gate_secret_enc = $1 WHERE id = TRUE AND gate_secret_enc IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3481478edafbcf3a3665ce50a3463f585fda94c2e1af5ef9f212bd517f4d4d3c"
+}

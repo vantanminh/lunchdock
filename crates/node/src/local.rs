@@ -300,6 +300,30 @@ impl NodeDriver for LocalDriver {
             .map_err(Self::node)
     }
 
+    async fn container_ipv4(&self, id: &str) -> Result<Option<String>, Error> {
+        let inspected = self
+            .docker()?
+            .inspect_container(id, None)
+            .await
+            .map_err(Self::node)?;
+        let Some(networks) = inspected
+            .network_settings
+            .and_then(|settings| settings.networks)
+        else {
+            return Ok(None);
+        };
+        let address = networks
+            .get(rudder_core::PROXY_NETWORK)
+            .and_then(|network| network.ip_address.clone())
+            .or_else(|| {
+                networks
+                    .values()
+                    .find_map(|network| network.ip_address.clone())
+            })
+            .filter(|address| address.parse::<std::net::Ipv4Addr>().is_ok());
+        Ok(address)
+    }
+
     async fn container_running(&self, id: &str) -> Result<bool, Error> {
         let inspected = self
             .docker()?

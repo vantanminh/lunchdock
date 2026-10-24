@@ -37,18 +37,23 @@ const GROUPS: &[(&str, &str)] = &[
     ("logs", "Logs and retention"),
     ("monitoring", "Metrics, alerts, and notifications"),
     ("system", "Panel settings, load, and updates"),
+    (
+        "access",
+        "Rudder Access people, departments, and app sign-in",
+    ),
+    ("security", "Security checks, SSL activity, and rate limits"),
 ];
 
 /// Every scope an agent can be given. Order is the order shown in the panel.
 pub static MCP_SCOPES: &[McpScope] = &build_scopes();
 
-const fn build_scopes() -> [McpScope; 24] {
+const fn build_scopes() -> [McpScope; 28] {
     let mut scopes = [McpScope {
         id: "",
         group: "",
         write: false,
         summary: "",
-    }; 24];
+    }; 28];
     let mut index = 0;
     let mut group_index = 0;
     while group_index < GROUPS.len() {
@@ -73,55 +78,41 @@ const fn build_scopes() -> [McpScope; 24] {
 }
 
 const fn read_id(group: &'static str) -> &'static str {
-    match group.as_bytes()[0] {
-        b'a' => match group.as_bytes()[1] {
-            b'u' => "auth:read",
-            _ => "agent:read",
-        },
-        b'c' => match group.as_bytes()[1] {
-            b'a' => match group.as_bytes()[2] {
-                b't' => "catalog:read",
-                _ => "cache:read",
-            },
-            _ => "",
-        },
-        b'e' => "edge:read",
-        b's' => match group.as_bytes()[1] {
-            b'o' => "source:read",
-            b't' => "stacks:read",
-            _ => "system:read",
-        },
-        b'd' => "databases:read",
-        b'b' => "backups:read",
-        b'l' => "logs:read",
-        b'm' => "monitoring:read",
+    match group.as_bytes() {
+        b"auth" => "auth:read",
+        b"catalog" => "catalog:read",
+        b"agent" => "agent:read",
+        b"edge" => "edge:read",
+        b"source" => "source:read",
+        b"databases" => "databases:read",
+        b"backups" => "backups:read",
+        b"stacks" => "stacks:read",
+        b"cache" => "cache:read",
+        b"logs" => "logs:read",
+        b"monitoring" => "monitoring:read",
+        b"system" => "system:read",
+        b"access" => "access:read",
+        b"security" => "security:read",
         _ => "",
     }
 }
 
 const fn write_id(group: &'static str) -> &'static str {
-    match group.as_bytes()[0] {
-        b'a' => match group.as_bytes()[1] {
-            b'u' => "auth:write",
-            _ => "agent:write",
-        },
-        b'c' => match group.as_bytes()[1] {
-            b'a' => match group.as_bytes()[2] {
-                b't' => "catalog:write",
-                _ => "cache:write",
-            },
-            _ => "",
-        },
-        b'e' => "edge:write",
-        b's' => match group.as_bytes()[1] {
-            b'o' => "source:write",
-            b't' => "stacks:write",
-            _ => "system:write",
-        },
-        b'd' => "databases:write",
-        b'b' => "backups:write",
-        b'l' => "logs:write",
-        b'm' => "monitoring:write",
+    match group.as_bytes() {
+        b"auth" => "auth:write",
+        b"catalog" => "catalog:write",
+        b"agent" => "agent:write",
+        b"edge" => "edge:write",
+        b"source" => "source:write",
+        b"databases" => "databases:write",
+        b"backups" => "backups:write",
+        b"stacks" => "stacks:write",
+        b"cache" => "cache:write",
+        b"logs" => "logs:write",
+        b"monitoring" => "monitoring:write",
+        b"system" => "system:write",
+        b"access" => "access:write",
+        b"security" => "security:write",
         _ => "",
     }
 }
@@ -142,12 +133,12 @@ pub const MCP_TEMPLATES: &[McpTemplate] = &[
     McpTemplate {
         id: "operator",
         name: "Operate",
-        summary: "Deploy and manage apps, caches, logs, and monitors. Cannot change users, tokens, or panel updates.",
+        summary: "Deploy and manage apps, Access, security, caches, logs, and monitors. Cannot change users, tokens, or panel updates.",
     },
     McpTemplate {
         id: "observer",
         name: "Watch",
-        summary: "Read health, logs, metrics, and cache stats.",
+        summary: "Read health, logs, metrics, cache stats, and security checks.",
     },
 ];
 
@@ -161,9 +152,18 @@ const OPERATOR_WRITE: &[&str] = &[
     "cache",
     "logs",
     "monitoring",
+    "access",
+    "security",
 ];
 const OPERATOR_READ_ONLY: &[&str] = &["backups", "system"];
-const OBSERVER: &[&str] = &["catalog", "logs", "monitoring", "cache", "system"];
+const OBSERVER: &[&str] = &[
+    "catalog",
+    "logs",
+    "monitoring",
+    "cache",
+    "system",
+    "security",
+];
 
 /// Scopes for a ready-made template. `None` when `id` is not a template
 /// (`custom` is resolved separately).
@@ -282,9 +282,14 @@ mod tests {
         assert!(!scopes.contains(&"auth:read"));
         assert!(!scopes.contains(&"system:write"));
         assert!(scopes.contains(&"system:read"));
+        assert!(scopes.contains(&"access:read"));
+        assert!(scopes.contains(&"access:write"));
+        assert!(scopes.contains(&"security:write"));
         let watch = scopes_for_template("observer").unwrap();
         assert!(watch.iter().all(|id| id.ends_with(":read")));
         assert!(watch.contains(&"logs:read"));
+        assert!(watch.contains(&"security:read"));
+        assert!(!watch.contains(&"access:read"));
         assert!(!watch.contains(&"auth:read"));
     }
 

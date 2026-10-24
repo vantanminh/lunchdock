@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, enabled, host, path_prefix, methods, limit_count, window_secs, burst, key_kind, header_name\n        FROM rate_limit_rules\n        ORDER BY name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "host",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "path_prefix",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "methods",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 6,
+        "name": "limit_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "window_secs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "burst",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "key_kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "header_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "57082a385d70e18b24267f948f2e9c4879360891623928db7521e2e916ed860f"
+}

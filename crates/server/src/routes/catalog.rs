@@ -130,6 +130,17 @@ pub struct CreateService {
 }
 
 #[derive(Deserialize, ToSchema)]
+pub struct UpdateNetwork {
+    pub isolation: bool,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct NetworkView {
+    pub isolation: bool,
+    pub internal_ip: Option<String>,
+}
+
+#[derive(Deserialize, ToSchema)]
 pub struct UpdateService {
     pub spec: Option<Value>,
     pub server_id: Option<Uuid>,
@@ -234,6 +245,10 @@ pub fn router() -> axum::Router<AppState> {
             get(get_service)
                 .patch(update_service)
                 .delete(delete_service),
+        )
+        .route(
+            "/api/v1/services/{id}/network",
+            axum::routing::patch(update_network),
         )
         .route("/api/v1/services/{id}/env", get(list_env).put(put_env))
         .route("/api/v1/services/{id}/env/import", post(import_env))
@@ -857,6 +872,50 @@ async fn get_service(
         return Err(not_found("service not found"));
     };
     Ok(Json(service_from_row(row)))
+}
+
+async fn update_network(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(body): Json<UpdateNetwork>,
+) -> Result<Json<NetworkView>, ApiError> {
+    auth.require_write()?;
+    let row = sqlx::query!(r#"SELECT kind, spec FROM services WHERE id = $1"#, id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(ApiError::database)?
+        .ok_or_else(|| not_found("service not found"))?;
+    if row.kind == "compose" {
+        let mut spec: crate::stacks::StackSpec = serde_json::from_value(row.spec)
+            .map_err(|_| bad("invalid_spec", "stored stack spec is not valid"))?;
+        spec.network_isolation = Some(body.isolation);
+        let routed = crate::stacks::routed_services(&state, id, &spec).await?;
+        crate::stacks::replan(&mut spec, &routed)?;
+        crate::stacks::save(&state, id, &spec).await?;
+        return Ok(Json(NetworkView {
+            isolation: body.isolation,
+            internal_ip: None,
+        }));
+    }
+    let spec = json!({ "network_isolation": body.isolation });
+    sqlx::query!(
+        r#"UPDATE services SET spec = spec || $2, updated_at = now() WHERE id = $1"#,
+        id,
+        spec,
+    )
+    .execute(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    let internal_ip = row
+        .spec
+        .get("internal_ip")
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+    Ok(Json(NetworkView {
+        isolation: body.isolation,
+        internal_ip,
+    }))
 }
 
 async fn update_service(

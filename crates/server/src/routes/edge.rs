@@ -93,6 +93,8 @@ pub struct UpdateDomain {
     pub basic_auth_user: Option<String>,
     pub basic_auth_password: Option<String>,
     pub clear_basic_auth: Option<bool>,
+    /// Empty string selects the stack's main service.
+    pub compose_service: Option<String>,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -497,6 +499,12 @@ async fn update_domain(
     if let Some(certificate_id) = certificate_id {
         let _ = load_certificate(&state, certificate_id).await?;
     }
+    let compose_service = if let Some(name) = body.compose_service.as_deref() {
+        let requested = if name.is_empty() { None } else { Some(name) };
+        crate::stacks::domain_target(&state, current.service_id, requested).await?
+    } else {
+        current.compose_service.clone()
+    };
     let (user, hash) = if body.clear_basic_auth.unwrap_or(false) {
         (None, None)
     } else if body.basic_auth_password.is_some() {
@@ -512,7 +520,8 @@ async fn update_domain(
             r#"
             UPDATE domains
             SET host = $2, path_prefix = $3, target_port = $4, https_redirect = $5, ssl_mode = $6,
-                certificate_id = $7, basic_auth_user = $8, basic_auth_hash = $9
+                certificate_id = $7, basic_auth_user = $8, basic_auth_hash = $9,
+                compose_service = $10
             WHERE id = $1
             RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,
                       certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service
@@ -526,6 +535,7 @@ async fn update_domain(
             certificate_id,
             user,
             hash,
+            compose_service,
         )
         .fetch_one(&state.pool)
         .await
@@ -535,7 +545,8 @@ async fn update_domain(
             r#"
             UPDATE domains
             SET host = $2, path_prefix = $3, target_port = $4, https_redirect = $5, ssl_mode = $6,
-                certificate_id = $7, basic_auth_user = COALESCE($8, basic_auth_user)
+                certificate_id = $7, basic_auth_user = COALESCE($8, basic_auth_user),
+                compose_service = $9
             WHERE id = $1
             RETURNING id, service_id, host, path_prefix, target_port, https_redirect, ssl_mode,
                       certificate_id, basic_auth_user, cache_enabled, is_preview, compose_service
@@ -548,6 +559,7 @@ async fn update_domain(
             normalized.ssl_mode,
             certificate_id,
             user,
+            compose_service,
         )
         .fetch_one(&state.pool)
         .await

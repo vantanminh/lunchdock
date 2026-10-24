@@ -55,6 +55,372 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Internal apps the signed-in person may open */
+        get: operations["get_v1_access_apps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Set the app session cookie after sign-in */
+        get: operations["get_v1_access_callback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/departments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Access departments */
+        get: operations["get_v1_access_departments"];
+        put?: never;
+        /** Create an Access department (admin, write) */
+        post: operations["post_v1_access_departments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/departments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an Access department (admin, write) */
+        delete: operations["delete_v1_access_departments__id_"];
+        options?: never;
+        head?: never;
+        /** Update an Access department (admin, write) */
+        patch: operations["patch_v1_access_departments__id_"];
+        trace?: never;
+    };
+    "/api/v1/access/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List people allowed into Rudder Access */
+        get: operations["get_v1_access_identities"];
+        put?: never;
+        /** Allow a person into Rudder Access (admin, write) */
+        post: operations["post_v1_access_identities"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/identities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a Rudder Access person (admin, write) */
+        delete: operations["delete_v1_access_identities__id_"];
+        options?: never;
+        head?: never;
+        /** Update a Rudder Access person (admin, write) */
+        patch: operations["patch_v1_access_identities__id_"];
+        trace?: never;
+    };
+    "/api/v1/access/identities/{id}/memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a person's departments and ranks */
+        get: operations["get_v1_access_identities__id__memberships"];
+        /** Replace a person's departments and ranks (admin, write) */
+        put: operations["put_v1_access_identities__id__memberships"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/introspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check an app session with the app's service token */
+        post: operations["post_v1_access_introspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/login/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email a 6-digit Rudder Access code */
+        post: operations["post_v1_access_login_email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/login/email/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in to Rudder Access with an email code */
+        post: operations["post_v1_access_login_email_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/login/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Google sign-in for Rudder Access */
+        post: operations["post_v1_access_login_google"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/login/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Finish Google sign-in for Rudder Access */
+        get: operations["get_v1_access_login_google_callback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign out of Rudder Access */
+        post: operations["post_v1_access_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in Rudder Access person */
+        get: operations["get_v1_access_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/public": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Rudder Access sign-in settings */
+        get: operations["get_v1_access_public"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/ranks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Access ranks */
+        get: operations["get_v1_access_ranks"];
+        put?: never;
+        /** Create an Access rank (admin, write) */
+        post: operations["post_v1_access_ranks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/ranks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an Access rank (admin, write) */
+        delete: operations["delete_v1_access_ranks__id_"];
+        options?: never;
+        head?: never;
+        /** Update an Access rank (admin, write) */
+        patch: operations["patch_v1_access_ranks__id_"];
+        trace?: never;
+    };
+    "/api/v1/access/services/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read whether an app requires Rudder Access */
+        get: operations["get_v1_access_services__id_"];
+        /** Set who may open an app (admin, write) */
+        put: operations["put_v1_access_services__id_"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/services/{id}/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate the token an app uses to check sessions (admin, write) */
+        post: operations["post_v1_access_services__id__token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rudder Access provider settings */
+        get: operations["get_v1_access_settings"];
+        /** Save Rudder Access provider settings (admin, write) */
+        put: operations["put_v1_access_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/settings/test-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a test email through the configured provider (admin, write) */
+        post: operations["post_v1_access_settings_test-email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/enroll": {
         parameters: {
             query?: never;
@@ -486,6 +852,23 @@ export interface paths {
         get?: never;
         /** Turn caching on or off for a domain and choose its policy */
         put: operations["put_v1_domains__id__cache"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/edge/gate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Traefik asks this before forwarding to an app */
+        get: operations["get_v1_edge_gate"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1099,7 +1482,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Enable authenticator */
+        /** Enable authenticator and show recovery codes once */
         post: operations["post_v1_me_totp_enable"];
         delete?: never;
         options?: never;
@@ -1383,6 +1766,162 @@ export interface paths {
         put?: never;
         /** Test an S3 destination */
         post: operations["post_v1_s3-destinations__id__test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/edge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** HTTP and raw-IP request counts, and recent rate-limit blocks */
+        get: operations["get_v1_security_edge"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Findings from the latest finished security check */
+        get: operations["get_v1_security_findings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Security center summary */
+        get: operations["get_v1_security_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/rate-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shared rate limit rules */
+        get: operations["get_v1_security_rate-limits"];
+        put?: never;
+        /** Create a shared rate limit rule (admin, write) */
+        post: operations["post_v1_security_rate-limits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/rate-limits/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Allowed and blocked requests for the last day */
+        get: operations["get_v1_security_rate-limits_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/rate-limits/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a shared rate limit rule (admin, write) */
+        delete: operations["delete_v1_security_rate-limits__id_"];
+        options?: never;
+        head?: never;
+        /** Update a shared rate limit rule (admin, write) */
+        patch: operations["patch_v1_security_rate-limits__id_"];
+        trace?: never;
+    };
+    "/api/v1/security/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent security checks */
+        get: operations["get_v1_security_scans"];
+        put?: never;
+        /** Check deployed domains for exposed files (admin, write) */
+        post: operations["post_v1_security_scans"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/ssl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Certificate expiry and how domains use SSL */
+        get: operations["get_v1_security_ssl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/ssl/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent SSL events */
+        get: operations["get_v1_security_ssl_events"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1785,6 +2324,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/services/{id}/network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Turn network isolation on or off for one app (admin, write) */
+        patch: operations["patch_v1_services__id__network"];
         trace?: never;
     };
     "/api/v1/services/{id}/preview-domain": {
@@ -2429,6 +2985,134 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AccessApp: {
+            host?: string | null;
+            name: string;
+            /** Format: uuid */
+            service_id: string;
+        };
+        AccessDepartment: {
+            description: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: uuid */
+            parent_id?: string | null;
+            slug: string;
+        };
+        AccessDepartmentGrant: {
+            /** Format: int32 */
+            level?: number | null;
+            name: string;
+            rank?: string | null;
+            slug: string;
+        };
+        AccessEmailStart: {
+            email: string;
+            return_host?: string | null;
+            return_path?: string | null;
+            turnstile_token: string;
+        };
+        AccessEmailVerify: {
+            code: string;
+            email: string;
+            return_host?: string | null;
+            return_path?: string | null;
+            turnstile_token: string;
+        };
+        AccessGoogleStart: {
+            return_host?: string | null;
+            return_path?: string | null;
+            turnstile_token: string;
+        };
+        AccessGoogleUrl: {
+            url: string;
+        };
+        AccessIdentity: {
+            admin: boolean;
+            display_name: string;
+            email: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            last_login_at?: string | null;
+            owner: boolean;
+            status: string;
+        };
+        AccessIntrospect: {
+            departments: components["schemas"]["AccessDepartmentGrant"][];
+            display_name: string;
+            email: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        AccessIntrospectRequest: {
+            session: string;
+        };
+        AccessLoginResult: {
+            csrf_token: string;
+            redirect?: string | null;
+        };
+        AccessMe: {
+            admin: boolean;
+            csrf_token: string;
+            display_name: string;
+            email: string;
+            owner: boolean;
+        };
+        AccessMembership: {
+            /** Format: uuid */
+            department_id: string;
+            department_slug: string;
+            /** Format: uuid */
+            rank_id?: string | null;
+            rank_slug?: string | null;
+        };
+        AccessPolicyView: {
+            enabled: boolean;
+            rules: components["schemas"]["AccessRuleView"][];
+            token_configured: boolean;
+        };
+        AccessPublic: {
+            email: boolean;
+            google: boolean;
+            google_redirect_uri: string;
+            portal_host?: string | null;
+            ready: boolean;
+            site_key: string;
+        };
+        AccessRank: {
+            description: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            level: number;
+            name: string;
+            slug: string;
+        };
+        AccessRuleView: {
+            /** Format: uuid */
+            department_id?: string | null;
+            email?: string | null;
+            kind: string;
+            /** Format: uuid */
+            rank_id?: string | null;
+        };
+        AccessSettingsView: {
+            email_from: string;
+            email_provider: string;
+            email_ready: boolean;
+            google_client_id: string;
+            google_redirect_uri: string;
+            has_google_secret: boolean;
+            has_turnstile_secret: boolean;
+            portal_host?: string | null;
+            turnstile_hostnames: string[];
+            turnstile_site_key: string;
+        };
+        AccessTokenCreated: {
+            token: string;
+        };
         AlertKindView: {
             description: string;
             kind: string;
@@ -2534,6 +3218,15 @@ export interface components {
             started_at: string;
             status: string;
             trigger: string;
+        };
+        BlockView: {
+            /** Format: date-time */
+            created_at: string;
+            host: string;
+            ip: string;
+            path: string;
+            /** Format: uuid */
+            rule_id: string;
         };
         BuildAccepted: {
             /** Format: uuid */
@@ -2995,6 +3688,13 @@ export interface components {
             /** Format: int32 */
             target_port: number;
         };
+        EdgeStats: {
+            /** Format: int64 */
+            http_requests: number;
+            /** Format: int64 */
+            ip_requests: number;
+            recent_blocks: components["schemas"]["BlockView"][];
+        };
         EnrollRequest: {
             /** @description PKCS#10 request for the agent's own key, PEM. */
             csr_pem: string;
@@ -3388,6 +4088,12 @@ export interface components {
             scopes: string[];
             summary: string;
         };
+        MembershipInput: {
+            /** Format: uuid */
+            department_id: string;
+            /** Format: uuid */
+            rank_id?: string | null;
+        };
         MetricPoint: {
             /** Format: double */
             avg: number;
@@ -3428,6 +4134,10 @@ export interface components {
             series: components["schemas"]["MetricSeries"][];
             /** Format: date-time */
             since: string;
+        };
+        NetworkView: {
+            internal_ip?: string | null;
+            isolation: boolean;
         };
         PanelBackupRequest: {
             /** @description Also include log lines, metric samples, and sessions. */
@@ -3502,6 +4212,35 @@ export interface components {
             is_build_secret: boolean;
             key: string;
             value: string;
+        };
+        RateLimitStat: {
+            /** Format: int64 */
+            allowed: number;
+            /** Format: int64 */
+            blocked: number;
+            name: string;
+            /** Format: uuid */
+            rule_id: string;
+        };
+        RateLimitView: {
+            /** Format: int32 */
+            burst: number;
+            enabled: boolean;
+            header_name?: string | null;
+            host?: string | null;
+            /** Format: uuid */
+            id: string;
+            key_kind: string;
+            /** Format: int32 */
+            limit_count: number;
+            methods: string[];
+            name: string;
+            path_prefix: string;
+            /** Format: int32 */
+            window_secs: number;
+        };
+        RecoveryCodes: {
+            recovery_codes: string[];
         };
         RegistryView: {
             has_password: boolean;
@@ -3595,6 +4334,14 @@ export interface components {
              */
             ttl_secs: number;
         };
+        RuleInput: {
+            /** Format: uuid */
+            department_id?: string | null;
+            email?: string | null;
+            kind: string;
+            /** Format: uuid */
+            rank_id?: string | null;
+        };
         /** @description Every set field must match. An empty matcher matches every request. */
         RuleMatch: {
             /**
@@ -3618,6 +4365,10 @@ export interface components {
         RunAccepted: {
             /** Format: uuid */
             run_id: string;
+        };
+        SaveAccessPolicy: {
+            enabled: boolean;
+            rules: components["schemas"]["RuleInput"][];
         };
         SaveAlert: {
             channel_ids: string[];
@@ -3689,6 +4440,13 @@ export interface components {
             enabled?: boolean | null;
             name: string;
         };
+        SaveDepartment: {
+            description?: string | null;
+            name: string;
+            /** Format: uuid */
+            parent_id?: string | null;
+            slug: string;
+        };
         SaveDestination: {
             access_key_id?: string | null;
             bucket: string;
@@ -3697,6 +4455,74 @@ export interface components {
             path_style?: boolean | null;
             region?: string | null;
             secret_access_key?: string | null;
+        };
+        SaveIdentity: {
+            admin?: boolean | null;
+            display_name?: string | null;
+            email: string;
+            status?: string | null;
+        };
+        SaveMemberships: {
+            memberships: components["schemas"]["MembershipInput"][];
+        };
+        SaveRank: {
+            description?: string | null;
+            /** Format: int32 */
+            level: number;
+            name: string;
+            slug: string;
+        };
+        SaveRateLimit: {
+            /** Format: int32 */
+            burst?: number | null;
+            enabled?: boolean | null;
+            header_name?: string | null;
+            host?: string | null;
+            key_kind: string;
+            /** Format: int32 */
+            limit_count: number;
+            methods?: string[] | null;
+            name: string;
+            path_prefix?: string | null;
+            /** Format: int32 */
+            window_secs: number;
+        };
+        SecurityFindingView: {
+            /** Format: date-time */
+            created_at: string;
+            host: string;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            path?: string | null;
+            severity: string;
+            summary: string;
+        };
+        SecurityOverview: {
+            /** Format: int64 */
+            certificates: number;
+            /** Format: int64 */
+            expired: number;
+            /** Format: int64 */
+            expiring: number;
+            /** Format: int64 */
+            http_requests: number;
+            /** Format: int64 */
+            ip_requests: number;
+            /** Format: int64 */
+            open_findings: number;
+            /** Format: int64 */
+            rate_rules: number;
+        };
+        SecurityScanView: {
+            error?: string | null;
+            /** Format: date-time */
+            finished_at?: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            started_at: string;
+            status: string;
         };
         ServerUsage: {
             /** Format: double */
@@ -3836,6 +4662,35 @@ export interface components {
             strategy: string;
             webhook_secret?: string | null;
         };
+        SslCertificateStat: {
+            /** Format: int64 */
+            days_left?: number | null;
+            /** Format: int64 */
+            domains: number;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date-time */
+            not_after?: string | null;
+        };
+        SslEventView: {
+            /** Format: date-time */
+            created_at: string;
+            host?: string | null;
+            /** Format: int64 */
+            id: number;
+            kind: string;
+            summary: string;
+        };
+        SslSummary: {
+            certificates: components["schemas"]["SslCertificateStat"][];
+            /** Format: int64 */
+            custom: number;
+            /** Format: int64 */
+            letsencrypt: number;
+            /** Format: int64 */
+            none: number;
+        };
         StackGit: {
             branch: string;
             /** @description Path of the compose file inside the repository. */
@@ -3880,6 +4735,8 @@ export interface components {
             main_service?: string | null;
             /** @description Referenced variables with no value under Environment and no fallback in the file. */
             missing_variables: string[];
+            /** @description Host ports are not published. Missing means on. */
+            network_isolation: boolean;
             /** @description Open pull requests against the branch get their own copy of this stack. */
             preview_pull_requests: boolean;
             project: string;
@@ -3975,6 +4832,26 @@ export interface components {
             otpauth_url: string;
             secret: string;
         };
+        UpdateAccessSettings: {
+            clear_portal_host?: boolean | null;
+            cloudflare_account_id?: string | null;
+            cloudflare_api_token?: string | null;
+            email_from?: string | null;
+            email_provider?: string | null;
+            google_client_id?: string | null;
+            google_client_secret?: string | null;
+            portal_host?: string | null;
+            resend_api_key?: string | null;
+            smtp_host?: string | null;
+            smtp_password?: string | null;
+            /** Format: int32 */
+            smtp_port?: number | null;
+            smtp_security?: string | null;
+            smtp_username?: string | null;
+            turnstile_hostnames?: string[] | null;
+            turnstile_secret?: string | null;
+            turnstile_site_key?: string | null;
+        };
         UpdateCacheSettings: {
             /**
              * Format: int64
@@ -4014,6 +4891,8 @@ export interface components {
             /** Format: uuid */
             certificate_id?: string | null;
             clear_basic_auth?: boolean | null;
+            /** @description Empty string selects the stack's main service. */
+            compose_service?: string | null;
             host?: string | null;
             https_redirect?: boolean | null;
             path_prefix?: string | null;
@@ -4063,6 +4942,9 @@ export interface components {
             started_at: string;
             status: string;
             to_version: string;
+        };
+        UpdateNetwork: {
+            isolation: boolean;
         };
         UpdateOverview: {
             /** @description Why "Update now" is unavailable, if it is. */
@@ -4159,6 +5041,7 @@ export interface components {
             email: string;
             /** Format: uuid */
             id: string;
+            is_owner: boolean;
             role: string;
             totp_enabled: boolean;
         };
@@ -4232,6 +5115,642 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
+            };
+        };
+    };
+    get_v1_access_apps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Internal apps the signed-in person may open */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessApp"][];
+                };
+            };
+        };
+    };
+    get_v1_access_callback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Set the app session cookie after sign-in */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_v1_access_departments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List Access departments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessDepartment"][];
+                };
+            };
+        };
+    };
+    post_v1_access_departments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveDepartment"];
+            };
+        };
+        responses: {
+            /** @description Create an Access department (admin, write) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessDepartment"];
+                };
+            };
+        };
+    };
+    delete_v1_access_departments__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete an Access department (admin, write) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patch_v1_access_departments__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveDepartment"];
+            };
+        };
+        responses: {
+            /** @description Update an Access department (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessDepartment"];
+                };
+            };
+        };
+    };
+    get_v1_access_identities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List people allowed into Rudder Access */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessIdentity"][];
+                };
+            };
+        };
+    };
+    post_v1_access_identities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveIdentity"];
+            };
+        };
+        responses: {
+            /** @description Allow a person into Rudder Access (admin, write) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessIdentity"];
+                };
+            };
+        };
+    };
+    delete_v1_access_identities__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Remove a Rudder Access person (admin, write) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patch_v1_access_identities__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveIdentity"];
+            };
+        };
+        responses: {
+            /** @description Update a Rudder Access person (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessIdentity"];
+                };
+            };
+        };
+    };
+    get_v1_access_identities__id__memberships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List a person's departments and ranks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessMembership"][];
+                };
+            };
+        };
+    };
+    put_v1_access_identities__id__memberships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveMemberships"];
+            };
+        };
+        responses: {
+            /** @description Replace a person's departments and ranks (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessMembership"][];
+                };
+            };
+        };
+    };
+    post_v1_access_introspect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AccessIntrospectRequest"];
+            };
+        };
+        responses: {
+            /** @description Check an app session with the app's service token */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessIntrospect"];
+                };
+            };
+        };
+    };
+    post_v1_access_login_email: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AccessEmailStart"];
+            };
+        };
+        responses: {
+            /** @description Email a 6-digit Rudder Access code */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_v1_access_login_email_verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AccessEmailVerify"];
+            };
+        };
+        responses: {
+            /** @description Sign in to Rudder Access with an email code */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLoginResult"];
+                };
+            };
+        };
+    };
+    post_v1_access_login_google: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AccessGoogleStart"];
+            };
+        };
+        responses: {
+            /** @description Start Google sign-in for Rudder Access */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessGoogleUrl"];
+                };
+            };
+        };
+    };
+    get_v1_access_login_google_callback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finish Google sign-in for Rudder Access */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_v1_access_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sign out of Rudder Access */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_v1_access_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The signed-in Rudder Access person */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessMe"];
+                };
+            };
+        };
+    };
+    get_v1_access_public: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public Rudder Access sign-in settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessPublic"];
+                };
+            };
+        };
+    };
+    get_v1_access_ranks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List Access ranks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRank"][];
+                };
+            };
+        };
+    };
+    post_v1_access_ranks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveRank"];
+            };
+        };
+        responses: {
+            /** @description Create an Access rank (admin, write) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRank"];
+                };
+            };
+        };
+    };
+    delete_v1_access_ranks__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete an Access rank (admin, write) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patch_v1_access_ranks__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveRank"];
+            };
+        };
+        responses: {
+            /** @description Update an Access rank (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRank"];
+                };
+            };
+        };
+    };
+    get_v1_access_services__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read whether an app requires Rudder Access */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessPolicyView"];
+                };
+            };
+        };
+    };
+    put_v1_access_services__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveAccessPolicy"];
+            };
+        };
+        responses: {
+            /** @description Set who may open an app (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessPolicyView"];
+                };
+            };
+        };
+    };
+    post_v1_access_services__id__token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rotate the token an app uses to check sessions (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessTokenCreated"];
+                };
+            };
+        };
+    };
+    get_v1_access_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rudder Access provider settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessSettingsView"];
+                };
+            };
+        };
+    };
+    put_v1_access_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateAccessSettings"];
+            };
+        };
+        responses: {
+            /** @description Save Rudder Access provider settings (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessSettingsView"];
+                };
+            };
+        };
+    };
+    "post_v1_access_settings_test-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Send a test email through the configured provider (admin, write) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5031,6 +6550,24 @@ export interface operations {
             };
         };
     };
+    get_v1_edge_gate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Traefik asks this before forwarding to an app */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     delete_v1_environments__id_: {
         parameters: {
             query?: never;
@@ -5826,12 +7363,14 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Enable authenticator */
-            204: {
+            /** @description Enable authenticator and show recovery codes once */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
             };
         };
     };
@@ -6379,6 +7918,252 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TestResult"];
+                };
+            };
+        };
+    };
+    get_v1_security_edge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description HTTP and raw-IP request counts, and recent rate-limit blocks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EdgeStats"];
+                };
+            };
+        };
+    };
+    get_v1_security_findings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Findings from the latest finished security check */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityFindingView"][];
+                };
+            };
+        };
+    };
+    get_v1_security_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Security center summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityOverview"];
+                };
+            };
+        };
+    };
+    "get_v1_security_rate-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared rate limit rules */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitView"][];
+                };
+            };
+        };
+    };
+    "post_v1_security_rate-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveRateLimit"];
+            };
+        };
+        responses: {
+            /** @description Create a shared rate limit rule (admin, write) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitView"];
+                };
+            };
+        };
+    };
+    "get_v1_security_rate-limits_stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Allowed and blocked requests for the last day */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitStat"][];
+                };
+            };
+        };
+    };
+    "delete_v1_security_rate-limits__id_": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a shared rate limit rule (admin, write) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "patch_v1_security_rate-limits__id_": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveRateLimit"];
+            };
+        };
+        responses: {
+            /** @description Update a shared rate limit rule (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitView"];
+                };
+            };
+        };
+    };
+    get_v1_security_scans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent security checks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityScanView"][];
+                };
+            };
+        };
+    };
+    post_v1_security_scans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Check deployed domains for exposed files (admin, write) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityScanView"];
+                };
+            };
+        };
+    };
+    get_v1_security_ssl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Certificate expiry and how domains use SSL */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SslSummary"];
+                };
+            };
+        };
+    };
+    get_v1_security_ssl_events: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent SSL events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SslEventView"][];
                 };
             };
         };
@@ -7007,6 +8792,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LogsView"];
+                };
+            };
+        };
+    };
+    patch_v1_services__id__network: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateNetwork"];
+            };
+        };
+        responses: {
+            /** @description Turn network isolation on or off for one app (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkView"];
                 };
             };
         };

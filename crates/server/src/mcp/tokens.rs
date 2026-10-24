@@ -36,7 +36,7 @@ pub async fn load_access(state: &AppState, token: &str) -> Result<AuthUser, ApiE
     let row = sqlx::query!(
         r#"
         SELECT a.expires_at, a.revoked_at, g.id AS grant_id, g.scopes, g.revoked_at AS grant_revoked,
-               u.id AS user_id, u.email, u.display_name, u.role, u.totp_enabled
+               u.id AS user_id, u.email, u.display_name, u.role, u.totp_enabled, u.is_owner
         FROM mcp_access_tokens a
         JOIN mcp_grants g ON g.id = a.grant_id
         JOIN users u ON u.id = g.user_id
@@ -65,6 +65,7 @@ pub async fn load_access(state: &AppState, token: &str) -> Result<AuthUser, ApiE
         display_name: row.display_name,
         role: row.role,
         totp_enabled: row.totp_enabled,
+        is_owner: row.is_owner,
         csrf_token: None,
         scopes: row.scopes,
         via_token: true,

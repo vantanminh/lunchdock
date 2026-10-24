@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT kind, email, d.slug AS \"department?\", r.slug AS \"rank?\"\n        FROM access_rules rule\n        LEFT JOIN access_departments d ON d.id = rule.department_id\n        LEFT JOIN access_ranks r ON r.id = rule.rank_id\n        WHERE rule.service_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "department?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "rank?",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "82b1177ef8fc2895b2b6557bf752c5ab48180da9e9c508dfafdb630edf6daf30"
+}

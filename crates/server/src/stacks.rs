@@ -80,6 +80,10 @@ pub struct StackSpec {
     /// Set on a copy created for one pull request.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preview: Option<StackPreview>,
+    /// `None` means on. Host ports are not published, so two apps can listen on
+    /// the same container port. Turn this off only when the app must bind a host port.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network_isolation: Option<bool>,
 }
 
 /// A stack that exists only while a pull request is open.
@@ -465,7 +469,13 @@ pub fn replan(spec: &mut StackSpec, routed: &[String]) -> Result<(), ApiError> {
         return Ok(());
     }
     let routed: Vec<&str> = routed.iter().map(String::as_str).collect();
-    let plan = transform_compose(&spec.project, &spec.compose_yaml, &routed).map_err(core_error)?;
+    let plan = transform_compose(
+        &spec.project,
+        &spec.compose_yaml,
+        &routed,
+        spec.network_isolation.unwrap_or(true),
+    )
+    .map_err(core_error)?;
     spec.generated_yaml = plan.yaml;
     spec.warnings = plan.warnings;
     spec.containers = plan

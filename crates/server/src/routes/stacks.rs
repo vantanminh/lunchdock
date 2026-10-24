@@ -102,6 +102,8 @@ pub struct StackView {
     pub deploy_on_push: bool,
     /// Open pull requests against the branch get their own copy of this stack.
     pub preview_pull_requests: bool,
+    /// Host ports are not published. Missing means on.
+    pub network_isolation: bool,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -359,6 +361,7 @@ async fn stack_view(state: &AppState, id: Uuid) -> Result<StackView, ApiError> {
         build_on_deploy: spec.build_on_deploy,
         deploy_on_push: spec.deploy_on_push,
         preview_pull_requests: spec.preview_pull_requests,
+        network_isolation: spec.network_isolation.unwrap_or(true),
     })
 }
 
@@ -584,7 +587,7 @@ fn kind_name(kind: VariableKind) -> &'static str {
 }
 
 fn template_view(template: &Template) -> TemplateView {
-    let plan = rudder_core::transform_compose(&template.slug, &template.compose, &[]).ok();
+    let plan = rudder_core::transform_compose(&template.slug, &template.compose, &[], true).ok();
     let services = plan
         .as_ref()
         .map(|plan| plan.services.iter().map(|s| s.name.clone()).collect())

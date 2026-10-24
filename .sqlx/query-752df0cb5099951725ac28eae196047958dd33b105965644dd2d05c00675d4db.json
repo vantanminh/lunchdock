@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO access_service_tokens (service_id, token_hash, token_enc)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (service_id) DO UPDATE\n        SET token_hash = $2, token_enc = $3, created_at = now()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "752df0cb5099951725ac28eae196047958dd33b105965644dd2d05c00675d4db"
+}

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT d.host, d.ssl_mode, s.public_ip AS \"public_ip?\"\n        FROM domains d\n        JOIN services sv ON sv.id = d.service_id\n        JOIN servers s ON s.id = sv.server_id\n        WHERE NOT d.is_preview\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "host",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "ssl_mode",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "public_ip?",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "027f36e4a8cf95e479af1d3885516cf9df97f73b1df5bdbb8eda6184587b3227"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE access_identities SET google_sub = $2 WHERE id = $1 AND google_sub IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "28f49876baa6e9d2afce6183af40b850946286ede321a3b8761961b236af35b1"
+}

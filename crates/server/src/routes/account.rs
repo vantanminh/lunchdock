@@ -26,6 +26,7 @@ pub struct UserView {
     pub display_name: String,
     pub role: String,
     pub totp_enabled: bool,
+    pub is_owner: bool,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -57,6 +58,11 @@ pub struct PasswordChange {
 #[derive(Deserialize, ToSchema)]
 pub struct TotpEnable {
     code: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct RecoveryCodes {
+    pub recovery_codes: Vec<String>,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -156,6 +162,7 @@ fn view_of(user: &AuthUser) -> UserView {
         display_name: user.display_name.clone(),
         role: user.role.clone(),
         totp_enabled: user.totp_enabled,
+        is_owner: user.is_owner,
     }
 }
 
@@ -194,9 +201,9 @@ async fn setup(
     let password_hash = auth::hash_password(&body.password)?;
     let user = sqlx::query!(
         r#"
-        INSERT INTO users (email, display_name, password_hash, role)
-        VALUES ($1, $2, $3, 'admin')
-        RETURNING id, email, display_name, role, totp_enabled
+        INSERT INTO users (email, display_name, password_hash, role, is_owner)
+        VALUES ($1, $2, $3, 'admin', TRUE)
+        RETURNING id, email, display_name, role, totp_enabled, is_owner
         "#,
         email,
         display_name,
@@ -222,6 +229,7 @@ async fn setup(
         display_name: user.display_name,
         role: user.role,
         totp_enabled: user.totp_enabled,
+        is_owner: user.is_owner,
         csrf_token: None,
         scopes: vec!["read".into(), "write".into()],
         via_token: false,
@@ -251,7 +259,7 @@ async fn login(
     } else {
         sqlx::query!(
             r#"
-            SELECT id, email, display_name, password_hash, role, totp_enabled, totp_secret
+            SELECT id, email, display_name, password_hash, role, totp_enabled, totp_secret, is_owner, recovery_hashes
             FROM users
             WHERE email = $1
             "#,
@@ -298,7 +306,9 @@ async fn login(
             ));
         }
         let secret = decrypt_secret(&state, row.totp_secret.as_deref())?;
-        if !totp_matches(&secret, &row.email, &code)? {
+        if !totp_matches(&secret, &row.email, &code)?
+            && !consume_recovery(&state, row.id, &row.recovery_hashes, &code).await?
+        {
             return Err(invalid_credentials());
         }
     }
@@ -308,6 +318,7 @@ async fn login(
         display_name: row.display_name,
         role: row.role,
         totp_enabled: row.totp_enabled,
+        is_owner: row.is_owner,
         csrf_token: None,
         scopes: vec!["read".into(), "write".into()],
         via_token: false,
@@ -455,7 +466,7 @@ async fn totp_enable(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<TotpEnable>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<Json<RecoveryCodes>, ApiError> {
     let row = sqlx::query!(
         "SELECT email, totp_secret, totp_enabled FROM users WHERE id = $1",
         auth.id
@@ -478,9 +489,15 @@ async fn totp_enable(
             "authenticator code did not match",
         ));
     }
+    let codes = recovery_codes();
+    let hashes: Vec<String> = codes
+        .iter()
+        .map(|code| auth::sha256_hex(&code.replace('-', "")))
+        .collect();
     sqlx::query!(
-        "UPDATE users SET totp_enabled = TRUE, updated_at = now() WHERE id = $1",
-        auth.id
+        "UPDATE users SET totp_enabled = TRUE, recovery_hashes = $2, updated_at = now() WHERE id = $1",
+        auth.id,
+        &hashes,
     )
     .execute(&state.pool)
     .await
@@ -495,7 +512,9 @@ async fn totp_enable(
         None,
     )
     .await;
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(RecoveryCodes {
+        recovery_codes: codes,
+    }))
 }
 
 async fn totp_disable(
@@ -504,7 +523,7 @@ async fn totp_disable(
     Json(body): Json<TotpDisable>,
 ) -> Result<StatusCode, ApiError> {
     let row = sqlx::query!(
-        "SELECT email, password_hash, totp_secret, totp_enabled FROM users WHERE id = $1",
+        "SELECT email, password_hash, totp_secret, totp_enabled, recovery_hashes FROM users WHERE id = $1",
         auth.id
     )
     .fetch_one(&state.pool)
@@ -521,7 +540,9 @@ async fn totp_disable(
         return Err(invalid_credentials());
     }
     let secret = decrypt_secret(&state, row.totp_secret.as_deref())?;
-    if !totp_matches(&secret, &row.email, &body.code)? {
+    let matched = totp_matches(&secret, &row.email, &body.code)?
+        || consume_recovery(&state, auth.id, &row.recovery_hashes, &body.code).await?;
+    if !matched {
         return Err(ApiError::new(
             StatusCode::BAD_REQUEST,
             "invalid_totp",
@@ -529,7 +550,7 @@ async fn totp_disable(
         ));
     }
     sqlx::query!(
-        "UPDATE users SET totp_secret = NULL, totp_enabled = FALSE, updated_at = now() WHERE id = $1",
+        "UPDATE users SET totp_secret = NULL, totp_enabled = FALSE, recovery_hashes = '{}', updated_at = now() WHERE id = $1",
         auth.id
     )
     .execute(&state.pool)
@@ -555,7 +576,7 @@ async fn list_users(
     auth.require_admin()?;
     let rows = sqlx::query!(
         r#"
-        SELECT id, email, display_name, role, totp_enabled
+        SELECT id, email, display_name, role, totp_enabled, is_owner
         FROM users
         ORDER BY created_at
         "#
@@ -571,6 +592,7 @@ async fn list_users(
                 display_name: row.display_name,
                 role: row.role,
                 totp_enabled: row.totp_enabled,
+                is_owner: row.is_owner,
             })
             .collect(),
     ))
@@ -597,7 +619,7 @@ async fn create_user(
         r#"
         INSERT INTO users (email, display_name, password_hash, role)
         VALUES ($1, $2, $3, $4)
-        RETURNING id, email, display_name, role, totp_enabled
+        RETURNING id, email, display_name, role, totp_enabled, is_owner
         "#,
         email,
         display_name,
@@ -637,6 +659,7 @@ async fn create_user(
             display_name: user.display_name,
             role: user.role,
             totp_enabled: user.totp_enabled,
+            is_owner: user.is_owner,
         }),
     ))
 }
@@ -656,13 +679,14 @@ async fn update_user(
         ));
     }
     if body.role == "viewer" {
+        ensure_owner_stays(&state, id).await?;
         ensure_admin_remains(&state, id).await?;
     }
     let row = sqlx::query!(
         r#"
         UPDATE users SET role = $1, updated_at = now()
         WHERE id = $2
-        RETURNING id, email, display_name, role, totp_enabled
+        RETURNING id, email, display_name, role, totp_enabled, is_owner
         "#,
         body.role,
         id,
@@ -693,6 +717,7 @@ async fn update_user(
         display_name: user.display_name,
         role: user.role,
         totp_enabled: user.totp_enabled,
+        is_owner: user.is_owner,
     }))
 }
 
@@ -702,6 +727,7 @@ async fn delete_user(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     auth.require_write()?;
+    ensure_owner_stays(&state, id).await?;
     if auth.id == id {
         return Err(ApiError::new(
             StatusCode::BAD_REQUEST,
@@ -928,6 +954,61 @@ async fn user_count(state: &AppState) -> Result<i64, ApiError> {
         .await
         .map_err(ApiError::database)?;
     Ok(count)
+}
+
+async fn ensure_owner_stays(state: &AppState, id: Uuid) -> Result<(), ApiError> {
+    let owner = sqlx::query_scalar!(r#"SELECT is_owner FROM users WHERE id = $1"#, id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(ApiError::database)?;
+    if owner.unwrap_or(false) {
+        Err(ApiError::new(
+            StatusCode::CONFLICT,
+            "owner_protected",
+            "the owner account stays an administrator",
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+async fn consume_recovery(
+    state: &AppState,
+    id: Uuid,
+    hashes: &[String],
+    code: &str,
+) -> Result<bool, ApiError> {
+    let normalized = code.trim().to_ascii_lowercase().replace('-', "");
+    if normalized.len() < 8 {
+        return Ok(false);
+    }
+    let hashed = auth::sha256_hex(&normalized);
+    let Some(index) = hashes
+        .iter()
+        .position(|item| auth::tokens_eq(item, &hashed))
+    else {
+        return Ok(false);
+    };
+    let mut next = hashes.to_vec();
+    next.remove(index);
+    sqlx::query!(
+        r#"UPDATE users SET recovery_hashes = $2, updated_at = now() WHERE id = $1"#,
+        id,
+        &next,
+    )
+    .execute(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    Ok(true)
+}
+
+fn recovery_codes() -> Vec<String> {
+    (0..8)
+        .map(|_| {
+            let raw = hex::encode(rudder_core::random_bytes::<5>());
+            format!("{}-{}", &raw[..5], &raw[5..])
+        })
+        .collect()
 }
 
 async fn ensure_admin_remains(state: &AppState, changing: Uuid) -> Result<(), ApiError> {

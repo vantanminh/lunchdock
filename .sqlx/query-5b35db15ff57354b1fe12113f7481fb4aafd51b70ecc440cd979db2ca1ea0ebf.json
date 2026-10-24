@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE access_codes\n        SET attempts = $2, used_at = CASE WHEN $3 OR $2 >= 5 THEN now() ELSE used_at END\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5b35db15ff57354b1fe12113f7481fb4aafd51b70ecc440cd979db2ca1ea0ebf"
+}

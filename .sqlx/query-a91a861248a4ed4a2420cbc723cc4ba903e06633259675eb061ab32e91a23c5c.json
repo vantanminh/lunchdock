@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT m.department_id, d.slug AS department_slug, m.rank_id, r.slug AS \"rank_slug?\"\n        FROM access_memberships m\n        JOIN access_departments d ON d.id = m.department_id\n        LEFT JOIN access_ranks r ON r.id = m.rank_id\n        WHERE m.identity_id = $1\n        ORDER BY d.slug\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "department_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "department_slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "rank_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "rank_slug?",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "a91a861248a4ed4a2420cbc723cc4ba903e06633259675eb061ab32e91a23c5c"
+}

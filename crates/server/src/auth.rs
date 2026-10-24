@@ -33,6 +33,8 @@ pub struct AuthUser {
     pub display_name: String,
     pub role: String,
     pub totp_enabled: bool,
+    /// The account created at setup. Other administrators cannot remove it.
+    pub is_owner: bool,
     pub csrf_token: Option<String>,
     pub scopes: Vec<String>,
     pub via_token: bool,
@@ -285,7 +287,7 @@ async fn load_session(state: &AppState, token: &str) -> Result<AuthUser, ApiErro
     let hash = sha256_hex(token);
     let row = sqlx::query!(
         r#"
-        SELECT s.user_id, s.csrf_token, s.expires_at, u.email, u.display_name, u.role, u.totp_enabled
+        SELECT s.user_id, s.csrf_token, s.expires_at, u.email, u.display_name, u.role, u.totp_enabled, u.is_owner
         FROM sessions s
         JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = $1
@@ -318,6 +320,7 @@ async fn load_session(state: &AppState, token: &str) -> Result<AuthUser, ApiErro
         display_name: row.display_name,
         role: row.role,
         totp_enabled: row.totp_enabled,
+        is_owner: row.is_owner,
         csrf_token: Some(row.csrf_token),
         scopes: vec!["read".into(), "write".into()],
         via_token: false,
@@ -332,7 +335,7 @@ async fn load_token(state: &AppState, token: &str) -> Result<AuthUser, ApiError>
     let hash = sha256_hex(token);
     let row = sqlx::query!(
         r#"
-        SELECT t.id, t.user_id, t.scopes, t.expires_at, u.email, u.display_name, u.role, u.totp_enabled
+        SELECT t.id, t.user_id, t.scopes, t.expires_at, u.email, u.display_name, u.role, u.totp_enabled, u.is_owner
         FROM api_tokens t
         JOIN users u ON u.id = t.user_id
         WHERE t.token_hash = $1
@@ -368,6 +371,7 @@ async fn load_token(state: &AppState, token: &str) -> Result<AuthUser, ApiError>
         display_name: row.display_name,
         role: row.role,
         totp_enabled: row.totp_enabled,
+        is_owner: row.is_owner,
         csrf_token: None,
         scopes: row.scopes,
         via_token: true,

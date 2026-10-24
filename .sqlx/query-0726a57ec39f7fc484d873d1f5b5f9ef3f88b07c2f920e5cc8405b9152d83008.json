@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO access_admins (identity_id, is_owner)\n        VALUES ($1, $2)\n        ON CONFLICT (identity_id) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0726a57ec39f7fc484d873d1f5b5f9ef3f88b07c2f920e5cc8405b9152d83008"
+}
