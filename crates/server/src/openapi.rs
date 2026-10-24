@@ -57,6 +57,7 @@ use crate::routes::monitoring::{
     AlertKindView, AlertView, ChannelView, MetricPoint, MetricSeries, MetricsOverview, MetricsView,
     PruneResult, SaveAlert, SaveChannel, ServerUsage, ServiceUsage,
 };
+use crate::routes::panel_ssl::PanelSslCheck;
 use crate::routes::stacks::{
     CreateStack, DeployTemplate, GeneratedValue, StackLogsView, StackServiceView,
     StackVariableView, StackView, TemplateDeployed, TemplateDetail, TemplateVariableView,
@@ -130,6 +131,7 @@ use rudder_core::{
         RollbackBody,
         DeploymentView,
         PanelView,
+        PanelSslCheck,
         UpdatePanel,
         GitProviderView,
         GithubRepoView,
@@ -1685,6 +1687,15 @@ pub(crate) const ROUTES: &[Route] = &[
         summary: "Panel domain and TLS settings",
         request: None,
         response: Some("PanelView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/panel/ssl-check",
+        method: HttpMethod::Get,
+        tag: "edge",
+        summary: "Check the SSL certificate the panel domain serves",
+        request: None,
+        response: Some("PanelSslCheck"),
         status: 200,
     },
     Route {

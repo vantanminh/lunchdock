@@ -9,7 +9,7 @@ An AI agent connects to Rudder over MCP (the Model Context Protocol) and calls t
 3. Choose a permission template, or pick permissions one by one, then approve.
 4. The agent receives a short-lived access token and a refresh token. It refreshes on its own until you revoke it or the approval reaches 90 days.
 
-The panel address must be the one in **System** (or `RUDDER_PUBLIC_URL`) when the agent is not on the same machine. Use HTTPS once the panel has a certificate.
+The address Rudder gives agents is the panel domain saved under **Certificates → Panel domain**. Without one it falls back to `RUDDER_PUBLIC_URL`, then to the address the request came in on. An agent that is not on the same machine (Claude, for example) needs an HTTPS domain: save one and press **Check SSL** on the same page to confirm the certificate is trusted, covers the domain, and is not about to expire.
 
 **Admin → AI agents** lists every approval, the template, and the last time it was used. **Revoke** cuts off the access token and the refresh token immediately.
 

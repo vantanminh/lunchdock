@@ -52,10 +52,46 @@ fn no_store(response: Response) -> Response {
     response
 }
 
-fn origin(state: &AppState, headers: &HeaderMap) -> Result<String, ApiError> {
-    if let Some(url) = &state.config.public_url {
-        return Ok(url.trim_end_matches('/').to_owned());
+/// The address agents should use. The panel domain saved under **Certificates**
+/// wins, so changing it there also moves the sign-in address. Otherwise an
+/// `https` public address wins. A plain `http` one (the install default before
+/// a panel domain exists) gives way to the HTTPS address the request actually
+/// came in on, because agents in the cloud reject `http` endpoints and cannot
+/// reach the install's IP address.
+async fn origin(state: &AppState, headers: &HeaderMap) -> Result<String, ApiError> {
+    if let Some(url) = panel_origin(state).await {
+        return Ok(url);
     }
+    let configured = state
+        .config
+        .public_url
+        .as_deref()
+        .map(|url| url.trim_end_matches('/').to_owned());
+    if let Some(url) = &configured {
+        if url.starts_with("https://") {
+            return Ok(url.clone());
+        }
+        return match request_origin(state, headers) {
+            Ok(seen) if seen.starts_with("https://") => Ok(seen),
+            _ => Ok(url.clone()),
+        };
+    }
+    request_origin(state, headers)
+}
+
+async fn panel_origin(state: &AppState) -> Option<String> {
+    let row: Option<(Option<String>, String)> =
+        sqlx::query_as("SELECT panel_domain, panel_ssl_mode FROM panel_settings WHERE id = TRUE")
+            .fetch_optional(&state.pool)
+            .await
+            .ok()?;
+    let (domain, mode) = row?;
+    let domain = domain.filter(|domain| !domain.is_empty())?;
+    let scheme = if mode == "none" { "http" } else { "https" };
+    Some(format!("{scheme}://{domain}"))
+}
+
+fn request_origin(state: &AppState, headers: &HeaderMap) -> Result<String, ApiError> {
     let host = headers
         .get(if state.config.trust_proxy {
             "x-forwarded-host"
@@ -112,7 +148,7 @@ async fn protected_resource(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
-    let origin = origin(&state, &headers)?;
+    let origin = origin(&state, &headers).await?;
     Ok(no_store(
         Json(json!({
             "resource": format!("{origin}/mcp"),
@@ -129,7 +165,7 @@ async fn authorization_server(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
-    let origin = origin(&state, &headers)?;
+    let origin = origin(&state, &headers).await?;
     Ok(no_store(
         Json(json!({
             "issuer": origin,
@@ -475,7 +511,7 @@ async fn rpc(
     auth::OptionalPeer(peer): auth::OptionalPeer,
     body: axum::body::Bytes,
 ) -> Response {
-    let origin = origin(&state, &headers).unwrap_or_default();
+    let origin = origin(&state, &headers).await.unwrap_or_default();
     if !origin_ok(&headers, &origin) {
         return no_store(
             (

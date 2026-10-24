@@ -13,6 +13,8 @@ type Certificate = Schemas["CertificateView"];
 
 type PanelSettings = Schemas["PanelView"];
 
+type SslCheck = Schemas["PanelSslCheck"];
+
 export function CertificatesPage() {
   const t = useT();
   const queryClient = useQueryClient();
@@ -23,6 +25,12 @@ export function CertificatesPage() {
   const panel = useQuery({
     queryKey: ["panel"],
     queryFn: () => api<PanelSettings>("/api/v1/panel"),
+  });
+  const sslCheck = useQuery({
+    queryKey: ["panel-ssl-check"],
+    queryFn: () => api<SslCheck>("/api/v1/panel/ssl-check"),
+    enabled: false,
+    retry: false,
   });
   const [name, setName] = useState("");
   const [certPem, setCertPem] = useState("");
@@ -67,6 +75,7 @@ export function CertificatesPage() {
     onSuccess: async () => {
       toast.success(t("Panel domain saved"));
       await queryClient.invalidateQueries({ queryKey: ["panel"] });
+      queryClient.removeQueries({ queryKey: ["panel-ssl-check"] });
     },
     onError: (error) =>
       toast.error(error instanceof ApiError ? error.message : t("Could not save")),
@@ -158,7 +167,73 @@ export function CertificatesPage() {
             name: panel.data?.matched_certificate_name ?? t("none yet"),
           })}
         </p>
+        <div className="mt-4 space-y-3 border-t border-line pt-4 text-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              disabled={!panel.data?.panel_domain || sslCheck.isFetching}
+              onClick={() => void sslCheck.refetch()}
+            >
+              {sslCheck.isFetching ? t("Checking…") : t("Check SSL")}
+            </Button>
+            <span className="text-muted">
+              {t("Connects to the saved panel domain over HTTPS, as a browser or an AI agent would.")}
+            </span>
+          </div>
+          {sslCheck.isError ? (
+            <Alert tone="warning" title={t("Could not run the check")}>
+              {sslCheck.error instanceof ApiError ? sslCheck.error.message : t("Try again")}
+            </Alert>
+          ) : null}
+          {sslCheck.data ? <SslResult result={sslCheck.data} /> : null}
+        </div>
       </Card>
     </>
+  );
+}
+
+function SslResult({ result }: { result: SslCheck }) {
+  const t = useT();
+  const healthy =
+    result.reachable &&
+    result.trusted &&
+    result.hostname_matches &&
+    (result.days_left ?? 0) >= 0;
+  const soon = healthy && (result.days_left ?? 0) < 14;
+  return (
+    <div className="space-y-2">
+      <Alert
+        tone={healthy && !soon ? "success" : "warning"}
+        title={
+          healthy
+            ? soon
+              ? t("The certificate is valid but expires soon")
+              : t("The certificate is valid")
+            : t("The certificate has a problem")
+        }
+      >
+        {result.error ?? ""}
+      </Alert>
+      {result.reachable ? (
+        <ul className="space-y-1">
+          <li>
+            {t("Trusted by browsers")}: {result.trusted ? t("Yes") : t("No")}
+          </li>
+          <li>
+            {t("Covers {domain}", { domain: result.domain ?? "" })}:{" "}
+            {result.hostname_matches ? t("Yes") : t("No")}
+          </li>
+          <li>CN {result.common_name ?? "—"}</li>
+          <li>SANs {result.sans.join(", ") || "—"}</li>
+          <li>
+            {t("Issuer")} {result.issuer ?? "—"}
+          </li>
+          <li>
+            {t("Expires")} {formatTime(result.not_after)}
+            {result.days_left != null ? ` (${t("{days} days left", { days: result.days_left })})` : ""}
+          </li>
+        </ul>
+      ) : null}
+    </div>
   );
 }

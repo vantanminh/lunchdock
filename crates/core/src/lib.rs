@@ -48,8 +48,8 @@ pub use cache::{
     CACHE_TOKEN_FILE, DEFAULT_CACHE_CAP_BYTES, DEFAULT_MAX_OBJECT_BYTES, DEFAULT_MEMORY_BYTES,
 };
 pub use certs::{
-    certificate_matches_host, matching_certificate, validate_key_and_chain, CertificateDetails,
-    HostMatch,
+    certificate_matches_host, describe as describe_certificate, matching_certificate,
+    validate_key_and_chain, CertificateDetails, HostMatch,
 };
 pub use compose::{
     compose_args, docker_config_with_logins, ComposeAction, ComposeOptions, LogSink,

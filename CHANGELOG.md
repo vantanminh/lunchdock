@@ -8,6 +8,15 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+### Added
+- **Check the panel's SSL certificate.** **Certificates → Panel domain** has a **Check SSL** button. It connects to the saved panel domain over HTTPS, as a browser would, and shows whether the certificate is trusted, whether it covers the domain, who issued it, and how many days are left. AI agents can run the same check.
+
+### Changed
+- **The panel domain is also the AI agent sign-in address.** The domain you save under **Certificates → Panel domain** is what Rudder gives to AI agents such as Claude, so you no longer need to set `RUDDER_PUBLIC_URL` to match it.
+
+### Fixed
+- **AI agents can connect again behind an HTTPS panel domain.** If Rudder was installed by IP address and the panel later moved to an HTTPS domain, agents such as Claude were told to sign in at the old `http://` address and failed with "Couldn't register". Rudder now advertises the panel domain, or the HTTPS address the agent actually used.
+
 ## [0.4.0] - 2026-10-24
 
 ### Added

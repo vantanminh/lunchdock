@@ -13,3 +13,6 @@ A fresh install answers on `http://<server-ip>:3000`. Over plain HTTP the sign-i
 1. Point a DNS record for the panel (for example `panel.example.com`) at the server.
 2. **Certificates → Panel domain**: enter the domain, pick an SSL mode (Let's Encrypt or an uploaded certificate) and save.
 3. Open the panel through `https://panel.example.com` and set `RUDDER_PUBLIC_URL` to that address. The GitHub App should be created from the HTTPS address too, so its callback and webhook URLs use it.
+4. Press **Check SSL** under the form. Rudder connects to the saved domain over HTTPS and reports whether the certificate is trusted, covers the domain, who issued it and the days left. Let's Encrypt can take a minute to issue: if the check says the certificate is not trusted right after saving, wait and check again. AI agents get the same result from the `get_v1_panel_ssl-check` tool.
+
+The saved panel domain is also the address AI agents sign in at (see `docs/mcp.md`).

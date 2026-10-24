@@ -2032,6 +2032,27 @@
         }
       }
     },
+    "/api/v1/panel/ssl-check": {
+      "get": {
+        "tags": [
+          "edge"
+        ],
+        "summary": "Check the SSL certificate the panel domain serves",
+        "operationId": "get_v1_panel_ssl-check",
+        "responses": {
+          "200": {
+            "description": "Check the SSL certificate the panel domain serves",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelSslCheck"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects": {
       "get": {
         "tags": [
@@ -7133,6 +7154,77 @@
           "passphrase": {
             "type": "string",
             "description": "At least 12 characters. Needed to restore; it is not stored."
+          }
+        }
+      },
+      "PanelSslCheck": {
+        "type": "object",
+        "required": [
+          "reachable",
+          "trusted",
+          "hostname_matches",
+          "sans"
+        ],
+        "properties": {
+          "common_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "days_left": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hostname_matches": {
+            "type": "boolean"
+          },
+          "issuer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "not_after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "not_before": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reachable": {
+            "type": "boolean"
+          },
+          "sans": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "trusted": {
+            "type": "boolean"
           }
         }
       },
