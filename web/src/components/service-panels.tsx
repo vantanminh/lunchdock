@@ -167,6 +167,7 @@ export function GitSourceCard({ service }: { service: ServiceDetail }) {
   const [repo, setRepo] = useState(saved?.repo ?? "");
   const [branch, setBranch] = useState(saved?.branch ?? "main");
   const [strategy, setStrategy] = useState(saved?.strategy ?? "dockerfile");
+  const [previews, setPreviews] = useState(service.spec.preview_pull_requests === true);
   const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string | null>(null);
 
@@ -174,7 +175,13 @@ export function GitSourceCard({ service }: { service: ServiceDetail }) {
     mutationFn: () =>
       api<SavedSource>(`/api/v1/services/${service.id}/source`, {
         method: "PUT",
-        body: JSON.stringify({ provider_id: providerId, repo, branch, strategy }),
+        body: JSON.stringify({
+          provider_id: providerId,
+          repo,
+          branch,
+          strategy,
+          preview_pull_requests: previews,
+        }),
       }),
     onSuccess: async (result) => {
       setWebhookSecret(result.webhook_secret ?? null);
@@ -246,6 +253,22 @@ export function GitSourceCard({ service }: { service: ServiceDetail }) {
             value={strategy}
             onPick={setStrategy}
           />
+          <label className="flex items-start gap-2.5 text-sm md:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={previews}
+              onChange={(event) => setPreviews(event.target.checked)}
+            />
+            <span>
+              <span className="font-medium text-ink">{t("Preview pull requests")}</span>
+              <span className="block text-muted">
+                {t(
+                  "A pull request against this branch gets its own copy of the service and a preview address. Closing the pull request removes it. Forks are ignored.",
+                )}
+              </span>
+            </span>
+          </label>
           <div className="flex flex-wrap gap-2 md:col-span-2">
             <Button type="submit" disabled={save.isPending}>
               {t("Save source")}

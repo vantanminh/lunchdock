@@ -23,6 +23,8 @@ pingora-cache = "0.9"
 pingora-http = "0.9"
 async-trait = "0.1.92"
 bytes = "1.12.1"
+sha2 = "0.10.9"
+hex = "0.4.3"
 serde = { workspace = true, features = ["derive"] }
 tokio.workspace = true
 http = "1"

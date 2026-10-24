@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, kind, environment_id, server_id, spec\n        FROM services\n        WHERE kind IN ('application', 'compose')\n          AND spec -> 'git' ->> 'provider_id' = $1\n          AND COALESCE(spec ->> 'preview_pull_requests', 'false') = 'true'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "environment_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "spec",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "367c3c66e7feb7f7c74bd588757c81a49abdadd8f2005f9fe350d343cf6f9f6b"
+}

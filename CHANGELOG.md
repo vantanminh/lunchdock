@@ -8,6 +8,11 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+### Added
+- **Git stacks run on extra servers.** A stack whose compose file is in Git can deploy on a server that runs the agent. Rudder copies the repository's files to that server and leaves files you created there, such as a database directory mounted into the stack, in place. The agent has to be connected. A repository larger than 512 MiB is refused.
+- **Cached pages can be kept on disk.** A cache policy has a disk budget. Leave it blank and caching stays in memory, as before. Set it and responses are kept on disk across a cache restart, while the busiest ones stay in memory. The Cache page shows how much disk is in use.
+- **A pull request can get its own preview.** Turn on **Preview pull requests** on a service's Git source. Opening, updating, or reopening a pull request against that branch creates a copy of the service with a preview address; closing the pull request removes it. Pull requests from another repository are ignored. A GitHub App connected before this release needs the **Pull request** event turned on in the app's settings on GitHub, or previews will not start.
+
 ## [0.3.1] - 2026-10-16
 
 ### Fixed

@@ -75,6 +75,18 @@ pub struct StackSpec {
     pub build_on_deploy: bool,
     /// A push to the Git source's branch deploys the stack (GitHub App providers).
     pub deploy_on_push: bool,
+    /// Open pull requests against the branch get their own copy of this stack.
+    pub preview_pull_requests: bool,
+    /// Set on a copy created for one pull request.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preview: Option<StackPreview>,
+}
+
+/// A stack that exists only while a pull request is open.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StackPreview {
+    pub parent_id: Uuid,
+    pub number: i64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -611,12 +623,6 @@ pub async fn start_action(
     if stack.spec.project.is_empty() {
         return Err(conflict("not_configured", "save a compose file first"));
     }
-    if stack.spec.source == "git" && server_kind(state, stack.server_id).await? != "local" {
-        return Err(conflict(
-            "remote_git",
-            "Git-sourced stacks run on the local server; paste the compose file for remote servers",
-        ));
-    }
     if !action.writes_files() && stack.spec.compose_path.is_empty() {
         return Err(conflict(
             "not_deployed",
@@ -1031,6 +1037,32 @@ async fn sync_compose(
     )
 }
 
+/// Copy the tracked files of a panel-side checkout to a remote node's data directory.
+/// `.git` stays on the panel, so credentials in the Git config are not sent.
+async fn ship_checkout(
+    state: &AppState,
+    relative: &str,
+    driver: &dyn NodeDriver,
+    logs: &LiveLog,
+) -> Result<(), String> {
+    let src = state.config.data_dir.join(relative);
+    let files = rudder_node::tree::git_tracked(&src).map_err(|error| error.to_string())?;
+    logs.push(&format!(
+        "copying {} repository files to the server\n",
+        files.len()
+    ));
+    let bytes = rudder_node::tree::pack_files(&src, &files).map_err(|error| error.to_string())?;
+    let stream: rudder_core::ByteStream = Box::pin(futures_util::stream::iter(std::iter::once(
+        Ok(bytes::Bytes::from(bytes)),
+    )));
+    driver
+        .extract_tree(relative, stream)
+        .await
+        .map_err(|error| error.to_string())?;
+    logs.push("repository copied\n");
+    Ok(())
+}
+
 /// Read the compose file from Git now, so the variables it needs, the generated file and its
 /// warnings are known before the first deploy. Nothing is written to the server.
 pub async fn refresh_from_git(state: &AppState, id: Uuid) -> Result<(), ApiError> {
@@ -1069,7 +1101,15 @@ async fn write_files(
 ) -> Result<(), String> {
     let project = stack.spec.project.clone();
     let dir = if stack.spec.source == "git" {
-        sync_compose(state, stack, Some(logs)).await?
+        let synced = sync_compose(state, stack, Some(logs)).await?;
+        let remote = server_kind(state, stack.server_id)
+            .await
+            .map_err(|error| error.public_message())?
+            != "local";
+        if remote {
+            ship_checkout(state, &format!("stacks/{project}/src"), driver, logs).await?;
+        }
+        synced
     } else {
         format!("stacks/{project}")
     };

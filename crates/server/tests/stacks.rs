@@ -580,7 +580,10 @@ async fn api_without_docker(pool: PgPool) {
             None,
         )
         .await;
-    assert_eq!(git_up["error"]["code"], "remote_git");
+    assert_eq!(
+        git_up["error"]["code"], "remote_unavailable",
+        "a git stack is allowed on a remote server, and waits for its agent"
+    );
     let refresh_inline = client
         .expect(
             StatusCode::BAD_REQUEST,

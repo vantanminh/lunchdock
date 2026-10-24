@@ -2336,6 +2336,11 @@ export interface components {
             description: string;
             /**
              * Format: int64
+             * @description Share of the server's disk store. Null or all-null policies keep objects in memory only.
+             */
+            disk_max_bytes?: number | null;
+            /**
+             * Format: int64
              * @description Domains that use this policy.
              */
             domains: number;
@@ -2372,6 +2377,21 @@ export interface components {
             name?: string;
         };
         CacheStats: {
+            /**
+             * Format: int64
+             * @description Disk budget. Zero when the tier is off.
+             */
+            disk_max_bytes?: number;
+            /**
+             * Format: int64
+             * @description Objects in the disk tier. Zero when the tier is off.
+             */
+            disk_objects?: number;
+            /**
+             * Format: int64
+             * @description Bytes in the disk tier.
+             */
+            disk_stored_bytes?: number;
             /** Format: int64 */
             evictions: number;
             hosts: components["schemas"]["CacheHostStats"][];
@@ -2523,6 +2543,8 @@ export interface components {
             /** @description Compose service new domains point at by default. */
             main_service?: string | null;
             name: string;
+            /** @description Open pull requests against the branch get their own copy of this stack. */
+            preview_pull_requests?: boolean | null;
             /**
              * @description Compose project name, which prefixes the containers, networks and named volumes. Give the
              *     name of a project that already runs on the server to take its volumes over. Defaults to
@@ -3261,6 +3283,8 @@ export interface components {
         SaveCachePolicy: {
             description?: string | null;
             /** Format: int64 */
+            disk_max_bytes?: number | null;
+            /** Format: int64 */
             max_object_bytes?: number | null;
             /** Format: int64 */
             memory_max_bytes?: number | null;
@@ -3418,6 +3442,8 @@ export interface components {
             context: string;
             dockerfile: string;
             has_webhook_secret: boolean;
+            /** @description Open pull requests against this branch get their own copy of the service. */
+            preview_pull_requests: boolean;
             /** Format: uuid */
             provider_id: string;
             public_key?: string | null;
@@ -3470,6 +3496,8 @@ export interface components {
             main_service?: string | null;
             /** @description Referenced variables with no value under Environment and no fallback in the file. */
             missing_variables: string[];
+            /** @description Open pull requests against the branch get their own copy of this stack. */
+            preview_pull_requests: boolean;
             project: string;
             service: components["schemas"]["ServiceView"];
             services: components["schemas"]["StackServiceView"][];
@@ -3698,6 +3726,8 @@ export interface components {
             branch: string;
             context?: string | null;
             dockerfile?: string | null;
+            /** @description Open pull requests against this branch get their own copy of the service. */
+            preview_pull_requests?: boolean | null;
             /** Format: uuid */
             provider_id: string;
             publish_dir?: string | null;
@@ -3712,6 +3742,8 @@ export interface components {
             deploy_on_push?: boolean | null;
             git?: components["schemas"]["StackGit"] | null;
             main_service?: string | null;
+            /** @description Open pull requests against the branch get their own copy. Unchanged when omitted. */
+            preview_pull_requests?: boolean | null;
             /** @description New compose project name. Only accepted before the first deploy; unchanged when omitted. */
             project?: string | null;
             source: string;
