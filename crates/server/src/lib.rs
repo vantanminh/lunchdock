@@ -27,6 +27,7 @@ mod panel;
 mod publish;
 mod routes;
 mod s3;
+mod security;
 mod shed;
 mod stacks;
 mod state;
@@ -318,6 +319,10 @@ pub fn router(state: AppState) -> axum::Router {
             shed::middleware,
         ))
         .layer(TraceLayer::new_for_http())
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            security::middleware,
+        ))
         .with_state(state)
         .fallback(embed::spa)
 }

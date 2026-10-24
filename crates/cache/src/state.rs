@@ -51,6 +51,8 @@ pub struct Shared {
     pub token: String,
     counters: Mutex<BTreeMap<String, Counters>>,
     reloads: AtomicU64,
+    /// Unix second and how many purge or reload calls landed in it.
+    admin_hits: Mutex<(u64, u32)>,
 }
 
 impl Shared {
@@ -67,7 +69,30 @@ impl Shared {
             token,
             counters: Mutex::default(),
             reloads: AtomicU64::new(0),
+            admin_hits: Mutex::new((0, 0)),
         }))
+    }
+
+    /// Purge and reload share a small per-second budget so a stolen admin token
+    /// cannot hammer the process.
+    pub fn allow_admin_mutation(&self) -> bool {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|elapsed| elapsed.as_secs())
+            .unwrap_or(0);
+        let mut slot = self
+            .admin_hits
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        if slot.0 != now {
+            *slot = (now, 1);
+            return true;
+        }
+        if slot.1 >= 30 {
+            return false;
+        }
+        slot.1 += 1;
+        true
     }
 
     pub fn rules(&self) -> Arc<CacheDocument> {

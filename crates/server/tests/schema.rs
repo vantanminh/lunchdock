@@ -120,6 +120,21 @@ async fn health_endpoint_reports_ok(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get("x-content-type-options")
+            .and_then(|value| value.to_str().ok()),
+        Some("nosniff")
+    );
+    assert_eq!(
+        response
+            .headers()
+            .get("x-frame-options")
+            .and_then(|value| value.to_str().ok()),
+        Some("DENY")
+    );
+    assert!(response.headers().get("content-security-policy").is_some());
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     let json: Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(json["status"], "ok");

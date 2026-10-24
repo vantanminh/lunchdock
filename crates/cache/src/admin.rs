@@ -82,6 +82,9 @@ impl ServeHttp for Admin {
                 self.shared.metrics().into_bytes(),
             ),
             (Method::POST, "/purge") => {
+                if !self.shared.allow_admin_mutation() {
+                    return error(StatusCode::TOO_MANY_REQUESTS, "too many admin requests");
+                }
                 let body = match read_body(session).await {
                     Ok(body) => body,
                     Err(status) => return error(status, "could not read the request body"),
@@ -99,10 +102,15 @@ impl ServeHttp for Admin {
                 tracing::info!(host = %request.host, removed, "cache purge");
                 json(StatusCode::OK, &CachePurgeResult { removed })
             }
-            (Method::POST, "/reload") => match self.shared.reload() {
-                Ok(changed) => json(StatusCode::OK, &serde_json::json!({ "changed": changed })),
-                Err(message) => error(StatusCode::UNPROCESSABLE_ENTITY, &message),
-            },
+            (Method::POST, "/reload") => {
+                if !self.shared.allow_admin_mutation() {
+                    return error(StatusCode::TOO_MANY_REQUESTS, "too many admin requests");
+                }
+                match self.shared.reload() {
+                    Ok(changed) => json(StatusCode::OK, &serde_json::json!({ "changed": changed })),
+                    Err(message) => error(StatusCode::UNPROCESSABLE_ENTITY, &message),
+                }
+            }
             _ => error(StatusCode::NOT_FOUND, "not found"),
         }
     }
