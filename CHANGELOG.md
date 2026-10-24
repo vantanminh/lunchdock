@@ -8,8 +8,7 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
-### Fixed
-- **A cancelled stack is free as soon as its deployment ends.** Cancelling, failing, or finishing a stack action updates the stack and the deployment together, so the stack does not stay on Deploying after the deployment is already over and the next action is accepted.
+## [0.4.0] - 2026-10-24
 
 ### Added
 - **Cache effectiveness and a memory ceiling.** **Operate → Cache** shows the hit ratio and memory use over the last 14 days, and lets you limit the cache to a share of the machine (15% by default). Unless you set a higher ceiling, the cache stays at or below 384 MiB. A response larger than that budget is not stored.
@@ -23,6 +22,7 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 - **The cache container is limited to 512 MiB.** New installs, and the next run of `install.sh` on an existing machine, stop `rudder-cache` at `RUDDER_CACHE_MEMORY` (default `512m`) before it can fill the host. If you raise the ceiling in the panel above that, raise `RUDDER_CACHE_MEMORY` and run the installer again.
 
 ### Fixed
+- **A cancelled stack is free as soon as its deployment ends.** Cancelling, failing, or finishing a stack action updates the stack and the deployment together, so the stack does not stay on Deploying after the deployment is already over and the next action is accepted.
 - **A panel backup restores on PostgreSQL 16.** PostgreSQL 17's restore tool sends `transaction_timeout`, which PostgreSQL 16 rejects. Restoring onto 16 now skips that setting instead of stopping.
 
 ### Security
