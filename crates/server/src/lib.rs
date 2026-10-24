@@ -105,6 +105,15 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     });
     start_monitoring(&state);
     tokio::spawn(guard::run(state.clone()));
+    let cache_state = state.clone();
+    tokio::spawn(async move {
+        loop {
+            if let Err(error) = routes::cache::sample_cache(&cache_state).await {
+                tracing::warn!(message = %error.public_message(), "cache sample failed");
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        }
+    });
     let maintain_state = state.clone();
     tokio::spawn(async move {
         loop {

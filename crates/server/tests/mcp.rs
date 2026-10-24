@@ -24,7 +24,8 @@ fn test_config(database_url: &str) -> rudder_server::Config {
 }
 
 fn app(pool: PgPool) -> axum::Router {
-    let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/rudder".into());
+    let url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/rudder".into());
     rudder_server::router(AppState::new(pool, test_config(&url)))
 }
 
@@ -34,6 +35,7 @@ struct Reply {
     headers: axum::http::HeaderMap,
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn call(
     app: &axum::Router,
     method: &str,
@@ -65,7 +67,8 @@ async fn call(
     let body = if bytes.is_empty() {
         Value::Null
     } else {
-        serde_json::from_slice(&bytes).unwrap_or(Value::String(String::from_utf8_lossy(&bytes).into()))
+        serde_json::from_slice(&bytes)
+            .unwrap_or(Value::String(String::from_utf8_lossy(&bytes).into()))
     };
     Reply {
         status,
@@ -167,7 +170,12 @@ async fn agent_login_refreshes_and_can_control_the_panel(pool: PgPool) {
         ),
     )
     .await;
-    assert_eq!(registered.status, StatusCode::CREATED, "{:?}", registered.body);
+    assert_eq!(
+        registered.status,
+        StatusCode::CREATED,
+        "{:?}",
+        registered.body
+    );
     let client_id = registered.body["client_id"].as_str().unwrap();
 
     let bad = call(
@@ -195,12 +203,7 @@ async fn agent_login_refreshes_and_can_control_the_panel(pool: PgPool) {
     );
     let anonymous = call(&app, "GET", &start, None, None, None, None, None).await;
     assert_eq!(anonymous.status, StatusCode::TEMPORARY_REDIRECT);
-    let location = anonymous
-        .headers
-        .get("location")
-        .unwrap()
-        .to_str()
-        .unwrap();
+    let location = anonymous.headers.get("location").unwrap().to_str().unwrap();
     assert!(location.starts_with("/login?next="), "{location}");
 
     let (cookie, csrf) = owner(&app).await;
@@ -288,7 +291,10 @@ async fn agent_login_refreshes_and_can_control_the_panel(pool: PgPool) {
     let refresh = tokens.body["refresh_token"].as_str().unwrap().to_owned();
     assert!(access.starts_with("rdr_mca_"));
     assert_eq!(tokens.body["expires_in"], 900);
-    assert!(tokens.body["scope"].as_str().unwrap().contains("auth:write"));
+    assert!(tokens.body["scope"]
+        .as_str()
+        .unwrap()
+        .contains("auth:write"));
 
     let listed = rpc(
         &app,
@@ -337,7 +343,9 @@ async fn agent_login_refreshes_and_can_control_the_panel(pool: PgPool) {
         }),
     )
     .await;
-    let text = created.body["result"]["content"][0]["text"].as_str().unwrap();
+    let text = created.body["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap();
     assert!(text.starts_with("HTTP 201"), "{text}");
 
     let refreshed = token_request(
@@ -418,7 +426,9 @@ async fn agent_login_refreshes_and_can_control_the_panel(pool: PgPool) {
         }),
     )
     .await;
-    let text = denied.body["result"]["content"][0]["text"].as_str().unwrap();
+    let text = denied.body["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap();
     assert_eq!(denied.body["result"]["isError"], true, "{text}");
 
     let missing = rpc(
@@ -462,7 +472,11 @@ async fn rpc(app: &axum::Router, bearer: &str, body: Value) -> Reply {
         "/mcp",
         None,
         None,
-        if bearer.is_empty() { None } else { Some(bearer) },
+        if bearer.is_empty() {
+            None
+        } else {
+            Some(bearer)
+        },
         Some("application/json"),
         Some(body.to_string().into_bytes()),
     )

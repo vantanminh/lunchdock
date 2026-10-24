@@ -8,6 +8,12 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+### Added
+- **Cache effectiveness and a memory ceiling.** **Operate → Cache** shows the hit ratio and memory use over the last 14 days, and lets you limit the cache to a share of the machine (15% by default). Unless you set a higher ceiling, the cache stays at or below 384 MiB. A response larger than that budget is not stored.
+
+### Changed
+- **The cache container is limited to 512 MiB.** New installs, and the next run of `install.sh` on an existing machine, stop `rudder-cache` at `RUDDER_CACHE_MEMORY` (default `512m`) before it can fill the host. If you raise the ceiling in the panel above that, raise `RUDDER_CACHE_MEMORY` and run the installer again.
+
 ### Security
 - **The panel sends stricter browser headers, and the cache admin port slows repeated purge and reload calls.** Pages cannot be framed by another site, and a stolen cache admin token cannot flush the cache hundreds of times a second.
 

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../api";
 import { hitRatio, ruleSummary, usePolicies } from "../components/cache";
+import { CacheManagement } from "../components/cache-history";
 import {
   Button,
   Card,
@@ -52,6 +53,7 @@ export function CachePoliciesPage() {
           )}
         </p>
       </div>
+      <CacheManagement />
       <CacheServers />
       <Card title={t("Policies")}>
         <div className="mb-4">

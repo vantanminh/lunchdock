@@ -227,6 +227,7 @@ impl Storage for MemoryStore {
             host,
             path,
             body: Vec::new(),
+            dropped: false,
         }))
     }
 
@@ -331,16 +332,31 @@ struct Miss {
     host: String,
     path: String,
     body: Vec<u8>,
+    dropped: bool,
 }
 
 #[async_trait]
 impl HandleMiss for Miss {
     async fn write_body(&mut self, data: Bytes, _eof: bool) -> Result<()> {
+        if self.dropped {
+            return Ok(());
+        }
+        let limit =
+            usize::try_from(self.store.budget().min(32 * 1024 * 1024)).unwrap_or(usize::MAX);
+        if self.body.len().saturating_add(data.len()) > limit {
+            self.dropped = true;
+            self.body.clear();
+            self.body.shrink_to_fit();
+            return Ok(());
+        }
         self.body.extend_from_slice(&data);
         Ok(())
     }
 
     async fn finish(self: Box<Self>) -> Result<MissFinishType> {
+        if self.dropped {
+            return Ok(MissFinishType::Created(0));
+        }
         let len = self.body.len();
         let size = len as u64
             + (self.meta.0.len() + self.meta.1.len()) as u64
@@ -437,5 +453,12 @@ mod tests {
                 .is_some(),
             "recently read object survives eviction"
         );
+    }
+
+    #[tokio::test]
+    async fn an_object_larger_than_the_budget_is_not_kept() {
+        let store: &'static MemoryStore = Box::leak(Box::new(MemoryStore::new(8 * 1024)));
+        put(store, "a.test", "/big", &[1; 64 * 1024]).await;
+        assert_eq!(store.totals().0, 0);
     }
 }

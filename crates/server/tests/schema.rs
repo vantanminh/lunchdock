@@ -46,6 +46,7 @@ const REQUIRED_TABLES: &[&str] = &[
     "oauth_codes",
     "mcp_refresh_tokens",
     "mcp_access_tokens",
+    "cache_stat_samples",
 ];
 
 fn test_config(database_url: &str) -> rudder_server::Config {

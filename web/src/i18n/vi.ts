@@ -1451,4 +1451,22 @@ export const vi: Record<string, string> = {
   "Approving…": "Đang duyệt…",
   Approve: "Duyệt",
   "Could not approve the agent": "Không duyệt được tác nhân",
+  "Memory limit": "Giới hạn bộ nhớ",
+  "The cache keeps responses in memory. Its budget is the sum of the policies in use, then limited to this share of the machine and to the ceiling. The default ceiling is 384 MiB. New installs also stop the cache container at 512 MiB (RUDDER_CACHE_MEMORY); raise that too if you set a higher ceiling.":
+    "Bộ nhớ đệm giữ phản hồi trong RAM. Ngân sách là tổng các chính sách đang dùng, rồi bị giới hạn bởi phần trăm máy này và bởi trần. Trần mặc định là 384 MiB. Bản cài mới cũng dừng container cache ở 512 MiB (RUDDER_CACHE_MEMORY); hãy nâng giá trị đó nếu bạn đặt trần cao hơn.",
+  "In effect {cap}": "Đang áp dụng {cap}",
+  " · host {size}": " · máy {size}",
+  "Share of the machine (%)": "Phần trăm máy (%)",
+  "Ceiling (MiB, blank for 384)": "Trần (MiB, để trống là 384)",
+  "Cache memory settings saved": "Đã lưu cài đặt bộ nhớ cache",
+  "Could not save cache settings": "Không lưu được cài đặt cache",
+  Effectiveness: "Hiệu quả",
+  "Readings appear here after the cache has been checked for about a minute.":
+    "Số liệu hiện ở đây sau khi cache được kiểm tra khoảng một phút.",
+  "Last sample: hit ratio {ratio} · {stored} stored · {evictions} evictions in the interval":
+    "Mẫu gần nhất: tỷ lệ trúng {ratio} · đã lưu {stored} · {evictions} lần đẩy ra trong khoảng này",
+  "n/a": "không có",
+  "One more reading is needed before the chart can show a change.":
+    "Cần thêm một lần đọc nữa thì biểu đồ mới hiện sự thay đổi.",
+  Budget: "Ngân sách",
 };

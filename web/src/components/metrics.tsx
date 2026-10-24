@@ -31,13 +31,13 @@ export interface ChartSpec {
 }
 
 // Series colours follow the theme: pine first, then amber and slate; red is kept for errors.
-const COLORS = ["var(--pine)", "var(--amber)", "#5b7fa6", "var(--danger)"];
+export const COLORS = ["var(--pine)", "var(--amber)", "#5b7fa6", "var(--danger)"];
 
 // Recharts paints its own white tooltip and grey ticks; route them through the theme tokens
 // so text stays readable in both light and dark mode.
-const TICK = { fontSize: 11, fill: "var(--muted)" };
-const AXIS_LINE = { stroke: "var(--line-strong)" };
-const TOOLTIP_STYLES = {
+export const TICK = { fontSize: 11, fill: "var(--muted)" };
+export const AXIS_LINE = { stroke: "var(--line-strong)" };
+export const TOOLTIP_STYLES = {
   contentStyle: {
     backgroundColor: "var(--surface)",
     border: "1px solid var(--line-strong)",

@@ -239,9 +239,8 @@ async fn consent(
     )?;
     let (client_name, redirect_uri) =
         http::load_client_redirect(&state, &body.client_id, &body.redirect_uri).await?;
-    let scopes = validate_agent_scopes(&body.template, &body.scopes).map_err(|message| {
-        ApiError::new(StatusCode::BAD_REQUEST, "invalid_scopes", message)
-    })?;
+    let scopes = validate_agent_scopes(&body.template, &body.scopes)
+        .map_err(|message| ApiError::new(StatusCode::BAD_REQUEST, "invalid_scopes", message))?;
     let name = {
         let trimmed = body.name.trim();
         let chosen = if trimmed.is_empty() {

@@ -21,8 +21,9 @@ use crate::routes::backups::{
     SaveDestination, TestResult,
 };
 use crate::routes::cache::{
-    CachePolicyView, CachePresetView, DomainCacheView, SaveCachePolicy, ServiceCachePurge,
-    ServiceCacheView, UpdateDomainCache,
+    CachePoint, CachePolicyView, CachePresetView, CacheServerHistory, CacheSettingsView,
+    DomainCacheView, SaveCachePolicy, ServiceCachePurge, ServiceCacheView, UpdateCacheSettings,
+    UpdateDomainCache,
 };
 use crate::routes::catalog::{
     CreateEnvironment, CreateProject, CreateServer, CreateService, CreatedServer, EnvVarView,
@@ -46,12 +47,12 @@ use crate::routes::github_app::{
 };
 use crate::routes::github_repos::{GithubBranchesView, GithubComposeFilesView, GithubRepoView};
 use crate::routes::health::HealthResponse;
+use crate::routes::load::{BuildLoad, BuildsCancelled, LoadView, PauseBuilds, UpdateGuard};
+use crate::routes::logs::{IngestEntry, IngestRequest, IngestResult, LogPage, UpdateRetention};
 use crate::routes::mcp::{
     McpCatalog, McpClientView, McpConsentRequest, McpConsentResponse, McpGrantView, McpInfo,
     McpScopeView, McpTemplateView,
 };
-use crate::routes::load::{BuildLoad, BuildsCancelled, LoadView, PauseBuilds, UpdateGuard};
-use crate::routes::logs::{IngestEntry, IngestRequest, IngestResult, LogPage, UpdateRetention};
 use crate::routes::monitoring::{
     AlertKindView, AlertView, ChannelView, MetricPoint, MetricSeries, MetricsOverview, MetricsView,
     PruneResult, SaveAlert, SaveChannel, ServerUsage, ServiceUsage,
@@ -187,6 +188,10 @@ use rudder_core::{
         ServiceCachePurge,
         CachePurgeResult,
         CacheStats,
+        CacheSettingsView,
+        UpdateCacheSettings,
+        CachePoint,
+        CacheServerHistory,
         LogView,
         LogPage,
         IngestEntry,
@@ -1887,6 +1892,33 @@ pub(crate) const ROUTES: &[Route] = &[
         summary: "Approve an agent from a signed-in browser and return the redirect (admin)",
         request: Some("McpConsentRequest"),
         response: Some("McpConsentResponse"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/cache/settings",
+        method: HttpMethod::Get,
+        tag: "cache",
+        summary: "Cache memory share, optional ceiling, and the cap in effect",
+        request: None,
+        response: Some("CacheSettingsView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/cache/settings",
+        method: HttpMethod::Put,
+        tag: "cache",
+        summary: "Set how much host memory the cache may use (admin, write)",
+        request: Some("UpdateCacheSettings"),
+        response: Some("CacheSettingsView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/cache/history",
+        method: HttpMethod::Get,
+        tag: "cache",
+        summary: "Cache hit ratio and memory use over time. Query: server_id, hours (1 to 336)",
+        request: None,
+        response: Some("[CacheServerHistory]"),
         status: 200,
     },
 ];

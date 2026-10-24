@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM cache_stat_samples WHERE sampled_at < now() - interval '14 days'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2e0b35e995dcd543bc552dc28c0367699921778a9f7641cece3af38dbb2e87bd"
+}

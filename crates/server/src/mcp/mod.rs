@@ -13,7 +13,7 @@ use utoipa::openapi::path::HttpMethod;
 use crate::openapi::{self, Route};
 
 pub use gate::middleware as gate;
-pub use http::router as router;
+pub use http::router;
 
 pub const ACCESS_PREFIX: &str = "rdr_mca_";
 

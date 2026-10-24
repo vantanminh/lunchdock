@@ -23,6 +23,7 @@ fn app(pool: PgPool, data_dir: &Path, cache_admin: &str) -> axum::Router {
         ("RUDDER_COOKIE_SECURE".into(), "false".into()),
         ("RUDDER_DATA_DIR".into(), data_dir.display().to_string()),
         ("RUDDER_CACHE_ADMIN_URL".into(), cache_admin.to_owned()),
+        ("RUDDER_HOST_PROC".into(), data_dir.display().to_string()),
     ]);
     let config = rudder_server::Config::from_map(&vars, |_| unreachable!()).unwrap();
     rudder_server::router(rudder_server::AppState::new(pool, config))
@@ -453,5 +454,81 @@ async fn policies_routing_purge_and_stats(pool: PgPool) {
         "rotated",
         "existing token kept"
     );
+    std::fs::remove_dir_all(&data_dir).unwrap();
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn cache_memory_settings_and_history(pool: PgPool) {
+    let data_dir =
+        std::env::temp_dir().join(format!("rudder-cache-settings-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let client = Client::owner(app(pool.clone(), &data_dir, "http://127.0.0.1:9")).await;
+    let settings = client
+        .expect(StatusCode::OK, "GET", "/api/v1/cache/settings", None)
+        .await;
+    assert_eq!(settings["memory_percent"], 15);
+    assert!(settings["memory_cap_bytes"].is_null());
+    assert!(settings["effective_cap_bytes"].as_i64().unwrap() <= 384 * 1024 * 1024);
+
+    let updated = client
+        .expect(
+            StatusCode::OK,
+            "PUT",
+            "/api/v1/cache/settings",
+            Some(json!({
+                "memory_percent": 10,
+                "memory_cap_bytes": 32 * 1024 * 1024
+            })),
+        )
+        .await;
+    assert_eq!(updated["memory_percent"], 10);
+    assert_eq!(updated["effective_cap_bytes"], 32 * 1024 * 1024);
+
+    let (status, _) = client
+        .call(
+            "PUT",
+            "/api/v1/cache/settings",
+            Some(json!({"memory_percent": 90, "memory_cap_bytes": null})),
+        )
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let server_id: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO servers (name, kind) VALUES ('edge', 'local') RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    for (minutes, hits, misses) in [(2, 10_i64, 10_i64), (0, 30, 20)] {
+        sqlx::query(
+            r#"
+            INSERT INTO cache_stat_samples (
+                server_id, sampled_at, objects, stored_bytes, memory_max_bytes, evictions,
+                hits, misses, stale, bypass, bytes_served
+            )
+            VALUES ($1, now() - ($2 * interval '1 minute'), 2, 1000, 32000000, 1, $3, $4, 0, 0, $3)
+            "#,
+        )
+        .bind(server_id)
+        .bind(minutes)
+        .bind(hits)
+        .bind(misses)
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+    let history = client
+        .expect(
+            StatusCode::OK,
+            "GET",
+            &format!("/api/v1/cache/history?server_id={server_id}&hours=1"),
+            None,
+        )
+        .await;
+    assert_eq!(history[0]["name"], "edge");
+    assert_eq!(history[0]["points"][1]["hits"], 20);
+    assert_eq!(history[0]["points"][1]["misses"], 10);
+    let ratio = history[0]["points"][1]["hit_ratio"].as_f64().unwrap();
+    assert!((ratio - (20.0 / 30.0)).abs() < 0.001, "{ratio}");
     std::fs::remove_dir_all(&data_dir).unwrap();
 }

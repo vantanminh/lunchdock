@@ -152,7 +152,15 @@ pub const MCP_TEMPLATES: &[McpTemplate] = &[
 ];
 
 const OPERATOR_WRITE: &[&str] = &[
-    "catalog", "agent", "edge", "source", "databases", "stacks", "cache", "logs", "monitoring",
+    "catalog",
+    "agent",
+    "edge",
+    "source",
+    "databases",
+    "stacks",
+    "cache",
+    "logs",
+    "monitoring",
 ];
 const OPERATOR_READ_ONLY: &[&str] = &["backups", "system"];
 const OBSERVER: &[&str] = &["catalog", "logs", "monitoring", "cache", "system"];
@@ -245,7 +253,9 @@ mod tests {
             assert!(seen.insert(scope.id), "duplicate {}", scope.id);
             assert!(!scope.id.is_empty(), "missing id for {}", scope.group);
             assert!(scope.id.starts_with(scope.group));
-            assert!(scope.id.ends_with(if scope.write { ":write" } else { ":read" }));
+            assert!(scope
+                .id
+                .ends_with(if scope.write { ":write" } else { ":read" }));
         }
     }
 
@@ -281,7 +291,10 @@ mod tests {
     #[test]
     fn custom_scopes_reject_unknown_ids_and_add_the_matching_read() {
         let scopes = validate_agent_scopes("custom", &["cache:write".into()]).unwrap();
-        assert_eq!(scopes, vec!["cache:read".to_owned(), "cache:write".to_owned()]);
+        assert_eq!(
+            scopes,
+            vec!["cache:read".to_owned(), "cache:write".to_owned()]
+        );
         assert!(validate_agent_scopes("custom", &[]).is_err());
         assert!(validate_agent_scopes("custom", &["nope".into()]).is_err());
         assert!(validate_agent_scopes("nope", &[]).is_err());

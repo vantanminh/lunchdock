@@ -102,6 +102,7 @@ pub async fn describe(state: &AppState, token: &str) -> Result<Value, ApiError> 
     }))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn store_code(
     state: &AppState,
     user_id: Uuid,
@@ -408,7 +409,9 @@ async fn issue(
     grant_id: Uuid,
     family: Option<Uuid>,
 ) -> Result<Issued, sqlx::Error> {
-    let grant = load_grant(tx, grant_id).await.map_err(|_| sqlx::Error::RowNotFound)?;
+    let grant = load_grant(tx, grant_id)
+        .await
+        .map_err(|_| sqlx::Error::RowNotFound)?;
     if grant.revoked_at.is_some() {
         return Err(sqlx::Error::RowNotFound);
     }
@@ -489,10 +492,7 @@ async fn load_grant(
     .ok_or(ExchangeError::Invalid("approval was revoked"))
 }
 
-async fn revoke_grant(
-    tx: &mut sqlx::PgConnection,
-    grant_id: Uuid,
-) -> Result<(), sqlx::Error> {
+async fn revoke_grant(tx: &mut sqlx::PgConnection, grant_id: Uuid) -> Result<(), sqlx::Error> {
     sqlx::query!(
         "UPDATE mcp_grants SET revoked_at = COALESCE(revoked_at, now()) WHERE id = $1",
         grant_id,
@@ -502,10 +502,7 @@ async fn revoke_grant(
     revoke_tokens(tx, grant_id).await
 }
 
-async fn revoke_tokens(
-    tx: &mut sqlx::PgConnection,
-    grant_id: Uuid,
-) -> Result<(), sqlx::Error> {
+async fn revoke_tokens(tx: &mut sqlx::PgConnection, grant_id: Uuid) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
         UPDATE mcp_access_tokens
@@ -541,4 +538,3 @@ pub enum ExchangeError {
     Invalid(&'static str),
     Server,
 }
-

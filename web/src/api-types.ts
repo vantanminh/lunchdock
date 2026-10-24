@@ -352,6 +352,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cache/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cache hit ratio and memory use over time. Query: server_id, hours (1 to 336) */
+        get: operations["get_v1_cache_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cache/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cache memory share, optional ceiling, and the cap in effect */
+        get: operations["get_v1_cache_settings"];
+        /** Set how much host memory the cache may use (admin, write) */
+        put: operations["put_v1_cache_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/certificates": {
         parameters: {
             query?: never;
@@ -2553,6 +2588,27 @@ export interface components {
             /** Format: int64 */
             stored_bytes: number;
         };
+        CachePoint: {
+            /** Format: int64 */
+            bytes_served: number;
+            /** Format: int64 */
+            evictions: number;
+            /**
+             * Format: double
+             * @description Hit ratio since the previous sample, from 0 to 1. Null when nothing was served.
+             */
+            hit_ratio?: number | null;
+            /** Format: int64 */
+            hits: number;
+            /** Format: int64 */
+            memory_max_bytes: number;
+            /** Format: int64 */
+            misses: number;
+            /** Format: date-time */
+            sampled_at: string;
+            /** Format: int64 */
+            stored_bytes: number;
+        };
         CachePolicyView: {
             /** Format: date-time */
             created_at: string;
@@ -2593,6 +2649,25 @@ export interface components {
             action: components["schemas"]["RuleAction"];
             match?: components["schemas"]["RuleMatch"];
             name?: string;
+        };
+        CacheServerHistory: {
+            name: string;
+            points: components["schemas"]["CachePoint"][];
+            /** Format: uuid */
+            server_id: string;
+        };
+        CacheSettingsView: {
+            /**
+             * Format: int64
+             * @description The most bytes a rules file will ask the cache to store right now.
+             */
+            effective_cap_bytes: number;
+            /** Format: int64 */
+            host_memory_bytes?: number | null;
+            /** Format: int64 */
+            memory_cap_bytes?: number | null;
+            /** Format: int32 */
+            memory_percent: number;
         };
         CacheStats: {
             /** Format: int64 */
@@ -3839,6 +3914,15 @@ export interface components {
             otpauth_url: string;
             secret: string;
         };
+        UpdateCacheSettings: {
+            /**
+             * Format: int64
+             * @description Blank clears the extra ceiling. 16 MiB to 4 GiB.
+             */
+            memory_cap_bytes?: number | null;
+            /** Format: int32 */
+            memory_percent: number;
+        };
         UpdateCheck: {
             channel: string;
             /** Format: date-time */
@@ -4602,6 +4686,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CachePresetView"][];
+                };
+            };
+        };
+    };
+    get_v1_cache_history: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cache hit ratio and memory use over time. Query: server_id, hours (1 to 336) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CacheServerHistory"][];
+                };
+            };
+        };
+    };
+    get_v1_cache_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cache memory share, optional ceiling, and the cap in effect */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CacheSettingsView"];
+                };
+            };
+        };
+    };
+    put_v1_cache_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateCacheSettings"];
+            };
+        };
+        responses: {
+            /** @description Set how much host memory the cache may use (admin, write) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CacheSettingsView"];
                 };
             };
         };

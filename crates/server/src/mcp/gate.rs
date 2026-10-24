@@ -42,20 +42,16 @@ pub async fn middleware(State(state): State<AppState>, request: Request, next: N
                 "agents cannot call this endpoint",
             )
             .into_response();
-            response.headers_mut().insert(
-                header::CACHE_CONTROL,
-                HeaderValue::from_static("no-store"),
-            );
+            response
+                .headers_mut()
+                .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
             response
         }
     }
 }
 
 fn bearer(headers: &axum::http::HeaderMap) -> Option<String> {
-    let value = headers
-        .get(header::AUTHORIZATION)?
-        .to_str()
-        .ok()?;
+    let value = headers.get(header::AUTHORIZATION)?.to_str().ok()?;
     value
         .strip_prefix("Bearer ")
         .or_else(|| value.strip_prefix("bearer "))

@@ -6,7 +6,6 @@
 use std::net::SocketAddr;
 
 use axum::body::Body;
-use tower::ServiceExt;
 use axum::extract::{Query, Request, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Redirect, Response};
@@ -14,6 +13,7 @@ use axum::routing::{get, post};
 use axum::Json;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use tower::ServiceExt;
 
 use crate::audit;
 use crate::auth::{self, AuthUser};
@@ -182,11 +182,7 @@ async fn register(
             "provide 1 to 8 redirect URLs",
         ));
     }
-    if body
-        .redirect_uris
-        .iter()
-        .any(|uri| !valid_redirect(uri))
-    {
+    if body.redirect_uris.iter().any(|uri| !valid_redirect(uri)) {
         return Err(ApiError::new(
             StatusCode::BAD_REQUEST,
             "invalid_redirect",
@@ -215,11 +211,7 @@ async fn register(
             "supported grants are authorization_code and refresh_token",
         ));
     }
-    if body
-        .response_types
-        .iter()
-        .any(|kind| kind != "code")
-    {
+    if body.response_types.iter().any(|kind| kind != "code") {
         return Err(ApiError::new(
             StatusCode::BAD_REQUEST,
             "invalid_client",
@@ -359,7 +351,11 @@ async fn token(
         );
     }
     if body.len() > 64 * 1024 {
-        return oauth_error(StatusCode::BAD_REQUEST, "invalid_request", "body is too large");
+        return oauth_error(
+            StatusCode::BAD_REQUEST,
+            "invalid_request",
+            "body is too large",
+        );
     }
     let content = headers
         .get(header::CONTENT_TYPE)
@@ -395,7 +391,9 @@ async fn token(
             )
             .await
         }
-        "refresh_token" => tokens::exchange_refresh(&state, &form.client_id, &form.refresh_token).await,
+        "refresh_token" => {
+            tokens::exchange_refresh(&state, &form.client_id, &form.refresh_token).await
+        }
         _ => {
             return oauth_error(
                 StatusCode::BAD_REQUEST,
@@ -596,10 +594,7 @@ fn tool_json(tool: Tool) -> Value {
     if !names.is_empty() {
         let mut path_props = serde_json::Map::new();
         for name in &names {
-            path_props.insert(
-                (*name).to_owned(),
-                json!({"type": "string"}),
-            );
+            path_props.insert((*name).to_owned(), json!({"type": "string"}));
         }
         properties.insert(
             "path".into(),
@@ -666,7 +661,10 @@ async fn tools_call(
             false,
         ));
     }
-    let arguments = params.get("arguments").cloned().unwrap_or_else(|| json!({}));
+    let arguments = params
+        .get("arguments")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     let path = fill_path(tool.path, &arguments)?;
     let mut builder = axum::http::Request::builder()
         .method(tool.method)
@@ -736,11 +734,7 @@ fn fill_path(pattern: &str, arguments: &Value) -> Result<String, &'static str> {
                 Value::Null => continue,
                 _ => return Err("query values must be strings, numbers, or booleans"),
             };
-            pairs.push(format!(
-                "{}={}",
-                percent(&key),
-                percent(&text)
-            ));
+            pairs.push(format!("{}={}", percent(key), percent(&text)));
         }
         if !pairs.is_empty() {
             path.push('?');
@@ -753,7 +747,11 @@ fn fill_path(pattern: &str, arguments: &Value) -> Result<String, &'static str> {
 fn path_params(pattern: &str) -> Vec<&str> {
     pattern
         .split('/')
-        .filter_map(|segment| segment.strip_prefix('{').and_then(|rest| rest.strip_suffix('}')))
+        .filter_map(|segment| {
+            segment
+                .strip_prefix('{')
+                .and_then(|rest| rest.strip_suffix('}'))
+        })
         .collect()
 }
 
@@ -799,7 +797,10 @@ fn oauth_error(status: StatusCode, code: &str, description: &str) -> Response {
 }
 
 fn origin_ok(headers: &HeaderMap, expected: &str) -> bool {
-    let Some(origin) = headers.get(header::ORIGIN).and_then(|value| value.to_str().ok()) else {
+    let Some(origin) = headers
+        .get(header::ORIGIN)
+        .and_then(|value| value.to_str().ok())
+    else {
         return true;
     };
     if expected.is_empty() || origin == "null" {
@@ -871,7 +872,11 @@ fn bearer(headers: &HeaderMap) -> Option<String> {
     headers
         .get(header::AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.strip_prefix("Bearer ").or_else(|| value.strip_prefix("bearer ")))
+        .and_then(|value| {
+            value
+                .strip_prefix("Bearer ")
+                .or_else(|| value.strip_prefix("bearer "))
+        })
         .map(str::trim)
         .filter(|token| !token.is_empty())
         .map(str::to_owned)

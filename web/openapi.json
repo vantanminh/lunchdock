@@ -619,6 +619,79 @@
         }
       }
     },
+    "/api/v1/cache/history": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Cache hit ratio and memory use over time. Query: server_id, hours (1 to 336)",
+        "operationId": "get_v1_cache_history",
+        "responses": {
+          "200": {
+            "description": "Cache hit ratio and memory use over time. Query: server_id, hours (1 to 336)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CacheServerHistory"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cache/settings": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Cache memory share, optional ceiling, and the cap in effect",
+        "operationId": "get_v1_cache_settings",
+        "responses": {
+          "200": {
+            "description": "Cache memory share, optional ceiling, and the cap in effect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheSettingsView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Set how much host memory the cache may use (admin, write)",
+        "operationId": "put_v1_cache_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCacheSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set how much host memory the cache may use (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheSettingsView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/certificates": {
       "get": {
         "tags": [
@@ -4468,6 +4541,56 @@
           }
         }
       },
+      "CachePoint": {
+        "type": "object",
+        "required": [
+          "sampled_at",
+          "hits",
+          "misses",
+          "stored_bytes",
+          "memory_max_bytes",
+          "evictions",
+          "bytes_served"
+        ],
+        "properties": {
+          "bytes_served": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "evictions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hit_ratio": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Hit ratio since the previous sample, from 0 to 1. Null when nothing was served."
+          },
+          "hits": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "memory_max_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "misses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sampled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stored_bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CachePolicyView": {
         "type": "object",
         "required": [
@@ -4580,6 +4703,61 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "CacheServerHistory": {
+        "type": "object",
+        "required": [
+          "server_id",
+          "name",
+          "points"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CachePoint"
+            }
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CacheSettingsView": {
+        "type": "object",
+        "required": [
+          "memory_percent",
+          "effective_cap_bytes"
+        ],
+        "properties": {
+          "effective_cap_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The most bytes a rules file will ask the cache to store right now."
+          },
+          "host_memory_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "memory_cap_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "memory_percent": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -8623,6 +8801,26 @@
           },
           "secret": {
             "type": "string"
+          }
+        }
+      },
+      "UpdateCacheSettings": {
+        "type": "object",
+        "required": [
+          "memory_percent"
+        ],
+        "properties": {
+          "memory_cap_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Blank clears the extra ceiling. 16 MiB to 4 GiB."
+          },
+          "memory_percent": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

@@ -109,6 +109,7 @@ fn default_policy() -> CachePolicy {
 pub async fn render_document(
     pool: &PgPool,
     sources: Vec<SiteSource>,
+    budget_cap: u64,
 ) -> Result<CacheDocument, ApiError> {
     let mut ids: Vec<Uuid> = sources.iter().filter_map(|site| site.policy_id).collect();
     ids.sort_unstable();
@@ -144,14 +145,50 @@ pub async fn render_document(
             policy,
         });
     }
+    let requested = memory.unwrap_or(DEFAULT_MEMORY_BYTES);
+    let budget = requested.min(budget_cap.max(1024 * 1024));
+    for policy in &mut policies {
+        let object = policy
+            .max_object_bytes
+            .unwrap_or(rudder_core::DEFAULT_MAX_OBJECT_BYTES);
+        policy.max_object_bytes = Some(object.min(budget));
+    }
     let document = CacheDocument {
         version: u64::try_from(chrono::Utc::now().timestamp_millis()).unwrap_or_default(),
-        memory_max_bytes: Some(memory.unwrap_or(DEFAULT_MEMORY_BYTES)),
+        memory_max_bytes: Some(budget),
         sites,
         policies,
     };
     document.validate().map_err(core_error)?;
     Ok(document)
+}
+
+/// The most memory a published rules file may ask the cache to store.
+pub async fn memory_cap(pool: &PgPool, host_proc: &std::path::Path) -> Result<u64, ApiError> {
+    let row = sqlx::query!(
+        r#"
+        SELECT cache_memory_percent, cache_memory_cap_bytes
+        FROM panel_settings
+        WHERE id = TRUE
+        "#
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::database)?;
+    let host = std::fs::read_to_string(host_proc.join("meminfo"))
+        .ok()
+        .and_then(|text| rudder_core::parse_meminfo(&text))
+        .map(|(total, _)| total);
+    let percent = u8::try_from(row.cache_memory_percent).unwrap_or(15);
+    let absolute = row
+        .cache_memory_cap_bytes
+        .and_then(|value| u64::try_from(value).ok());
+    Ok(rudder_core::effective_cache_budget(
+        u64::MAX,
+        host,
+        percent,
+        absolute,
+    ))
 }
 
 /// Create the cache admin token when it does not exist yet, so the panel and the cache share it.

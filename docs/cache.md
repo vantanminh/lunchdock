@@ -58,7 +58,11 @@ The following always apply:
 
 ### Memory
 
-The store holds whole objects in RAM. The server's budget is the sum of the memory budgets set on the policies in use, or 256 MiB when none sets one. When the store is full, the least recently used objects are evicted down to 90% of the budget. Objects larger than the policy's limit (default 16 MiB) are streamed without being stored. Restarting the cache empties it.
+The store holds whole objects in RAM. The server's budget starts as the sum of the memory budgets set on the policies in use, or 256 MiB when none sets one. It is then limited to a share of the host (15% by default, from 1% to 40%) and to 384 MiB unless you set a higher ceiling. One object is never larger than that budget, and a response bigger than 32 MiB is not stored. When the store is full, the least recently used objects are evicted down to 90% of the budget. Restarting the cache empties it.
+
+**Operate → Cache** shows the cap in effect, the hit ratio, and how much memory the cache is using. Readings are kept for 14 days.
+
+New installs limit the `rudder-cache` container to `RUDDER_CACHE_MEMORY` (default `512m`) so it is stopped before it can fill the machine. Re-run `install.sh` on an existing machine to apply that limit. If you raise the panel ceiling above the container limit, raise `RUDDER_CACHE_MEMORY` too and run the installer again.
 
 ## Purge
 

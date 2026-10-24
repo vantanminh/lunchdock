@@ -260,17 +260,22 @@ if ! docker inspect rudder-traefik >/dev/null 2>&1; then
 		-v "$DATA/traefik:/etc/rudder/traefik" \
 		"$TRAEFIK_IMAGE" --configFile=/etc/rudder/traefik/traefik.yml >/dev/null
 fi
+CACHE_MEMORY="${RUDDER_CACHE_MEMORY:-512m}"
 if ! docker inspect rudder-cache >/dev/null 2>&1; then
 	if docker image inspect "$CACHE_IMAGE" >/dev/null 2>&1 || docker pull -q "$CACHE_IMAGE" >/dev/null 2>&1; then
 		info "starting rudder-cache"
 		docker run -d --name rudder-cache --restart unless-stopped \
 			--network rudder-proxy \
+			--memory "$CACHE_MEMORY" --memory-reservation 64m --oom-score-adj 200 \
 			-v "$DATA/cache:/var/lib/rudder/cache" \
 			"$CACHE_IMAGE" --rules /var/lib/rudder/cache/rules.json \
 			--listen 0.0.0.0:8080 --admin-listen 0.0.0.0:9090 >/dev/null
 	else
 		info "could not pull $CACHE_IMAGE; HTTP caching stays off until it is available"
 	fi
+fi
+if docker inspect rudder-cache >/dev/null 2>&1; then
+	docker update --memory "$CACHE_MEMORY" --memory-reservation 64m rudder-cache >/dev/null 2>&1 || true
 fi
 
 address="$(hostname -I 2>/dev/null | cut -d ' ' -f 1)" || address=""
