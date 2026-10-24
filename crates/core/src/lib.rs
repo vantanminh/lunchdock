@@ -18,6 +18,7 @@ mod github_app;
 mod guard;
 mod image_ref;
 mod logs;
+mod mcp;
 mod metrics;
 mod release;
 mod retention;
@@ -44,7 +45,8 @@ pub use cache::{
     CacheHostStats, CachePolicy, CachePreset, CachePurge, CachePurgeResult, CacheRequest,
     CacheRule, CacheSite, CacheStats, Freshness, RequestDecision, RuleAction, RuleMatch, RuleMode,
     CACHE_CONTAINER, CACHE_PORT, CACHE_PRESETS, CACHE_RULES_FILE, CACHE_TOKEN_FILE,
-    DEFAULT_MAX_OBJECT_BYTES, DEFAULT_MEMORY_BYTES,
+    DEFAULT_CACHE_CAP_BYTES, DEFAULT_MAX_OBJECT_BYTES, DEFAULT_MEMORY_BYTES,
+    effective_cache_budget,
 };
 pub use certs::{
     certificate_matches_host, matching_certificate, validate_key_and_chain, CertificateDetails,
@@ -79,6 +81,9 @@ pub use guard::{
 pub use image_ref::{
     container_name, image_registry, normalize_registry, select_registry, validate_registry_url,
     RegistryRecord,
+};
+pub use mcp::{
+    scopes_for_template, validate_agent_scopes, McpScope, McpTemplate, MCP_SCOPES, MCP_TEMPLATES,
 };
 pub use logs::{
     escape_like, normalize_level, parse_docker_timestamp, parse_line, partition_day,
