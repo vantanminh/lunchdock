@@ -99,7 +99,10 @@ async fn probe(domain: &str, check: &mut PanelSslCheck) {
         .get::<reqwest::tls::TlsInfo>()
         .and_then(|info| info.peer_certificate())
         .map(<[u8]>::to_vec);
-    if let Some(details) = der.as_deref().and_then(|der| describe_certificate(der).ok()) {
+    if let Some(details) = der
+        .as_deref()
+        .and_then(|der| describe_certificate(der).ok())
+    {
         let mut names: Vec<&str> = details.sans.iter().map(String::as_str).collect();
         if names.is_empty() {
             names.extend(details.common_name.as_deref());
@@ -110,9 +113,7 @@ async fn probe(domain: &str, check: &mut PanelSslCheck) {
         check.issuer = Some(details.issuer);
         check.not_before = DateTime::from_timestamp(details.not_before_unix, 0);
         check.not_after = DateTime::from_timestamp(details.not_after_unix, 0);
-        check.days_left = check
-            .not_after
-            .map(|after| (after - Utc::now()).num_days());
+        check.days_left = check.not_after.map(|after| (after - Utc::now()).num_days());
     }
     match strict.get(&url).send().await {
         Ok(_) => check.trusted = true,

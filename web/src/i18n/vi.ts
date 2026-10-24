@@ -685,7 +685,6 @@ export const vi: Record<string, string> = {
   "Upload failed": "Tải lên thất bại",
   "Panel domain saved": "Đã lưu tên miền bảng điều khiển",
   "Check SSL": "Kiểm tra SSL",
-  "Checking…": "Đang kiểm tra…",
   "Connects to the saved panel domain over HTTPS, as a browser or an AI agent would.":
     "Kết nối tới tên miền bảng điều khiển đã lưu qua HTTPS, giống trình duyệt hoặc tác nhân AI.",
   "Could not run the check": "Không chạy được bước kiểm tra",
