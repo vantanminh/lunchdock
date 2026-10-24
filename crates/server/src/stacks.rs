@@ -836,29 +836,38 @@ async fn execute(
         log.push(&format!("{message}\n"));
     }
     let logs = log.snapshot();
-    let finished = sqlx::query!(
-        r#"
+    // One commit, so a reader that sees the deployment finished also sees the
+    // stack leave `deploying`. Two separate updates let a poll observe
+    // `cancelled` while the service is still `deploying`, and the next action
+    // is then refused.
+    let saved = async {
+        let mut tx = state.pool.begin().await?;
+        sqlx::query!(
+            r#"
         UPDATE deployments
         SET status = $2, error = $3, logs = $4, finished_at = now()
         WHERE id = $1
         "#,
-        deployment_id,
-        status,
-        error,
-        logs
-    )
-    .execute(&state.pool)
-    .await;
-    if let Err(error) = finished {
-        tracing::error!(%error, "could not finish the stack deployment");
+            deployment_id,
+            status,
+            error,
+            logs
+        )
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query!(
+            r#"UPDATE services SET status = $2, updated_at = now() WHERE id = $1"#,
+            id,
+            service_status
+        )
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await
     }
-    let _ = sqlx::query!(
-        r#"UPDATE services SET status = $2, updated_at = now() WHERE id = $1"#,
-        id,
-        service_status
-    )
-    .execute(&state.pool)
     .await;
+    if let Err(save_error) = saved {
+        tracing::error!(%save_error, "could not finish the stack deployment");
+    }
     let event = match &ended {
         Ended::Finished => crate::events::Event::info(
             &format!("stack.{}", action.as_str()),

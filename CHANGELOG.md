@@ -8,6 +8,9 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 
 ## [Unreleased]
 
+### Fixed
+- **A cancelled stack is free as soon as its deployment ends.** Cancelling, failing, or finishing a stack action updates the stack and the deployment together, so the stack does not stay on Deploying after the deployment is already over and the next action is accepted.
+
 ### Added
 - **Cache effectiveness and a memory ceiling.** **Operate → Cache** shows the hit ratio and memory use over the last 14 days, and lets you limit the cache to a share of the machine (15% by default). Unless you set a higher ceiling, the cache stays at or below 384 MiB. A response larger than that budget is not stored.
 - **AI agents can control Rudder.** Add the panel address ending in `/mcp` to an agent. You sign in, pick **Full control** (read and change every setting and all data), **Read everything**, **Operate**, **Watch**, or a custom set of permissions. The agent gets a short-lived access token that refreshes on its own for 90 days. Using a refresh token twice revokes that approval. Revoke an agent from **Admin → AI agents**.
