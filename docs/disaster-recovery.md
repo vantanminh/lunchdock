@@ -51,7 +51,7 @@ configuration.
 2. Run the installer with `--restore`:
 
    ```bash
-   curl -fsSL https://github.com/vantanminh/lunchdock/releases/latest/download/install.sh -o install.sh
+   curl -fsSL https://github.com/vantanminh/rudder/releases/latest/download/install.sh -o install.sh
    sudo sh install.sh --restore rudder-panel-20261011-084801.tar.zst.enc
    ```
 
@@ -61,7 +61,7 @@ configuration.
 
    - refuses a backup whose schema is newer than the binary (install that version first);
    - refuses a database that already has tables and a different existing master key, unless `--force` is given;
-   - restores with `pg_restore --single-transaction --exit-on-error`, so a failure leaves the database untouched;
+   - restores in one transaction, so a failure leaves the database untouched. PostgreSQL 17's `pg_restore` sends `transaction_timeout`, which PostgreSQL 16 does not understand; a restore onto 16 skips that setting and loads the script with `psql`;
    - writes `/etc/rudder/master.key` (mode 0600) from the backup.
 
 3. The panel starts, applies newer migrations, and republishes the local Traefik

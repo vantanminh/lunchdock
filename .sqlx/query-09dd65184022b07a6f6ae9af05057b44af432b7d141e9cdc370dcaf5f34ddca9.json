@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE panel_settings\n        SET cache_memory_percent = $1, cache_memory_cap_bytes = $2\n        WHERE id = TRUE\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int2",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "09dd65184022b07a6f6ae9af05057b44af432b7d141e9cdc370dcaf5f34ddca9"
+}

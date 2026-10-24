@@ -41,6 +41,12 @@ const REQUIRED_TABLES: &[&str] = &[
     "build_queue",
     "webhook_deliveries",
     "cleanup_schedules",
+    "oauth_clients",
+    "mcp_grants",
+    "oauth_codes",
+    "mcp_refresh_tokens",
+    "mcp_access_tokens",
+    "cache_stat_samples",
 ];
 
 fn test_config(database_url: &str) -> rudder_server::Config {
@@ -78,7 +84,7 @@ async fn migration_creates_required_tables(pool: PgPool) {
             .fetch_one(&pool)
             .await
             .unwrap();
-    assert_eq!(settings.github_repo, "vantanminh/lunchdock");
+    assert_eq!(settings.github_repo, "vantanminh/rudder");
     assert!(!settings.auto_update);
 
     rudder_server::ensure_partitions(&pool).await.unwrap();
@@ -115,6 +121,21 @@ async fn health_endpoint_reports_ok(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get("x-content-type-options")
+            .and_then(|value| value.to_str().ok()),
+        Some("nosniff")
+    );
+    assert_eq!(
+        response
+            .headers()
+            .get("x-frame-options")
+            .and_then(|value| value.to_str().ok()),
+        Some("DENY")
+    );
+    assert!(response.headers().get("content-security-policy").is_some());
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     let json: Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(json["status"], "ok");

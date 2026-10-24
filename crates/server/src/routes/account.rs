@@ -225,6 +225,7 @@ async fn setup(
         csrf_token: None,
         scopes: vec!["read".into(), "write".into()],
         via_token: false,
+        via_mcp: false,
     };
     issue(&state, &auth_user, &headers, jar, Some(ip)).await
 }
@@ -310,6 +311,7 @@ async fn login(
         csrf_token: None,
         scopes: vec!["read".into(), "write".into()],
         via_token: false,
+        via_mcp: false,
     };
     audit::record(
         &state.pool,

@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT grant_id, client_id, redirect_uri, code_challenge, expires_at, used_at\n        FROM oauth_codes\n        WHERE code_hash = $1\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "grant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "client_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "redirect_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "code_challenge",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "used_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "2e7aa59476849645810abe0156fd47d907fcca7d4e19d87a253cca070f9a4ab9"
+}

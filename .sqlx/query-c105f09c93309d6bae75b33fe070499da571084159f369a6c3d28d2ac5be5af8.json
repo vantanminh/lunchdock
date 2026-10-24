@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT a.expires_at, g.template, g.scopes, g.name, g.created_at, u.email, u.display_name, u.role\n        FROM mcp_access_tokens a\n        JOIN mcp_grants g ON g.id = a.grant_id\n        JOIN users u ON u.id = g.user_id\n        WHERE a.token_hash = $1 AND a.revoked_at IS NULL AND g.revoked_at IS NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "scopes",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "role",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c105f09c93309d6bae75b33fe070499da571084159f369a6c3d28d2ac5be5af8"
+}

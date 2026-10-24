@@ -10,6 +10,7 @@ Operating and product documentation for this repository.
 | `CONTEXT_RULES.md` | What to read when |
 | `TEST_MATRIX.md` | Behavior-to-proof map |
 | `panel-https.md` | Warning and steps for a panel opened over plain HTTP |
+| `mcp.md` | Connecting an AI agent and the permission templates |
 | `product/` | Product contracts |
 | `stories/` | Story packets |
 | `decisions/` | Architecture and product decisions |

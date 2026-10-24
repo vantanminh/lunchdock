@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT g.id, g.name, g.template, g.scopes, g.created_at, g.last_used_at, c.client_name\n        FROM mcp_grants g\n        JOIN oauth_clients c ON c.client_id = g.client_id\n        WHERE g.revoked_at IS NULL\n        ORDER BY g.created_at DESC\n        LIMIT 200\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "scopes",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_used_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "client_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "6c951cc566b56bda2bfecdb2cc15dcda2e70ab33f5df4dee359e4d27102f5739"
+}

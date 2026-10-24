@@ -65,7 +65,8 @@ pub async fn publish_server(state: &AppState, server_id: Uuid) -> Result<bool, A
     let (routes, note, sites) =
         render_for_server(&state.pool, server_id, state.config.bind.port()).await?;
     let yaml = (routes, note);
-    let cache_document = crate::cache::render_document(&state.pool, sites).await?;
+    let budget_cap = crate::cache::memory_cap(&state.pool, &state.config.host_proc).await?;
+    let cache_document = crate::cache::render_document(&state.pool, sites, budget_cap).await?;
     crate::cache::ensure_token(driver.as_ref()).await?;
     driver
         .write_file(

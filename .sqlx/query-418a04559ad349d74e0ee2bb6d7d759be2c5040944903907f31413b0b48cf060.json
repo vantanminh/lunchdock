@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT client_id, client_name, redirect_uris FROM oauth_clients WHERE client_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "client_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "client_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "redirect_uris",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "418a04559ad349d74e0ee2bb6d7d759be2c5040944903907f31413b0b48cf060"
+}

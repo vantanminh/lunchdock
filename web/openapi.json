@@ -10,6 +10,34 @@
     "version": "0.3.1"
   },
   "paths": {
+    "/.well-known/oauth-authorization-server": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "OAuth authorization-server metadata for agent login",
+        "operationId": "get__.well-known_oauth-authorization-server",
+        "responses": {
+          "200": {
+            "description": "OAuth authorization-server metadata for agent login"
+          }
+        }
+      }
+    },
+    "/.well-known/oauth-protected-resource": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "OAuth protected-resource metadata for the MCP server",
+        "operationId": "get__.well-known_oauth-protected-resource",
+        "responses": {
+          "200": {
+            "description": "OAuth protected-resource metadata for the MCP server"
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -584,6 +612,79 @@
                   "items": {
                     "$ref": "#/components/schemas/CachePresetView"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cache/history": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Cache hit ratio and memory use over time. Query: server_id, hours (1 to 336)",
+        "operationId": "get_v1_cache_history",
+        "responses": {
+          "200": {
+            "description": "Cache hit ratio and memory use over time. Query: server_id, hours (1 to 336)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CacheServerHistory"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cache/settings": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Cache memory share, optional ceiling, and the cap in effect",
+        "operationId": "get_v1_cache_settings",
+        "responses": {
+          "200": {
+            "description": "Cache memory share, optional ceiling, and the cap in effect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheSettingsView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Set how much host memory the cache may use (admin, write)",
+        "operationId": "put_v1_cache_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCacheSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set how much host memory the cache may use (admin, write)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheSettingsView"
                 }
               }
             }
@@ -1479,6 +1580,137 @@
         "responses": {
           "101": {
             "description": "Live tail over WebSocket; same filters as search. Messages: {type:entry,entry} or {type:lagged,skipped}"
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/catalog": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Agent permission scopes and ready-made templates (admin)",
+        "operationId": "get_v1_mcp_catalog",
+        "responses": {
+          "200": {
+            "description": "Agent permission scopes and ready-made templates (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpCatalog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/clients/{client_id}": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Registered agent client name and redirect URLs (admin)",
+        "operationId": "get_v1_mcp_clients__client_id_",
+        "responses": {
+          "200": {
+            "description": "Registered agent client name and redirect URLs (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpClientView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/consent": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Approve an agent from a signed-in browser and return the redirect (admin)",
+        "operationId": "post_v1_mcp_consent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpConsentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Approve an agent from a signed-in browser and return the redirect (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpConsentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/grants": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Active agent approvals (admin)",
+        "operationId": "get_v1_mcp_grants",
+        "responses": {
+          "200": {
+            "description": "Active agent approvals (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/McpGrantView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/grants/{id}": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Revoke an agent approval (admin, write)",
+        "operationId": "delete_v1_mcp_grants__id_",
+        "responses": {
+          "204": {
+            "description": "Revoke an agent approval (admin, write)"
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/info": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "MCP path to append to the panel address (admin)",
+        "operationId": "get_v1_mcp_info",
+        "responses": {
+          "200": {
+            "description": "MCP path to append to the panel address (admin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpInfo"
+                }
+              }
+            }
           }
         }
       }
@@ -3670,6 +3902,100 @@
           }
         }
       }
+    },
+    "/mcp": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "MCP SSE is not offered; use POST",
+        "operationId": "get__mcp",
+        "responses": {
+          "405": {
+            "description": "MCP SSE is not offered; use POST"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "MCP JSON-RPC. Agents call panel actions here after approval",
+        "operationId": "post__mcp",
+        "responses": {
+          "200": {
+            "description": "MCP JSON-RPC. Agents call panel actions here after approval"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "End an MCP HTTP session",
+        "operationId": "delete__mcp",
+        "responses": {
+          "204": {
+            "description": "End an MCP HTTP session"
+          }
+        }
+      }
+    },
+    "/oauth/authorize": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Start agent approval. Redirects to sign-in, then to the consent page",
+        "operationId": "get__oauth_authorize",
+        "responses": {
+          "302": {
+            "description": "Start agent approval. Redirects to sign-in, then to the consent page"
+          }
+        }
+      }
+    },
+    "/oauth/register": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register a public OAuth client for an agent (dynamic client registration)",
+        "operationId": "post__oauth_register",
+        "responses": {
+          "201": {
+            "description": "Register a public OAuth client for an agent (dynamic client registration)"
+          }
+        }
+      }
+    },
+    "/oauth/revoke": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Revoke an agent access or refresh token",
+        "operationId": "post__oauth_revoke",
+        "responses": {
+          "200": {
+            "description": "Revoke an agent access or refresh token"
+          }
+        }
+      }
+    },
+    "/oauth/token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Exchange an authorization code or refresh token for an agent access token",
+        "operationId": "post__oauth_token",
+        "responses": {
+          "200": {
+            "description": "Exchange an authorization code or refresh token for an agent access token"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4215,6 +4541,56 @@
           }
         }
       },
+      "CachePoint": {
+        "type": "object",
+        "required": [
+          "sampled_at",
+          "hits",
+          "misses",
+          "stored_bytes",
+          "memory_max_bytes",
+          "evictions",
+          "bytes_served"
+        ],
+        "properties": {
+          "bytes_served": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "evictions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hit_ratio": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Hit ratio since the previous sample, from 0 to 1. Null when nothing was served."
+          },
+          "hits": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "memory_max_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "misses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sampled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stored_bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CachePolicyView": {
         "type": "object",
         "required": [
@@ -4335,6 +4711,61 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "CacheServerHistory": {
+        "type": "object",
+        "required": [
+          "server_id",
+          "name",
+          "points"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CachePoint"
+            }
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CacheSettingsView": {
+        "type": "object",
+        "required": [
+          "memory_percent",
+          "effective_cap_bytes"
+        ],
+        "properties": {
+          "effective_cap_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The most bytes a rules file will ask the cache to store right now."
+          },
+          "host_memory_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "memory_cap_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "memory_percent": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -6360,6 +6791,212 @@
           }
         }
       },
+      "McpCatalog": {
+        "type": "object",
+        "required": [
+          "scopes",
+          "templates"
+        ],
+        "properties": {
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/McpScopeView"
+            }
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/McpTemplateView"
+            }
+          }
+        }
+      },
+      "McpClientView": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "client_name",
+          "redirect_uris"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "redirect_uris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "McpConsentRequest": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "redirect_uri",
+          "code_challenge",
+          "code_challenge_method",
+          "state",
+          "template"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "code_challenge": {
+            "type": "string"
+          },
+          "code_challenge_method": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "redirect_uri": {
+            "type": "string"
+          },
+          "resource": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "state": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string",
+            "description": "`full`, `read-all`, `operator`, `observer`, or `custom`."
+          }
+        }
+      },
+      "McpConsentResponse": {
+        "type": "object",
+        "required": [
+          "redirect"
+        ],
+        "properties": {
+          "redirect": {
+            "type": "string",
+            "description": "Send the browser here. It carries the one-time code."
+          }
+        }
+      },
+      "McpGrantView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "client_name",
+          "template",
+          "scopes",
+          "created_at"
+        ],
+        "properties": {
+          "client_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "template": {
+            "type": "string"
+          }
+        }
+      },
+      "McpInfo": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to append to the panel address. The browser adds the origin."
+          }
+        }
+      },
+      "McpScopeView": {
+        "type": "object",
+        "required": [
+          "id",
+          "group",
+          "write",
+          "summary"
+        ],
+        "properties": {
+          "group": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "write": {
+            "type": "boolean"
+          }
+        }
+      },
+      "McpTemplateView": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "summary",
+          "scopes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
       "MetricPoint": {
         "type": "object",
         "required": [
@@ -8214,6 +8851,26 @@
           },
           "secret": {
             "type": "string"
+          }
+        }
+      },
+      "UpdateCacheSettings": {
+        "type": "object",
+        "required": [
+          "memory_percent"
+        ],
+        "properties": {
+          "memory_cap_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Blank clears the extra ceiling. 16 MiB to 4 GiB."
+          },
+          "memory_percent": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM oauth_clients c\n        WHERE c.created_at < now() - interval '7 days'\n          AND NOT EXISTS (SELECT 1 FROM mcp_grants g WHERE g.client_id = c.client_id)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "0332e15a6bf943cab9b9cabdcf42c693e595adbcd716a8bfa1da9062b2e50de9"
+}

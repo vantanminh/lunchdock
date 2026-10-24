@@ -166,3 +166,24 @@ feature, not as paperwork.
   pull request that changes `crates/`, `web/src/`, `deploy/` or `templates/`
   without touching `CHANGELOG.md`.
 - Also record user-visible behavior in the matching guide under `docs/`.
+
+## MCP parity (mandatory)
+
+Every user-facing Rudder feature must be controllable by an authorized AI agent
+through the panel's MCP server (`docs/mcp.md`).
+
+When you add or change a panel feature:
+
+1. Expose it on the HTTP API and add the route to `ROUTES` in
+   `crates/server/src/openapi.rs`. The route coverage test already requires this.
+2. Use an OpenAPI tag that already has an MCP scope (`auth`, `catalog`,
+   `agent`, `edge`, `source`, `databases`, `backups`, `stacks`, `cache`,
+   `logs`, `monitoring`, `system`), or add the new scope to
+   `rudder_core::MCP_SCOPES` and to the permission templates in the same change.
+   **Full control** must include the new read and write scopes.
+3. Leave the route off the MCP exclusion list unless it cannot be a normal
+   request/response tool (browser sign-in, inbound webhooks, WebSockets, public
+   downloads, the agent login endpoints themselves).
+   `mcp_covers_every_documented_route` fails otherwise.
+4. The MCP server publishes one tool per documented operation. A full-control
+   grant can call all of them. Narrower grants only call tools in their scopes.

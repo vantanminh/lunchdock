@@ -21,8 +21,9 @@ use crate::routes::backups::{
     SaveDestination, TestResult,
 };
 use crate::routes::cache::{
-    CachePolicyView, CachePresetView, DomainCacheView, SaveCachePolicy, ServiceCachePurge,
-    ServiceCacheView, UpdateDomainCache,
+    CachePoint, CachePolicyView, CachePresetView, CacheServerHistory, CacheSettingsView,
+    DomainCacheView, SaveCachePolicy, ServiceCachePurge, ServiceCacheView, UpdateCacheSettings,
+    UpdateDomainCache,
 };
 use crate::routes::catalog::{
     CreateEnvironment, CreateProject, CreateServer, CreateService, CreatedServer, EnvVarView,
@@ -48,6 +49,10 @@ use crate::routes::github_repos::{GithubBranchesView, GithubComposeFilesView, Gi
 use crate::routes::health::HealthResponse;
 use crate::routes::load::{BuildLoad, BuildsCancelled, LoadView, PauseBuilds, UpdateGuard};
 use crate::routes::logs::{IngestEntry, IngestRequest, IngestResult, LogPage, UpdateRetention};
+use crate::routes::mcp::{
+    McpCatalog, McpClientView, McpConsentRequest, McpConsentResponse, McpGrantView, McpInfo,
+    McpScopeView, McpTemplateView,
+};
 use crate::routes::monitoring::{
     AlertKindView, AlertView, ChannelView, MetricPoint, MetricSeries, MetricsOverview, MetricsView,
     PruneResult, SaveAlert, SaveChannel, ServerUsage, ServiceUsage,
@@ -183,6 +188,10 @@ use rudder_core::{
         ServiceCachePurge,
         CachePurgeResult,
         CacheStats,
+        CacheSettingsView,
+        UpdateCacheSettings,
+        CachePoint,
+        CacheServerHistory,
         LogView,
         LogPage,
         IngestEntry,
@@ -223,7 +232,15 @@ use rudder_core::{
         LoadView,
         UpdateGuard,
         PauseBuilds,
-        BuildsCancelled
+        BuildsCancelled,
+        McpCatalog,
+        McpScopeView,
+        McpTemplateView,
+        McpInfo,
+        McpClientView,
+        McpGrantView,
+        McpConsentRequest,
+        McpConsentResponse
     )),
     modifiers(&SecurityAddon),
     tags(
@@ -264,14 +281,14 @@ impl Modify for SecurityAddon {
     }
 }
 
-struct Route {
-    path: &'static str,
-    method: HttpMethod,
-    tag: &'static str,
-    summary: &'static str,
-    request: Option<&'static str>,
-    response: Option<&'static str>,
-    status: u16,
+pub(crate) struct Route {
+    pub(crate) path: &'static str,
+    pub(crate) method: HttpMethod,
+    pub(crate) tag: &'static str,
+    pub(crate) summary: &'static str,
+    pub(crate) request: Option<&'static str>,
+    pub(crate) response: Option<&'static str>,
+    pub(crate) status: u16,
 }
 
 /// Full document, including paths added outside the derive macro.
@@ -283,7 +300,7 @@ pub fn document() -> OpenApi {
     doc
 }
 
-const ROUTES: &[Route] = &[
+pub(crate) const ROUTES: &[Route] = &[
     Route {
         path: "/api/health",
         method: HttpMethod::Get,
@@ -1742,6 +1759,168 @@ const ROUTES: &[Route] = &[
         response: None,
         status: 200,
     },
+    Route {
+        path: "/.well-known/oauth-protected-resource",
+        method: HttpMethod::Get,
+        tag: "auth",
+        summary: "OAuth protected-resource metadata for the MCP server",
+        request: None,
+        response: None,
+        status: 200,
+    },
+    Route {
+        path: "/.well-known/oauth-authorization-server",
+        method: HttpMethod::Get,
+        tag: "auth",
+        summary: "OAuth authorization-server metadata for agent login",
+        request: None,
+        response: None,
+        status: 200,
+    },
+    Route {
+        path: "/oauth/register",
+        method: HttpMethod::Post,
+        tag: "auth",
+        summary: "Register a public OAuth client for an agent (dynamic client registration)",
+        request: None,
+        response: None,
+        status: 201,
+    },
+    Route {
+        path: "/oauth/authorize",
+        method: HttpMethod::Get,
+        tag: "auth",
+        summary: "Start agent approval. Redirects to sign-in, then to the consent page",
+        request: None,
+        response: None,
+        status: 302,
+    },
+    Route {
+        path: "/oauth/token",
+        method: HttpMethod::Post,
+        tag: "auth",
+        summary: "Exchange an authorization code or refresh token for an agent access token",
+        request: None,
+        response: None,
+        status: 200,
+    },
+    Route {
+        path: "/oauth/revoke",
+        method: HttpMethod::Post,
+        tag: "auth",
+        summary: "Revoke an agent access or refresh token",
+        request: None,
+        response: None,
+        status: 200,
+    },
+    Route {
+        path: "/mcp",
+        method: HttpMethod::Post,
+        tag: "auth",
+        summary: "MCP JSON-RPC. Agents call panel actions here after approval",
+        request: None,
+        response: None,
+        status: 200,
+    },
+    Route {
+        path: "/mcp",
+        method: HttpMethod::Get,
+        tag: "auth",
+        summary: "MCP SSE is not offered; use POST",
+        request: None,
+        response: None,
+        status: 405,
+    },
+    Route {
+        path: "/mcp",
+        method: HttpMethod::Delete,
+        tag: "auth",
+        summary: "End an MCP HTTP session",
+        request: None,
+        response: None,
+        status: 204,
+    },
+    Route {
+        path: "/api/v1/mcp/info",
+        method: HttpMethod::Get,
+        tag: "auth",
+        summary: "MCP path to append to the panel address (admin)",
+        request: None,
+        response: Some("McpInfo"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/mcp/catalog",
+        method: HttpMethod::Get,
+        tag: "auth",
+        summary: "Agent permission scopes and ready-made templates (admin)",
+        request: None,
+        response: Some("McpCatalog"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/mcp/clients/{client_id}",
+        method: HttpMethod::Get,
+        tag: "auth",
+        summary: "Registered agent client name and redirect URLs (admin)",
+        request: None,
+        response: Some("McpClientView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/mcp/grants",
+        method: HttpMethod::Get,
+        tag: "auth",
+        summary: "Active agent approvals (admin)",
+        request: None,
+        response: Some("[McpGrantView]"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/mcp/grants/{id}",
+        method: HttpMethod::Delete,
+        tag: "auth",
+        summary: "Revoke an agent approval (admin, write)",
+        request: None,
+        response: None,
+        status: 204,
+    },
+    Route {
+        path: "/api/v1/mcp/consent",
+        method: HttpMethod::Post,
+        tag: "auth",
+        summary: "Approve an agent from a signed-in browser and return the redirect (admin)",
+        request: Some("McpConsentRequest"),
+        response: Some("McpConsentResponse"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/cache/settings",
+        method: HttpMethod::Get,
+        tag: "cache",
+        summary: "Cache memory share, optional ceiling, and the cap in effect",
+        request: None,
+        response: Some("CacheSettingsView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/cache/settings",
+        method: HttpMethod::Put,
+        tag: "cache",
+        summary: "Set how much host memory the cache may use (admin, write)",
+        request: Some("UpdateCacheSettings"),
+        response: Some("CacheSettingsView"),
+        status: 200,
+    },
+    Route {
+        path: "/api/v1/cache/history",
+        method: HttpMethod::Get,
+        tag: "cache",
+        summary: "Cache hit ratio and memory use over time. Query: server_id, hours (1 to 336)",
+        request: None,
+        response: Some("[CacheServerHistory]"),
+        status: 200,
+    },
 ];
 
 fn add(doc: &mut OpenApi, route: &Route) {
@@ -1773,14 +1952,7 @@ fn add(doc: &mut OpenApi, route: &Route) {
     let mut operation = OperationBuilder::new()
         .tag(route.tag)
         .summary(Some(route.summary))
-        .operation_id(Some(format!(
-            "{}_{}",
-            method_name(&route.method),
-            route
-                .path
-                .trim_start_matches("/api/")
-                .replace(['/', '{', '}'], "_")
-        )))
+        .operation_id(Some(operation_id(route)))
         .responses(responses.build());
     if let Some(name) = route.request {
         operation = operation.request_body(Some(
@@ -1796,6 +1968,17 @@ fn add(doc: &mut OpenApi, route: &Route) {
     }
     doc.paths
         .add_path_operation(route.path, vec![route.method.clone()], operation.build());
+}
+
+pub(crate) fn operation_id(route: &Route) -> String {
+    format!(
+        "{}_{}",
+        method_name(&route.method),
+        route
+            .path
+            .trim_start_matches("/api/")
+            .replace(['/', '{', '}'], "_")
+    )
 }
 
 fn method_name(method: &HttpMethod) -> &'static str {

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE mcp_grants\n        SET revoked_at = now()\n        WHERE id = $1 AND revoked_at IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "528709b4c6364755eb3027fd73abe3c8de63d38506c04b367b4f0e4f27a2209c"
+}

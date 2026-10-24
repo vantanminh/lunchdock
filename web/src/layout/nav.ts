@@ -44,6 +44,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       ["/users", msg("Users"), "users"],
       ["/tokens", msg("API tokens"), "key"],
+      ["/agents", msg("AI agents"), "command"],
       ["/audit", msg("Audit log"), "history"],
       ["/system", msg("System"), "settings"],
     ],

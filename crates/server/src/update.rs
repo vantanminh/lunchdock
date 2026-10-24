@@ -1191,7 +1191,7 @@ mod tests {
 
     #[test]
     fn repositories_must_be_owner_and_name() {
-        assert!(valid_repo("vantanminh/lunchdock"));
+        assert!(valid_repo("vantanminh/rudder"));
         assert!(valid_repo("a-b/c.d_e"));
         assert!(!valid_repo("vantanminh"));
         assert!(!valid_repo("a/b/c"));

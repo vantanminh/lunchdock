@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO mcp_refresh_tokens (token_hash, grant_id, family_id, expires_at)\n        VALUES ($1, $2, $3, $4)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "866829a06ea7d97828be0815975e3d32e0c0d2cdee030115e153452a0231f127"
+}

@@ -1,6 +1,6 @@
 //! Cache policies, presets, per-domain cache settings, purge, and stats.
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post, put};
 use axum::Json;
@@ -116,6 +116,11 @@ pub fn router() -> axum::Router<AppState> {
         .route("/api/v1/services/{id}/cache", get(service_cache))
         .route("/api/v1/services/{id}/cache/purge", post(purge_service))
         .route("/api/v1/servers/{id}/cache/stats", get(server_stats))
+        .route(
+            "/api/v1/cache/settings",
+            get(cache_settings).put(update_cache_settings),
+        )
+        .route("/api/v1/cache/history", get(cache_history))
 }
 
 fn validate_policy(body: &SaveCachePolicy, rules: &[CacheRule]) -> Result<(), ApiError> {
@@ -605,6 +610,260 @@ async fn purge_service(
     )
     .await;
     Ok(Json(CachePurgeResult { removed }))
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct CacheSettingsView {
+    pub memory_percent: i16,
+    pub memory_cap_bytes: Option<i64>,
+    pub host_memory_bytes: Option<i64>,
+    /// The most bytes a rules file will ask the cache to store right now.
+    pub effective_cap_bytes: i64,
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct UpdateCacheSettings {
+    pub memory_percent: i16,
+    /// Blank clears the extra ceiling. 16 MiB to 4 GiB.
+    pub memory_cap_bytes: Option<i64>,
+}
+
+#[derive(Deserialize)]
+struct HistoryQuery {
+    server_id: Option<Uuid>,
+    hours: Option<i64>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct CachePoint {
+    pub sampled_at: chrono::DateTime<chrono::Utc>,
+    /// Hit ratio since the previous sample, from 0 to 1. Null when nothing was served.
+    pub hit_ratio: Option<f64>,
+    pub hits: i64,
+    pub misses: i64,
+    pub stored_bytes: i64,
+    pub memory_max_bytes: i64,
+    pub evictions: i64,
+    pub bytes_served: i64,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct CacheServerHistory {
+    pub server_id: Uuid,
+    pub name: String,
+    pub points: Vec<CachePoint>,
+}
+
+async fn cache_settings(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+) -> Result<Json<CacheSettingsView>, ApiError> {
+    Ok(Json(settings_view(&state).await?))
+}
+
+async fn update_cache_settings(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(body): Json<UpdateCacheSettings>,
+) -> Result<Json<CacheSettingsView>, ApiError> {
+    auth.require_write()?;
+    if !(1..=40).contains(&body.memory_percent) {
+        return Err(bad("invalid", "memory share must be from 1 to 40 percent"));
+    }
+    if body
+        .memory_cap_bytes
+        .is_some_and(|value| !(16 * 1024 * 1024..=4 * 1024 * 1024 * 1024).contains(&value))
+    {
+        return Err(bad(
+            "invalid",
+            "memory cap must be between 16 MiB and 4 GiB",
+        ));
+    }
+    sqlx::query!(
+        r#"
+        UPDATE panel_settings
+        SET cache_memory_percent = $1, cache_memory_cap_bytes = $2
+        WHERE id = TRUE
+        "#,
+        body.memory_percent,
+        body.memory_cap_bytes,
+    )
+    .execute(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    let servers = sqlx::query_scalar!(r#"SELECT id FROM servers"#)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(ApiError::database)?;
+    for server_id in servers {
+        if let Err(error) = crate::publish::publish_server(&state, server_id).await {
+            tracing::warn!(
+                %server_id,
+                message = %error.public_message(),
+                "republish after cache settings failed"
+            );
+        }
+    }
+    audit::record(
+        &state.pool,
+        Some(auth.id),
+        "cache.settings",
+        "panel_settings",
+        None,
+        json!({
+            "memory_percent": body.memory_percent,
+            "memory_cap_bytes": body.memory_cap_bytes,
+        }),
+        None,
+    )
+    .await;
+    Ok(Json(settings_view(&state).await?))
+}
+
+async fn settings_view(state: &AppState) -> Result<CacheSettingsView, ApiError> {
+    let row = sqlx::query!(
+        r#"
+        SELECT cache_memory_percent, cache_memory_cap_bytes
+        FROM panel_settings
+        WHERE id = TRUE
+        "#
+    )
+    .fetch_one(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    let host = std::fs::read_to_string(state.config.host_proc.join("meminfo"))
+        .ok()
+        .and_then(|text| rudder_core::parse_meminfo(&text))
+        .map(|(total, _)| i64::try_from(total).unwrap_or(i64::MAX));
+    let cap = crate::cache::memory_cap(&state.pool, &state.config.host_proc).await?;
+    Ok(CacheSettingsView {
+        memory_percent: row.cache_memory_percent,
+        memory_cap_bytes: row.cache_memory_cap_bytes,
+        host_memory_bytes: host,
+        effective_cap_bytes: i64::try_from(cap).unwrap_or(i64::MAX),
+    })
+}
+
+async fn cache_history(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    Query(query): Query<HistoryQuery>,
+) -> Result<Json<Vec<CacheServerHistory>>, ApiError> {
+    let hours = query.hours.unwrap_or(24).clamp(1, 24 * 14);
+    let rows = sqlx::query!(
+        r#"
+        SELECT s.id AS server_id, s.name,
+               c.sampled_at, c.hits, c.misses, c.stored_bytes, c.memory_max_bytes,
+               c.evictions, c.bytes_served
+        FROM cache_stat_samples c
+        JOIN servers s ON s.id = c.server_id
+        WHERE ($1::uuid IS NULL OR c.server_id = $1)
+          AND c.sampled_at >= now() - ($2::bigint * interval '1 hour')
+        ORDER BY s.name, c.sampled_at
+        "#,
+        query.server_id,
+        hours,
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(ApiError::database)?;
+    let mut out: Vec<CacheServerHistory> = Vec::new();
+    let mut previous: Option<(Uuid, i64, i64, i64, i64)> = None;
+    for row in rows {
+        if out
+            .last()
+            .is_none_or(|server| server.server_id != row.server_id)
+        {
+            out.push(CacheServerHistory {
+                server_id: row.server_id,
+                name: row.name.clone(),
+                points: Vec::new(),
+            });
+            previous = None;
+        }
+        let prior = previous.filter(|(server, ..)| *server == row.server_id);
+        let hits = delta(prior.map(|(_, hits, ..)| hits), row.hits);
+        let misses = delta(prior.map(|(_, _, misses, ..)| misses), row.misses);
+        let served = hits.saturating_add(misses);
+        out.last_mut()
+            .expect("server just pushed")
+            .points
+            .push(CachePoint {
+                sampled_at: row.sampled_at,
+                hit_ratio: (served > 0).then(|| hits as f64 / served as f64),
+                hits,
+                misses,
+                stored_bytes: row.stored_bytes,
+                memory_max_bytes: row.memory_max_bytes,
+                evictions: delta(
+                    prior.map(|(_, _, _, evictions, _)| evictions),
+                    row.evictions,
+                ),
+                bytes_served: delta(prior.map(|(_, _, _, _, bytes)| bytes), row.bytes_served),
+            });
+        previous = Some((
+            row.server_id,
+            row.hits,
+            row.misses,
+            row.evictions,
+            row.bytes_served,
+        ));
+    }
+    Ok(Json(out))
+}
+
+fn delta(previous: Option<i64>, current: i64) -> i64 {
+    match previous {
+        Some(previous) if current >= previous => current - previous,
+        Some(_) => current,
+        None => 0,
+    }
+}
+
+/// Record one sample per server whose cache answers. Old samples are dropped.
+pub async fn sample_cache(state: &AppState) -> Result<usize, ApiError> {
+    let servers = sqlx::query_scalar!(r#"SELECT id FROM servers"#)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(ApiError::database)?;
+    let mut saved = 0;
+    for server_id in servers {
+        let Ok(stats) = fetch_stats(state, server_id).await else {
+            continue;
+        };
+        let fold = |pick: fn(&rudder_core::CacheHostStats) -> u64| {
+            i64::try_from(stats.hosts.iter().map(pick).fold(0u64, u64::saturating_add))
+                .unwrap_or(i64::MAX)
+        };
+        sqlx::query!(
+            r#"
+            INSERT INTO cache_stat_samples (
+                server_id, objects, stored_bytes, memory_max_bytes, evictions,
+                hits, misses, stale, bypass, bytes_served
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            "#,
+            server_id,
+            i64::try_from(stats.objects).unwrap_or(i64::MAX),
+            i64::try_from(stats.stored_bytes).unwrap_or(i64::MAX),
+            i64::try_from(stats.memory_max_bytes).unwrap_or(i64::MAX),
+            i64::try_from(stats.evictions).unwrap_or(i64::MAX),
+            fold(|host| host.hits),
+            fold(|host| host.misses),
+            fold(|host| host.stale),
+            fold(|host| host.bypass),
+            fold(|host| host.bytes_served),
+        )
+        .execute(&state.pool)
+        .await
+        .map_err(ApiError::database)?;
+        saved += 1;
+    }
+    sqlx::query!(r#"DELETE FROM cache_stat_samples WHERE sampled_at < now() - interval '14 days'"#)
+        .execute(&state.pool)
+        .await
+        .map_err(ApiError::database)?;
+    Ok(saved)
 }
 
 async fn server_stats(

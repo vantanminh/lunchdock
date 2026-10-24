@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE mcp_refresh_tokens SET rotated_at = now() WHERE token_hash = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "decd3a42b6f9347078e5e7927d1fc616809abe8d70b49d1290c23274ef6dd222"
+}

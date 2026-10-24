@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.id AS server_id, s.name,\n               c.sampled_at, c.hits, c.misses, c.stored_bytes, c.memory_max_bytes,\n               c.evictions, c.bytes_served\n        FROM cache_stat_samples c\n        JOIN servers s ON s.id = c.server_id\n        WHERE ($1::uuid IS NULL OR c.server_id = $1)\n          AND c.sampled_at >= now() - ($2::bigint * interval '1 hour')\n        ORDER BY s.name, c.sampled_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "sampled_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "hits",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "misses",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "stored_bytes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "memory_max_bytes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "evictions",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "bytes_served",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "10bdab1eef4fec8a63500beb518cef068fe43089606c5636438170ca96a6de78"
+}

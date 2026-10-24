@@ -18,6 +18,28 @@ pub const CACHE_CONTAINER: &str = "rudder-cache";
 pub const CACHE_PORT: u16 = 8080;
 pub const DEFAULT_MEMORY_BYTES: u64 = 256 * 1024 * 1024;
 pub const DEFAULT_MAX_OBJECT_BYTES: u64 = 16 * 1024 * 1024;
+/// Used when a policy does not set its own ceiling, so a default install stays
+/// inside the cache container's memory limit.
+pub const DEFAULT_CACHE_CAP_BYTES: u64 = 384 * 1024 * 1024;
+
+/// Bytes the cache may store. `requested` is what the policies ask for.
+/// `host_total` is the machine's RAM. `percent` is the share of that RAM the
+/// cache may use (1–40). `absolute` is an optional hard ceiling; when it is
+/// missing the default ceiling applies so one setting cannot consume the host.
+pub fn effective_cache_budget(
+    requested: u64,
+    host_total: Option<u64>,
+    percent: u8,
+    absolute: Option<u64>,
+) -> u64 {
+    let percent = u64::from(percent.clamp(1, 40));
+    let mut cap = absolute.unwrap_or(DEFAULT_CACHE_CAP_BYTES).max(1024 * 1024);
+    if let Some(total) = host_total.filter(|total| *total > 0) {
+        let share = (total / 100).saturating_mul(percent).max(16 * 1024 * 1024);
+        cap = cap.min(share);
+    }
+    requested.min(cap).max(1024 * 1024)
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CacheDocument {
@@ -995,5 +1017,25 @@ mod tests {
         purge.validate().unwrap();
         purge.prefix = Some("x".into());
         assert!(purge.validate().is_err());
+    }
+
+    #[test]
+    fn memory_budget_stays_inside_the_host_and_the_default_ceiling() {
+        let requested = 2 * 1024 * 1024 * 1024;
+        let small_host = 512 * 1024 * 1024;
+        let capped = effective_cache_budget(requested, Some(small_host), 15, None);
+        assert!(capped <= small_host / 100 * 15 || capped == 16 * 1024 * 1024);
+        assert!(capped <= DEFAULT_CACHE_CAP_BYTES);
+        let big_host = 64 * 1024 * 1024 * 1024;
+        assert_eq!(
+            effective_cache_budget(requested, Some(big_host), 15, None),
+            DEFAULT_CACHE_CAP_BYTES
+        );
+        assert_eq!(
+            effective_cache_budget(32 * 1024 * 1024, Some(big_host), 15, None),
+            32 * 1024 * 1024
+        );
+        let raised = effective_cache_budget(requested, Some(big_host), 15, Some(requested));
+        assert_eq!(raised, requested);
     }
 }
