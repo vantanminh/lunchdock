@@ -4,7 +4,7 @@ What changes in each Rudder release, written for the people who run it. **System
 
 Every change that someone can see or that changes how Rudder behaves gets a line here in the same pull request. When a release is cut, `[Unreleased]` is renamed to the version and date and a new empty `[Unreleased]` is added on top. The release workflow publishes the section of the tag as the release notes and refuses to run when it is empty.
 
-Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **Security**, **Removed**. Earlier releases are listed on [GitHub Releases](https://github.com/vantanminh/lunchdock/releases).
+Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **Security**, **Removed**. Earlier releases are listed on [GitHub Releases](https://github.com/vantanminh/rudder/releases).
 
 ## [Unreleased]
 
@@ -12,6 +12,7 @@ Sections: **Added** (new things), **Changed** (existing behavior), **Fixed**, **
 - **Cache effectiveness and a memory ceiling.** **Operate → Cache** shows the hit ratio and memory use over the last 14 days, and lets you limit the cache to a share of the machine (15% by default). Unless you set a higher ceiling, the cache stays at or below 384 MiB. A response larger than that budget is not stored.
 
 ### Changed
+- **Update checks and the install scripts use `vantanminh/rudder`.** This update switches a panel that still has the old default. Rename the GitHub repository to that name before you check for updates or install from the release URL. If you have not renamed it yet, set the repository back to the previous name under **System → Updates** or with `RUDDER_GITHUB_REPO`.
 - **The cache container is limited to 512 MiB.** New installs, and the next run of `install.sh` on an existing machine, stop `rudder-cache` at `RUDDER_CACHE_MEMORY` (default `512m`) before it can fill the host. If you raise the ceiling in the panel above that, raise `RUDDER_CACHE_MEMORY` and run the installer again.
 
 ### Security

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install, restore, or back up the Rudder panel on one Docker host.
 #
-#   curl -fsSL https://github.com/vantanminh/lunchdock/releases/latest/download/install.sh | sudo sh
+#   curl -fsSL https://github.com/vantanminh/rudder/releases/latest/download/install.sh | sudo sh
 #
 # Options:
 #   --version VERSION    Release tag of the images, such as v0.2.0 (default: latest)
@@ -17,7 +17,7 @@
 # Every value is passed to programs as its own argument; nothing is evaluated.
 set -eu
 
-REPO="${RUDDER_GITHUB_REPO:-vantanminh/lunchdock}"
+REPO="${RUDDER_GITHUB_REPO:-vantanminh/rudder}"
 REGISTRY="${RUDDER_REGISTRY:-ghcr.io/vantanminh}"
 TRAEFIK_IMAGE="${RUDDER_TRAEFIK_IMAGE:-traefik:v3.3}"
 POSTGRES_IMAGE="${RUDDER_POSTGRES_IMAGE:-postgres:16-alpine}"

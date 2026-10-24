@@ -51,7 +51,7 @@ configuration.
 2. Run the installer with `--restore`:
 
    ```bash
-   curl -fsSL https://github.com/vantanminh/lunchdock/releases/latest/download/install.sh -o install.sh
+   curl -fsSL https://github.com/vantanminh/rudder/releases/latest/download/install.sh -o install.sh
    sudo sh install.sh --restore rudder-panel-20261011-084801.tar.zst.enc
    ```
 

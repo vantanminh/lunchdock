@@ -84,7 +84,7 @@ async fn migration_creates_required_tables(pool: PgPool) {
             .fetch_one(&pool)
             .await
             .unwrap();
-    assert_eq!(settings.github_repo, "vantanminh/lunchdock");
+    assert_eq!(settings.github_repo, "vantanminh/rudder");
     assert!(!settings.auto_update);
 
     rudder_server::ensure_partitions(&pool).await.unwrap();

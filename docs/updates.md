@@ -34,7 +34,7 @@ sha256sum -c SHA256SUMS
 
 ## Updating from the panel
 
-Open **System → Updates**. **Check now** reads the releases of the repository set in panel settings (`vantanminh/lunchdock` by default). The panel shows the newest release and whether it verified, and under **What this update installs** the notes of every release between your version and the newest one, newest first, so you can see what is about to be installed before you press the button. An admin with write access can then click **Update to …**.
+Open **System → Updates**. **Check now** reads the releases of the repository set in panel settings (`vantanminh/rudder` by default). The panel shows the newest release and whether it verified, and under **What this update installs** the notes of every release between your version and the newest one, newest first, so you can see what is about to be installed before you press the button. An admin with write access can then click **Update to …**.
 
 The panel then does the following:
 

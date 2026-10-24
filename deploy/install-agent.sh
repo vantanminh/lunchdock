@@ -14,7 +14,7 @@
 # Every value is passed to programs as its own argument; nothing is evaluated.
 set -eu
 
-REPO="${RUDDER_GITHUB_REPO:-vantanminh/lunchdock}"
+REPO="${RUDDER_GITHUB_REPO:-vantanminh/rudder}"
 BIN_DIR="/usr/local/bin"
 AGENT_DATA="/var/lib/rudder-agent"
 NODE_DATA="/var/lib/rudder"
