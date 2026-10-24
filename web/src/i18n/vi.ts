@@ -254,6 +254,9 @@ export const vi: Record<string, string> = {
   "Several containers from one docker-compose file": "Nhiều container từ một tệp docker-compose",
   "Paste YAML": "Dán YAML",
   "Git repository": "Kho Git",
+  "Preview pull requests": "Xem trước pull request",
+  "A pull request against this branch gets its own copy of the service and a preview address. Closing the pull request removes it. Forks are ignored.":
+    "Một pull request vào nhánh này được một bản sao của dịch vụ và một địa chỉ xem trước. Đóng pull request sẽ gỡ bản sao. Pull request từ kho khác bị bỏ qua.",
   "Stable releases": "Bản phát hành ổn định",
   "Include pre-releases": "Gồm cả bản thử nghiệm",
   Preset: "Mẫu có sẵn",

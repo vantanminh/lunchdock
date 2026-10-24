@@ -89,6 +89,8 @@ Actions run in the background and appear under Deployments. Only one runs per st
 
 Turn on *Deploy when I push to the branch* for a Git stack whose provider was connected with **Connect with GitHub**. The provider's webhook then runs a deploy (a rebuild when *Build images on every deploy* is on) for every push to the stack's branch. A push that arrives while another action runs is skipped.
 
+*Preview pull requests* makes a copy of the stack for each pull request opened against that branch in the same repository, deploys the pull request's branch, and gives the copy a preview address. Closing the pull request removes the copy.
+
 ### Registry logins
 
 Logins saved under **Registries** apply to the images in a stack too. Before a deploy, pull or rebuild the panel writes a temporary Docker config with the logins of the registries the stack's `image:` entries come from (for example `ghcr.io`), points `DOCKER_CONFIG` at it for that one command and deletes it afterwards. A pull refused for lack of credentials ends with a hint naming the registries the stack uses. Images that a `Dockerfile` pulls with `FROM` are not covered, and agents older than this release ignore the logins: run `docker login` on that server or update the agent.

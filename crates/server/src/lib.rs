@@ -23,6 +23,7 @@ mod monitor;
 mod nodes;
 mod openapi;
 mod panel;
+mod previews;
 mod publish;
 mod routes;
 mod s3;

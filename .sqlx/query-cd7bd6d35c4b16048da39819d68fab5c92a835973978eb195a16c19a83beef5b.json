@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE services\n        SET spec = jsonb_set(spec, '{git,branch}', to_jsonb($2::text), true), updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cd7bd6d35c4b16048da39819d68fab5c92a835973978eb195a16c19a83beef5b"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.server_id, servers.public_ip\n        FROM services s\n        JOIN servers ON servers.id = s.server_id\n        WHERE s.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "server_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "public_ip",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "d2edb142a1a8f424db1227f35cf24e753dbeb7df370c12feb6563e63444e6001"
+}

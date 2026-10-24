@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO env_vars (service_id, key, value_enc, is_build_secret, updated_at)\n        SELECT $2, key, value_enc, is_build_secret, updated_at\n        FROM env_vars\n        WHERE service_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c55ad4a551b1f066a6a11b2f846f6537c7e2afe7eb3c0d851712b0b0903febd3"
+}

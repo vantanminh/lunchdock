@@ -4935,6 +4935,13 @@
           "name": {
             "type": "string"
           },
+          "preview_pull_requests": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Open pull requests against the branch get their own copy of this stack."
+          },
           "project": {
             "type": [
               "string",
@@ -7650,7 +7657,8 @@
           "dockerfile",
           "context",
           "publish_dir",
-          "has_webhook_secret"
+          "has_webhook_secret",
+          "preview_pull_requests"
         ],
         "properties": {
           "branch": {
@@ -7664,6 +7672,10 @@
           },
           "has_webhook_secret": {
             "type": "boolean"
+          },
+          "preview_pull_requests": {
+            "type": "boolean",
+            "description": "Open pull requests against this branch get their own copy of the service."
           },
           "provider_id": {
             "type": "string",
@@ -7810,7 +7822,8 @@
           "missing_variables",
           "variable_details",
           "build_on_deploy",
-          "deploy_on_push"
+          "deploy_on_push",
+          "preview_pull_requests"
         ],
         "properties": {
           "build_on_deploy": {
@@ -7853,6 +7866,10 @@
               "type": "string"
             },
             "description": "Referenced variables with no value under Environment and no fallback in the file."
+          },
+          "preview_pull_requests": {
+            "type": "boolean",
+            "description": "Open pull requests against the branch get their own copy of this stack."
           },
           "project": {
             "type": "string"
@@ -8682,6 +8699,13 @@
               "null"
             ]
           },
+          "preview_pull_requests": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Open pull requests against this branch get their own copy of the service."
+          },
           "provider_id": {
             "type": "string",
             "format": "uuid"
@@ -8741,6 +8765,13 @@
               "string",
               "null"
             ]
+          },
+          "preview_pull_requests": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Open pull requests against the branch get their own copy. Unchanged when omitted."
           },
           "project": {
             "type": [

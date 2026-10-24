@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id\n        FROM services\n        WHERE spec -> 'preview' ->> 'parent_id' = $1\n          AND spec -> 'preview' ->> 'number' = $2\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8a521115c4d7f32aa36cf895a0644bb324925febc79e6b4f27048e7095b8134e"
+}

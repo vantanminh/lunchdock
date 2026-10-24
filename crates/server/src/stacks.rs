@@ -75,6 +75,18 @@ pub struct StackSpec {
     pub build_on_deploy: bool,
     /// A push to the Git source's branch deploys the stack (GitHub App providers).
     pub deploy_on_push: bool,
+    /// Open pull requests against the branch get their own copy of this stack.
+    pub preview_pull_requests: bool,
+    /// Set on a copy created for one pull request.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preview: Option<StackPreview>,
+}
+
+/// A stack that exists only while a pull request is open.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StackPreview {
+    pub parent_id: Uuid,
+    pub number: i64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1000,6 +1000,130 @@ async fn app_webhook_builds_the_services_that_use_the_repository(pool: PgPool) {
     assert_eq!(ping.body["detail"], "ping");
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn pull_request_preview_is_created_and_removed(pool: PgPool) {
+    let (github, _) = fake_github().await;
+    let app = app(pool, &github, Some("https://panel.example"));
+    let (cookie, csrf) = owner(&app).await;
+    let session = Some((cookie.as_str(), csrf.as_str()));
+    let provider = installed_app(&app, session).await;
+    let (server, _, environment) = catalog(&app, session).await;
+    let id = new_service(&app, session, &environment, &server, "web").await;
+    let saved = call(
+        &app,
+        "PUT",
+        &format!("/api/v1/services/{id}/source"),
+        session,
+        Some(json!({
+            "provider_id": provider,
+            "repo": "https://github.com/acme/web.git",
+            "branch": "main",
+            "strategy": "dockerfile",
+            "preview_pull_requests": true
+        })),
+    )
+    .await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.body);
+    assert_eq!(saved.body["preview_pull_requests"], true);
+
+    let opened = r#"{
+        "action":"opened","number":7,
+        "repository":{"full_name":"Acme/Web"},
+        "pull_request":{
+            "base":{"ref":"main"},
+            "head":{"ref":"feature","sha":"abc1234","repo":{"full_name":"acme/web"}}
+        }
+    }"#;
+    let created = event(&app, &provider, "pull_request", opened, WEBHOOK_SECRET).await;
+    assert_eq!(created.status, StatusCode::ACCEPTED, "{}", created.body);
+    assert_eq!(created.body["deploy"], true);
+    let preview_id = created.body["builds"][0]["service_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_ne!(preview_id, id);
+    let services = call(
+        &app,
+        "GET",
+        &format!("/api/v1/environments/{environment}/services"),
+        session,
+        None,
+    )
+    .await;
+    let names: Vec<&str> = services
+        .body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|service| service["name"].as_str().unwrap())
+        .collect();
+    assert!(names.contains(&"web-pr-7"), "{names:?}");
+
+    let fork = r#"{
+        "action":"opened","number":8,
+        "repository":{"full_name":"acme/web"},
+        "pull_request":{
+            "base":{"ref":"main"},
+            "head":{"ref":"feature","sha":"abc1234","repo":{"full_name":"someone/web"}}
+        }
+    }"#;
+    let ignored = event(&app, &provider, "pull_request", fork, WEBHOOK_SECRET).await;
+    assert_eq!(ignored.status, StatusCode::OK, "{}", ignored.body);
+    assert_eq!(ignored.body["deploy"], false);
+
+    let closed = r#"{
+        "action":"closed","number":7,
+        "repository":{"full_name":"acme/web"},
+        "pull_request":{
+            "base":{"ref":"main"},
+            "head":{"ref":"feature","sha":"abc1234","repo":{"full_name":"acme/web"}}
+        }
+    }"#;
+    let removed = event(&app, &provider, "pull_request", closed, WEBHOOK_SECRET).await;
+    assert_eq!(removed.status, StatusCode::ACCEPTED, "{}", removed.body);
+    let services = call(
+        &app,
+        "GET",
+        &format!("/api/v1/environments/{environment}/services"),
+        session,
+        None,
+    )
+    .await;
+    let names: Vec<&str> = services
+        .body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|service| service["name"].as_str().unwrap())
+        .collect();
+    assert!(!names.contains(&"web-pr-7"), "{names:?}");
+}
+
+async fn event(
+    app: &axum::Router,
+    provider: &str,
+    name: &str,
+    payload: &str,
+    secret: &str,
+) -> Reply {
+    let signature = format!(
+        "sha256={}",
+        hmac_sha256(secret.as_bytes(), payload.as_bytes())
+    );
+    call_raw(
+        app,
+        "POST",
+        &format!("/api/v1/git-providers/{provider}/webhook"),
+        None,
+        Some(payload),
+        &[
+            ("x-github-event", name),
+            ("x-hub-signature-256", &signature),
+        ],
+    )
+    .await
+}
+
 /// An app that is created and installed against the fake GitHub; returns the provider id.
 async fn installed_app(app: &axum::Router, session: Option<(&str, &str)>) -> String {
     let started = call(
