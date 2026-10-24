@@ -130,7 +130,8 @@ fn pem_certificates(pem: &str) -> Result<Vec<Vec<u8>>, Error> {
     Ok(ders)
 }
 
-fn describe(der: &[u8]) -> Result<CertificateDetails, Error> {
+/// Facts of one DER certificate, such as the one a server presents in a handshake.
+pub fn describe(der: &[u8]) -> Result<CertificateDetails, Error> {
     let cert = parse_cert(der)?;
     let common_name = cert
         .subject()

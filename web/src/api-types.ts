@@ -1229,6 +1229,23 @@ export interface paths {
         patch: operations["patch_v1_panel"];
         trace?: never;
     };
+    "/api/v1/panel/ssl-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check the SSL certificate the panel domain serves */
+        get: operations["get_v1_panel_ssl-check"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects": {
         parameters: {
             query?: never;
@@ -3417,6 +3434,22 @@ export interface components {
             include_history?: boolean;
             /** @description At least 12 characters. Needed to restore; it is not stored. */
             passphrase: string;
+        };
+        PanelSslCheck: {
+            common_name?: string | null;
+            /** Format: int64 */
+            days_left?: number | null;
+            domain?: string | null;
+            error?: string | null;
+            hostname_matches: boolean;
+            issuer?: string | null;
+            /** Format: date-time */
+            not_after?: string | null;
+            /** Format: date-time */
+            not_before?: string | null;
+            reachable: boolean;
+            sans: string[];
+            trusted: boolean;
         };
         PanelView: {
             acme_email?: string | null;
@@ -6008,6 +6041,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PanelView"];
+                };
+            };
+        };
+    };
+    "get_v1_panel_ssl-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Check the SSL certificate the panel domain serves */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PanelSslCheck"];
                 };
             };
         };
