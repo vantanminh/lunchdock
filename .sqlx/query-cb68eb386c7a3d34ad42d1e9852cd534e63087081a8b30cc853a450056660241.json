@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE cache_policies\n        SET name = $2, description = $3, memory_max_bytes = $4, disk_max_bytes = $5,\n            max_object_bytes = $6, updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cb68eb386c7a3d34ad42d1e9852cd534e63087081a8b30cc853a450056660241"
+}

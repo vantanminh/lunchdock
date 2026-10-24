@@ -4234,6 +4234,14 @@
           "description": {
             "type": "string"
           },
+          "disk_max_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Share of the server's disk store. Null or all-null policies keep objects in memory only."
+          },
           "domains": {
             "type": "integer",
             "format": "int64",
@@ -4343,6 +4351,24 @@
           "hosts"
         ],
         "properties": {
+          "disk_max_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Disk budget. Zero when the tier is off.",
+            "minimum": 0
+          },
+          "disk_objects": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Objects in the disk tier. Zero when the tier is off.",
+            "minimum": 0
+          },
+          "disk_stored_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Bytes in the disk tier.",
+            "minimum": 0
+          },
           "evictions": {
             "type": "integer",
             "format": "int64",
@@ -7095,6 +7121,13 @@
               "string",
               "null"
             ]
+          },
+          "disk_max_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
           },
           "max_object_bytes": {
             "type": [

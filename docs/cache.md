@@ -111,6 +111,6 @@ The installer runs it as the `rudder-cache` container on the `rudder-proxy` netw
 
 ## Limits
 
-- No disk tier yet: objects live in memory only (backlog BL-002).
+- **Disk tier.** Set a disk budget on a cache policy (blank means memory only). The budgets of the policies in use are added together. Objects are written under `cache/disk` on that server and are still there after the cache process restarts. The hottest objects are also kept in memory. A disk budget of zero, or leaving every policy blank, stores nothing on disk and drops files left from an earlier budget. Purge removes the disk copies too.
 - Policy changes apply to new fills. Purge to drop objects stored under the old policy.
 - On remote servers the rules and routes are stored in the panel, but they only reach the server once the agent applies them (M11).

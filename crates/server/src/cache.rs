@@ -29,6 +29,7 @@ pub struct PolicyRecord {
     pub name: String,
     pub description: String,
     pub memory_max_bytes: Option<i64>,
+    pub disk_max_bytes: Option<i64>,
     pub max_object_bytes: Option<i64>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
@@ -82,7 +83,7 @@ pub async fn load_policies(pool: &PgPool, ids: &[Uuid]) -> Result<Vec<PolicyReco
     sqlx::query_as!(
         PolicyRecord,
         r#"
-        SELECT id, name, description, memory_max_bytes, max_object_bytes, created_at, updated_at
+        SELECT id, name, description, memory_max_bytes, disk_max_bytes, max_object_bytes, created_at, updated_at
         FROM cache_policies
         WHERE id = ANY($1)
         ORDER BY name
@@ -117,9 +118,13 @@ pub async fn render_document(
     let mut rules = load_rules(pool, &ids).await?;
     let mut policies: Vec<CachePolicy> = Vec::new();
     let mut memory: Option<u64> = None;
+    let mut disk: Option<u64> = None;
     for record in &records {
         if let Some(bytes) = record.memory_max_bytes.and_then(|v| u64::try_from(v).ok()) {
             memory = Some(memory.unwrap_or(0).saturating_add(bytes));
+        }
+        if let Some(bytes) = record.disk_max_bytes.and_then(|v| u64::try_from(v).ok()) {
+            disk = Some(disk.unwrap_or(0).saturating_add(bytes));
         }
         policies.push(CachePolicy {
             id: record.id.to_string(),
@@ -147,6 +152,7 @@ pub async fn render_document(
     let document = CacheDocument {
         version: u64::try_from(chrono::Utc::now().timestamp_millis()).unwrap_or_default(),
         memory_max_bytes: Some(memory.unwrap_or(DEFAULT_MEMORY_BYTES)),
+        disk_max_bytes: Some(disk.unwrap_or(0)),
         sites,
         policies,
     };

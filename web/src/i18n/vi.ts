@@ -652,6 +652,8 @@ export const vi: Record<string, string> = {
   "{count} domain": "{count} tên miền",
   "{count} domains": "{count} tên miền",
   "memory {size}": "bộ nhớ {size}",
+  "disk {size}": "đĩa {size}",
+  off: "tắt",
   default: "mặc định",
   "max object {size}": "đối tượng tối đa {size}",
   "Rule {number}": "Quy tắc {number}",
@@ -664,6 +666,7 @@ export const vi: Record<string, string> = {
   "Start from preset": "Bắt đầu từ mẫu có sẵn",
   Description: "Mô tả",
   "Memory budget (MiB, blank for default)": "Ngân sách bộ nhớ (MiB, để trống = mặc định)",
+  "Disk budget (MiB, blank for memory only)": "Ngân sách đĩa (MiB, để trống = chỉ bộ nhớ)",
   "Largest object (MiB, blank for 16)": "Đối tượng lớn nhất (MiB, để trống = 16)",
   "Rules (JSON, first match wins)": "Quy tắc (JSON, quy tắc khớp đầu tiên được áp dụng)",
   "Each rule has {match} (path_prefixes, extensions, path_glob) and {action} (mode cache|bypass, ttl_secs, respect_origin, stale_while_revalidate_secs, stale_if_error_secs, ignore_query, query_keys, bypass_cookies, statuses). Responses with Set-Cookie, private, or no-store are never stored.":
@@ -672,8 +675,8 @@ export const vi: Record<string, string> = {
     "Xóa {name}? Các tên miền của nó sẽ dùng chính sách mặc định.",
   "Cache servers": "Máy chủ bộ nhớ đệm",
   "No servers.": "Không có máy chủ nào.",
-  "hit ratio {ratio} · {objects} objects · {stored} of {memory} · {evictions} evictions · rules v{version}":
-    "tỷ lệ trúng {ratio} · {objects} đối tượng · {stored} / {memory} · {evictions} lần loại bỏ · quy tắc v{version}",
+  "hit ratio {ratio} · {objects} objects · {stored} of {memory} · disk {diskStored} of {disk} · {evictions} evictions · rules v{version}":
+    "tỷ lệ trúng {ratio} · {objects} đối tượng · {stored} / {memory} · đĩa {diskStored} / {disk} · {evictions} lần loại bỏ · quy tắc v{version}",
   "cache server unavailable": "máy chủ bộ nhớ đệm không khả dụng",
   "Certificate stored": "Đã lưu chứng chỉ",
   "Upload failed": "Tải lên thất bại",

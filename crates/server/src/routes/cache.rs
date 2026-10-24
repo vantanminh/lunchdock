@@ -34,6 +34,8 @@ pub struct CachePolicyView {
     pub description: String,
     /// Share of the server's memory store. Null uses the default (256 MiB in total).
     pub memory_max_bytes: Option<i64>,
+    /// Share of the server's disk store. Null or all-null policies keep objects in memory only.
+    pub disk_max_bytes: Option<i64>,
     /// Largest response body stored. Null means 16 MiB.
     pub max_object_bytes: Option<i64>,
     pub rules: Vec<CacheRule>,
@@ -48,6 +50,7 @@ pub struct SaveCachePolicy {
     pub name: String,
     pub description: Option<String>,
     pub memory_max_bytes: Option<i64>,
+    pub disk_max_bytes: Option<i64>,
     pub max_object_bytes: Option<i64>,
     /// Ordered rules; the first match wins. Defaults to the preset's rules on create.
     pub rules: Option<Vec<CacheRule>>,
@@ -133,6 +136,15 @@ fn validate_policy(body: &SaveCachePolicy, rules: &[CacheRule]) -> Result<(), Ap
         ));
     }
     if body
+        .disk_max_bytes
+        .is_some_and(|v| !(MIN_MEMORY..=MAX_MEMORY).contains(&v))
+    {
+        return Err(bad(
+            "invalid",
+            "disk budget must be between 1 MiB and 64 GiB",
+        ));
+    }
+    if body
         .max_object_bytes
         .is_some_and(|v| !(MIN_OBJECT..=MAX_OBJECT).contains(&v))
     {
@@ -181,6 +193,7 @@ async fn policy_views(
             name: record.name,
             description: record.description,
             memory_max_bytes: record.memory_max_bytes,
+            disk_max_bytes: record.disk_max_bytes,
             max_object_bytes: record.max_object_bytes,
             created_at: record.created_at,
             updated_at: record.updated_at,
@@ -264,13 +277,14 @@ async fn create_policy(
     let mut tx = state.pool.begin().await.map_err(ApiError::database)?;
     let id = sqlx::query_scalar!(
         r#"
-        INSERT INTO cache_policies (name, description, memory_max_bytes, max_object_bytes)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO cache_policies (name, description, memory_max_bytes, disk_max_bytes, max_object_bytes)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
         "#,
         body.name.trim(),
         body.description.as_deref().unwrap_or(""),
         body.memory_max_bytes,
+        body.disk_max_bytes,
         body.max_object_bytes,
     )
     .fetch_one(&mut *tx)
@@ -319,14 +333,15 @@ async fn update_policy(
     sqlx::query!(
         r#"
         UPDATE cache_policies
-        SET name = $2, description = $3, memory_max_bytes = $4, max_object_bytes = $5,
-            updated_at = now()
+        SET name = $2, description = $3, memory_max_bytes = $4, disk_max_bytes = $5,
+            max_object_bytes = $6, updated_at = now()
         WHERE id = $1
         "#,
         id,
         body.name.trim(),
         body.description.as_deref().unwrap_or(&current.description),
         body.memory_max_bytes,
+        body.disk_max_bytes,
         body.max_object_bytes,
     )
     .execute(&mut *tx)

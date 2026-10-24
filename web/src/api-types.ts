@@ -2336,6 +2336,11 @@ export interface components {
             description: string;
             /**
              * Format: int64
+             * @description Share of the server's disk store. Null or all-null policies keep objects in memory only.
+             */
+            disk_max_bytes?: number | null;
+            /**
+             * Format: int64
              * @description Domains that use this policy.
              */
             domains: number;
@@ -2372,6 +2377,21 @@ export interface components {
             name?: string;
         };
         CacheStats: {
+            /**
+             * Format: int64
+             * @description Disk budget. Zero when the tier is off.
+             */
+            disk_max_bytes?: number;
+            /**
+             * Format: int64
+             * @description Objects in the disk tier. Zero when the tier is off.
+             */
+            disk_objects?: number;
+            /**
+             * Format: int64
+             * @description Bytes in the disk tier.
+             */
+            disk_stored_bytes?: number;
             /** Format: int64 */
             evictions: number;
             hosts: components["schemas"]["CacheHostStats"][];
@@ -3260,6 +3280,8 @@ export interface components {
         };
         SaveCachePolicy: {
             description?: string | null;
+            /** Format: int64 */
+            disk_max_bytes?: number | null;
             /** Format: int64 */
             max_object_bytes?: number | null;
             /** Format: int64 */
