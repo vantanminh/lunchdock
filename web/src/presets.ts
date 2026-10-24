@@ -387,7 +387,7 @@ export const SERVICE_KINDS: PickOption[] = [
 
 export const STACK_SOURCES: PickOption[] = [
   { label: msg("Paste YAML"), value: "inline" },
-  { label: msg("Git repository (local server)"), value: "git" },
+  { label: msg("Git repository"), value: "git" },
 ];
 
 export const UPDATE_CHANNELS: PickOption[] = [

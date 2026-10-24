@@ -253,7 +253,7 @@ export const vi: Record<string, string> = {
   "compose stack": "stack compose",
   "Several containers from one docker-compose file": "Nhiều container từ một tệp docker-compose",
   "Paste YAML": "Dán YAML",
-  "Git repository (local server)": "Git repository (máy chủ cục bộ)",
+  "Git repository": "Kho Git",
   "Stable releases": "Bản phát hành ổn định",
   "Include pre-releases": "Gồm cả bản thử nghiệm",
   Preset: "Mẫu có sẵn",

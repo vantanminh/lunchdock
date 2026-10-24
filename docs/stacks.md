@@ -5,7 +5,7 @@ A compose stack is a service of kind `compose` that runs one `docker compose` pr
 ## Creating a stack
 
 - **Paste YAML**: Projects → choose an environment → Service → kind *compose stack*, then paste the file. API: `POST /api/v1/environments/{id}/stacks` with `source: "inline"` and `compose_yaml`.
-- **Git**: choose *Git repository*, a Git provider, the repository, branch, and the compose file path inside it. The repository is cloned on the first deploy into `<data dir>/stacks/<project>/src` and updated with `git fetch` + `git reset --hard` afterwards, so untracked files such as `./data` bind mounts survive. Git stacks run on the local server only for now.
+- **Git**: choose *Git repository*, a Git provider, the repository, branch, and the compose file path inside it. The repository is cloned on the panel into `<data dir>/stacks/<project>/src` and updated with `git fetch` + `git reset --hard` afterwards, so untracked files such as `./data` bind mounts survive. On an extra server the panel then copies the tracked files (not the `.git` directory) to that server. Files already on the server that Git does not track, such as a bind-mounted data directory, are left in place. A checkout larger than 512 MiB is refused. The agent must be connected.
 - **Template**: Templates → pick an app → fill in the domain and any options → Deploy.
 
 Set the *main service* to the compose service that serves HTTP. New domains target it unless you choose another compose service in the domain form.
